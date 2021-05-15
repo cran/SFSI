@@ -20,7 +20,7 @@
 
 \item{df}{(numeric) Average (across testing individuals) number of non-zero regression coefficients}
 
-\item{tst}{(integer vector) Which individuals are in testing set. Default \code{tst=NULL} will consider all individuals in \code{object$tst}}
+\item{tst}{(integer vector) Which elements from vector \code{y} (stored in \code{object$y}) are in testing set. Default \code{tst=NULL} will consider all individuals in \code{object$tst}}
 
 \item{py}{(character) Either 'accuracy' or 'MSE' to plot the correlation between observed and predicted values or the mean squared error, respectively, in the y-axis}
 

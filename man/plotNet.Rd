@@ -24,7 +24,7 @@ plotNet(fm, B, Z = NULL, K, indexK = NULL, subsetG = NULL,
 
 \item{subsetG}{(integer vector) Which columns (and rows) from \code{G} the vectors \code{fm$trn} and \code{fm$tst} refer to. Default \code{subsetG=NULL} considers that elements \code{fm$trn} and \code{fm$tst} refer to columns (and rows) from \code{G}; otherwise elements in training and testing in \code{G} have indices \code{subsetG[fm$trn]}  and \code{subsetG[fm$tst]}}
 
-\item{tst}{(integer vector) Which individuals are in testing set and to plot. It must be contained in \code{fm$tst}. Default \code{tst=NULL} will consider the whole vector \code{fm$tst} to plot}
+\item{tst}{(integer vector) Which elements from vector \code{y} (stored in \code{fm$y}) are in testing set and to plot. They must be contained in \code{fm$tst}. Default \code{tst=NULL} will consider the whole vector \code{fm$tst} to plot}
 
 \item{U}{(numeric matrix) Eigenvectors from spectral value decomposition of \ifelse{html}{\out{<b>G</b> = <b>U D U'</b>}}{\eqn{\textbf{G} = \textbf{U D U'}}{G = U D U'}}}
 

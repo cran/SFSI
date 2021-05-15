@@ -16,7 +16,7 @@ plotPath(fm, Z = NULL, K = NULL, indexK = NULL,
 
 \item{indexK}{(integer vector) Which columns and rows will be read when \code{K} is the name of a binary file. Default \code{indexK=NULL} will read the whole matrix}
 
-\item{tst}{(integer vector) Which individuals are in testing set and to plot. It must be contained in \code{fm$tst}. Default \code{tst=NULL} will consider the whole vector \code{fm$tst} to plot}
+\item{tst}{(integer vector) Which elements from vector \code{y} (stored in \code{fm$y}) are in testing set and to plot. They must be contained in \code{fm$tst}. Default \code{tst=NULL} will consider the whole vector \code{fm$tst} to plot}
 
 \item{title}{(character/expression) Title of the plot}
 

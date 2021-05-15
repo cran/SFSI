@@ -1,6 +1,5 @@
-
-# X= K= U = d = indexK = NULL; BLUP=TRUE; method="ML"; h2=NULL
-# return.Hinv = FALSE; tol=1E-5; maxIter=1000; interval=c(1E-9,1E9)
+# X= Z=K= indexK = NULL; BLUP=TRUE; method=c("REML","ML")[1]; h2=NULL
+# return.Hinv = FALSE; tol=1E-5; maxIter=1000; interval=c(1E-9,1E9); warn=TRUE
 
 fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, U = NULL, d = NULL,
                     indexK = NULL, h2 = NULL, BLUP = TRUE, method = c("REML","ML"),
@@ -47,9 +46,9 @@ fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, U = NULL, d = NULL,
     stopifnot(nrow(G) == length(y))
     stopifnot(ncol(G) == length(y))
 
-    out <- float::eigen(G[indexOK,indexOK])
-    d <- out$values
-    U <- out$vectors
+    U <- float::eigen(G[indexOK,indexOK])
+    d <- U$values
+    U <- U$vectors
 
   }else{
     isGeigen <- TRUE
@@ -57,17 +56,29 @@ fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, U = NULL, d = NULL,
     if(is.null(d)) stop("You are providing the eigenvectors, but not the eigenvalues")
     if(n<length(y)) stop("No 'NA' values are allowed when parameters 'U' and 'd' are provided")
   }
+  G <- NULL
 
-  if(min(d) <0 & abs(min(d)) > .Machine$double.eps^0.5) stop("Matrix 'K' is not positive semi-definite")
+  tol <- .Machine$double.eps^(3/4)
+  if(any(d < tol)){
+    if(warn){
+      warning("Some eigenvalues are negative or very small:\n  ",sum(d<tol),
+      " eigenvalue(s) lie between ",float::dbl(min(d))," and <",tol,".\n",
+      "  The corresponding eigenvector(s) will be ignored.",immediate.=TRUE)
+    }
+    d[d<tol] <- 0
+  }
+
   stopifnot(nrow(U) == n)
   stopifnot(ncol(U) == length(d))
 
   Uty <- float::crossprod(U,y[indexOK])[,1]
   UtX <- float::crossprod(U,X[indexOK, ,drop=FALSE])
+
   c0 <- ncol(X)-1
 
-  varP <- var(y[indexOK])*sum(d)/length(d) #mean(d)
+  varP <- var(y[indexOK])*sum(d)/length(d) # mean(d)
   convergence <- lambda0 <- varU <- varE <- bHat <- dbar <- NA
+
   if(is.null(h2))
   {
     tt <- searchInt(method,interval,n=n,c0=c0,Uty=Uty,UtX=UtX,d=d,maxIter=maxIter,
@@ -114,29 +125,37 @@ fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, U = NULL, d = NULL,
     varU <- lambda0*varE
   }
 
-  # Compute BLUP: uHat = KZ'V^{-1} (y-X*b)   with V = varU*ZKZ' + varE*I
+
   uHat <- Hinv <- NULL
+  if(return.Hinv | (BLUP & !is.na(lambda0) & !isGeigen)){
+    if(float::storage.mode(U) == "float32"){
+      Hinv <- float::tcrossprod(float::sweep(U,2L,float::fl(lambda0*dbar),FUN="*"),U)
+    }else{
+      Hinv <- float::tcrossprod(float::sweep(U,2L,lambda0*dbar,FUN="*"),U)
+    }
+  }
+
+  # Compute BLUP: uHat = KZ'V^{-1} (y-X*b)   with V = varU*ZKZ' + varE*I
   if(BLUP & !is.na(lambda0))
   {
     yStar <- y[indexOK] - X[indexOK ,,drop=FALSE]%*%bHat
     if(isGeigen){
-      H <- tcrossprod(sweep(U,2L,d*lambda0*dbar,FUN="*"),U)
-      uHat <- drop(H%*%yStar)
+      H <- float::tcrossprod(sweep(U,2L,d*lambda0*dbar,FUN="*"),U)
+      uHat <- as.vector(H%*%yStar)
     }else{
-      Hinv <- float::tcrossprod(float::sweep(U,2L,lambda0*dbar,FUN="*"),U) # Vinv
       if(is.null(Z) & is.null(K)){  # Z=NULL, K=NULL
         uHat <- rep(0,length(y))
-        uHat[indexOK] <- drop(Hinv%*%yStar)   # V^{-1}*(y-Xb)
+        uHat[indexOK] <- as.vector(Hinv%*%yStar)   # V^{-1}*(y-Xb)
 
       }else{
         if(is.null(Z)){     # Z=NULL, K=K
-          uHat <- drop(float::crossprod(K[indexOK,,drop=FALSE],Hinv)%*%yStar)  # K[,trn]*V^{-1}*(y-Xb)
+          uHat <- as.vector(float::crossprod(K[indexOK,,drop=FALSE],Hinv)%*%yStar)  # K[,trn]*V^{-1}*(y-Xb)
         }else{
           if(is.null(K)){   # Z=Z, K=NULL
-              uHat <- drop(float::crossprod(Z[indexOK,,drop=FALSE],Hinv)%*%yStar)  # Z[,trn]'*V^{-1}*(y-Xb)
+              uHat <- as.vector(float::crossprod(Z[indexOK,,drop=FALSE],Hinv)%*%yStar)  # Z[,trn]'*V^{-1}*(y-Xb)
           }else{            # Z=Z, K=K
-              KZt <- float::tcrossprod(K,Z[indexOK,,drop=FALSE])
-              uHat <- drop(KZt%*%Hinv%*%yStar)
+              ZKt <- float::tcrossprod(Z[indexOK, ,drop=FALSE],K)   # ZK' which is the transpose of KZ'
+              uHat <- as.vector(float::crossprod(ZKt,Hinv)%*%yStar)
           }
         }
       }

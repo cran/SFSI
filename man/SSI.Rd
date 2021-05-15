@@ -29,13 +29,13 @@ SSI_CV(y, X = NULL, b = NULL, Z = NULL, K, indexK = NULL,
 
 \item{K}{(numeric matrix) Kinship relationships. This can be of the "float32" type as per the 'float' R-package, or a (character) name of a binary file where the matrix is stored}
 
-\item{indexK}{(integer vector) Integers indicating which columns and rows will be read when \code{K} is the name of a binary file. Default \code{indexK=NULL} will read the whole matrix}
+\item{indexK}{(integer vector) Which columns and rows will be read when \code{K} is the name of a binary file. Default \code{indexK=NULL} will read the whole matrix}
 
 \item{h2}{(numeric) Heritability of the response variable. When \code{h2=NULL} (default), the heritability is calculated from training data from variance components estimated using the function 'fitBLUP' (see \code{help(fitBLUP)})}
 
-\item{trn}{(integer vector) Indicates which individuals are in training set. Default \code{trn=seq_along(y)} will consider all individuals as training}
+\item{trn}{(integer vector) Which elements from vector \code{y} are in training set. Default \code{trn=seq_along(y)} will consider all individuals as training}
 
-\item{tst}{(integer vector) Indicates which individuals are in testing set (prediction set). Default \code{tst=seq_along(y)} will consider all individuals as testing}
+\item{tst}{(integer vector) Which elements from vector \code{y} are in testing set (prediction set). Default \code{tst=seq_along(y)} will consider all individuals as testing}
 
 \item{subset}{(integer vector) \eqn{c(m,M)} to fit the model only for the \ifelse{html}{\out{m<sup>th</sup>}}{\eqn{m^{th}}{m^{th}}}
 subset out of \eqn{M} subsets that the testing set will be divided into. Results can be automatically saved when \code{saveAt} argument

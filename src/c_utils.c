@@ -7,6 +7,8 @@
 #include <R_ext/Lapack.h>
 #include <float/float32.h>
 
+//#define FLOAT(x) ((float*) INTEGER(x))
+
 // ----------------------------------------------------------
 // Update betas until convergence, i.e., the difference
 // between two consecutive solutions is smaller than a threshold
@@ -31,6 +33,7 @@ SEXP updatebeta(SEXP n, SEXP XtX, SEXP Xty, SEXP q, SEXP lambda, SEXP a, SEXP ma
     //int inc=1;
     double delta, bOLS, bNew;
     double *pB, *b, *currfit;
+    long long pos1;
     SEXP list, B;
 
     np=INTEGER_VALUE(n);
@@ -53,7 +56,7 @@ SEXP updatebeta(SEXP n, SEXP XtX, SEXP Xty, SEXP q, SEXP lambda, SEXP a, SEXP ma
 
       PROTECT(Xty=AS_NUMERIC(Xty));
       pXty2=NUMERIC_POINTER(Xty);
-	}
+	  }
 
     PROTECT(lambda=AS_NUMERIC(lambda));
     plambda=NUMERIC_POINTER(lambda);
@@ -99,11 +102,13 @@ SEXP updatebeta(SEXP n, SEXP XtX, SEXP Xty, SEXP q, SEXP lambda, SEXP a, SEXP ma
                     //F77_NAME(daxpy)(&np, &delta, pXtX + j*np, &inc, currfit, &inc);
                     if(isFloat){
                     	for(i=0; i<np; i++)
-                    	{   currfit[i] = currfit[i] + delta*pXtX1[j*np+i];
+                    	{ pos1=(long long)j*(long long)np + (long long)i;
+                        currfit[i] = currfit[i] + delta*pXtX1[pos1];
                     	}
                     }else{
                     	for(i=0; i<np; i++)
-                    	{   currfit[i] = currfit[i] + delta*pXtX2[j*np+i];
+                    	{ pos1=(long long)j*(long long)np + (long long)i;
+                        currfit[i] = currfit[i] + delta*pXtX2[pos1];
                     	}
                     }
                     currfit[j] -= delta; //delta*pXtX[np*j + j]
@@ -137,13 +142,21 @@ SEXP updatebeta(SEXP n, SEXP XtX, SEXP Xty, SEXP q, SEXP lambda, SEXP a, SEXP ma
 }
 
 // ----------------------------------------------------------
+// Transform a covariance matrix to a (squared) distance matrix
+// The distance between variables i and j is
+// d^2_ij = v_ii + v_jj -2*v_ij
+// where v_ii is the variance (diagonal value) of the variable i.
+//
+//      n:       Number of variables (columns in V)
+//      V:       Covariance matrix
 // ----------------------------------------------------------
 SEXP cov2distance(SEXP n, SEXP V, SEXP flagfloat)
 {
     float *pV1, *pd1;
     double *pV2, *pd2;
     int np;
-    int i, j, isFloat ;
+    int i, j, isFloat;
+    long long pos1;
 
     np=INTEGER_VALUE(n);
     isFloat=asLogical(flagfloat);
@@ -151,26 +164,29 @@ SEXP cov2distance(SEXP n, SEXP V, SEXP flagfloat)
     if(isFloat){
       PROTECT(V=AS_INTEGER(V));
       pV1=FLOAT(V);
-
       pd1=(float *) R_alloc(np, sizeof(float));
+
+      pV2=(double *) R_alloc(0, sizeof(double)); // will not be used
       pd2=(double *) R_alloc(0, sizeof(double)); // will not be used
     }else{
       PROTECT(V=AS_NUMERIC(V));
       pV2=NUMERIC_POINTER(V);
-
-      pd1=(float *) R_alloc(0, sizeof(float));   // will not be used
       pd2=(double *) R_alloc(np, sizeof(double));
+
+      pV1=(float *) R_alloc(0, sizeof(float));   // will not be used
+      pd1=(float *) R_alloc(0, sizeof(float));   // will not be used
     }
 
     // Diagonal values
     for(j=0; j<np; j++)
     {
+        pos1=(long long)np*(long long)j + (long long)j;
         if(isFloat){
-          pd1[j]=pV1[np*j + j];
-          pV1[np*j + j]=0;
+          pd1[j]=pV1[pos1];
+          pV1[pos1]=0;
         }else{
-          pd2[j]=pV2[np*j + j];
-          pV2[np*j + j]=0;
+          pd2[j]=pV2[pos1];
+          pV2[pos1]=0;
         }
     }
 
@@ -179,11 +195,15 @@ SEXP cov2distance(SEXP n, SEXP V, SEXP flagfloat)
         for(i=j+1; i<np; i++)
         {
           if(isFloat){
-            pV1[np*j + i]=pd1[i] + pd1[j] -2*pV1[np*j + i];
-            pV1[np*i + j]=pd1[i] + pd1[j] -2*pV1[np*i + j];
+            pos1=(long long)np*(long long)j + (long long)i;
+            pV1[pos1]=pd1[i] + pd1[j] -2*pV1[pos1];
+            pos1=(long long)np*(long long)i + (long long)j;
+            pV1[pos1]=pd1[i] + pd1[j] -2*pV1[pos1];
           }else{
-            pV2[np*j + i]=pd2[i] + pd2[j] -2*pV2[np*j + i];
-            pV2[np*i + j]=pd2[i] + pd2[j] -2*pV2[np*i + j];
+            pos1=(long long)np*(long long)j + (long long)i;
+            pV2[pos1]=pd2[i] + pd2[j] -2*pV2[pos1];
+            pos1=(long long)np*(long long)i + (long long)j;
+            pV2[pos1]=pd2[i] + pd2[j] -2*pV2[pos1];
           }
         }
     }
@@ -197,13 +217,13 @@ SEXP cov2distance(SEXP n, SEXP V, SEXP flagfloat)
 }
 
 // ----------------------------------------------------------
-// Scale XtX matrix to have all diagonal elements equal to one.
-// Scaling is perform by dividing each entry x_ij by
-// x_ij = x_ij/(sqrt(x_ii)*sqrt(x_jj))
-// where sqrt(x_ii) is the SD of the variable i. These values are returned
+// Transform a covariance matrix to a correlation matrix
+// The correlation between variables i and j is
+// r_ij = v_ij/(sqrt(v_ii)*sqrt(v_jj))
+// where sqrt(v_ii) is the SD of the variable i.
 //
-//      n:         Number of variable (columns in XtX)
-//      XtX:       Crossprod matrix X'X in vector form, stacked by columns
+//      n:       Number of variables (columns in V)
+//      V:       Covariance matrix
 // ----------------------------------------------------------
 SEXP cov2correlation(SEXP n, SEXP V, SEXP flagfloat)
 {
@@ -211,6 +231,7 @@ SEXP cov2correlation(SEXP n, SEXP V, SEXP flagfloat)
     double *pV2, *psdx2;
     int np, nOK;
     int i, j, isFloat;
+    long long pos1;
     SEXP list;
 
     np=INTEGER_VALUE(n);
@@ -219,28 +240,31 @@ SEXP cov2correlation(SEXP n, SEXP V, SEXP flagfloat)
     if(isFloat){
       PROTECT(V=AS_INTEGER(V));
       pV1=FLOAT(V);
-
       psdx1=(float *) R_alloc(np, sizeof(float));
+
+      pV2=(double *) R_alloc(0, sizeof(double)); // will not be used
       psdx2=(double *) R_alloc(0, sizeof(double)); // will not be used
     }else{
       PROTECT(V=AS_NUMERIC(V));
       pV2=NUMERIC_POINTER(V);
-
-      psdx1=(float *) R_alloc(0, sizeof(float));   // will not be used
       psdx2=(double *) R_alloc(np, sizeof(double));
+
+      pV1=(float *) R_alloc(0, sizeof(float));   // will not be used
+      psdx1=(float *) R_alloc(0, sizeof(float));   // will not be used
     }
 
     // Get standard deviations
     nOK=0;
     for(i=0; i<np; i++)
     {
+        pos1=(long long)np*(long long)i + (long long)i;
         if(isFloat){
-          psdx1[i]=sqrt(pV1[np*i + i]);
-          pV1[np*i + i]=1;
+          psdx1[i]=sqrt(pV1[pos1]);
+          pV1[pos1]=1;
           nOK=nOK+isfinite(1/psdx1[i]);
         }else{
-          psdx2[i]=sqrt(pV2[np*i + i]);
-          pV2[np*i + i]=1;
+          psdx2[i]=sqrt(pV2[pos1]);
+          pV2[pos1]=1;
           nOK=nOK+isfinite(1/psdx2[i]);
         }
     }
@@ -250,11 +274,15 @@ SEXP cov2correlation(SEXP n, SEXP V, SEXP flagfloat)
         for(i=j+1; i<np; i++)
         {
           if(isFloat){
-            pV1[np*j + i]=pV1[np*j + i]/(psdx1[j]*psdx1[i]);
-            pV1[np*i + j]=pV1[np*i + j]/(psdx1[j]*psdx1[i]);
+            pos1=(long long)np*(long long)j + (long long)i;
+            pV1[pos1]=pV1[pos1]/(psdx1[j]*psdx1[i]);
+            pos1=(long long)np*(long long)i + (long long)j;
+            pV1[pos1]=pV1[pos1]/(psdx1[j]*psdx1[i]);
           }else{
-            pV2[np*j + i]=pV2[np*j + i]/(psdx2[j]*psdx2[i]);
-            pV2[np*i + j]=pV2[np*i + j]/(psdx2[j]*psdx2[i]);
+            pos1=(long long)np*(long long)j + (long long)i;
+            pV2[pos1]=pV2[pos1]/(psdx2[j]*psdx2[i]);
+            pos1=(long long)np*(long long)i + (long long)j;
+            pV2[pos1]=pV2[pos1]/(psdx2[j]*psdx2[i]);
           }
         }
     }
@@ -267,6 +295,54 @@ SEXP cov2correlation(SEXP n, SEXP V, SEXP flagfloat)
 
     return(list);
 }
+
+// ----------------------------------------------------------
+// Add a numeric value to the diagonal of a squared matrix
+// a: numeric value to be added
+// V: squared matrix
+// ----------------------------------------------------------
+SEXP addvalue2diag(SEXP n, SEXP V, SEXP a, SEXP flagfloat)
+{
+    float *pV1;
+    double *pV2;
+    double value;
+    int np;
+    int i, isFloat;
+    long long pos1;
+
+    np=INTEGER_VALUE(n);
+    value=NUMERIC_VALUE(a);
+    isFloat=asLogical(flagfloat);
+
+    if(isFloat){
+      PROTECT(V=AS_INTEGER(V));
+      pV1=FLOAT(V);
+      pV2=(double *) R_alloc(0, sizeof(double));   // will not be used
+    }else{
+      PROTECT(V=AS_NUMERIC(V));
+      pV2=NUMERIC_POINTER(V);
+      pV1=(float *) R_alloc(0, sizeof(float));   // will not be used
+    }
+
+    // Diagonal values
+    for(i=0; i<np; i++)
+    {
+        pos1=(long long)np*(long long)i + (long long)i;
+        if(isFloat){
+          pV1[pos1]=pV1[pos1]+value;
+        }else{
+          pV2[pos1]=pV2[pos1]+value;
+        }
+    }
+
+    // Creating a NULL variable with 1 elements:
+    SEXP out = PROTECT(allocVector(NILSXP, 1));
+
+    UNPROTECT(2);
+
+    return(out);
+}
+
 // ----------------------------------------------------------
 // Return the index of variables that are very correlated
 // output a 0-1 vector indicating whether the variable has
@@ -282,6 +358,7 @@ SEXP getCorrelated(SEXP n, SEXP COV, SEXP maxVal)
     int *pout;
     int np,isok, cont;
     int i,j;
+    long long pos1;
     SEXP list;
 
     np=INTEGER_VALUE(n);
@@ -298,7 +375,8 @@ SEXP getCorrelated(SEXP n, SEXP COV, SEXP maxVal)
     // Get standard deviations
     for(i=0; i<np; i++)
     {
-        psdx[i]=sqrt(pCOV[np*i + i]);
+        pos1=(long long)np*(long long)i + (long long)i;
+        psdx[i]=sqrt(pCOV[pos1]);
     }
 
     cont=0;
@@ -310,7 +388,8 @@ SEXP getCorrelated(SEXP n, SEXP COV, SEXP maxVal)
             for(i=j+1; i<np; i++)
             {
                 if(psdx[i]>0){
-                    corre=pCOV[np*j + i]/(psdx[j]*psdx[i]);
+                  pos1=(long long)np*(long long)j + (long long)i;
+                    corre=pCOV[pos1]/(psdx[j]*psdx[i]);
                     if(corre>maxCor){
                         isok=0;
                         break;
@@ -356,6 +435,7 @@ SEXP delete_col(SEXP R, SEXP p0, SEXP k0, SEXP z, SEXP nz0, SEXP flagfloat)
     int i,j, isFloat;
     double a, b, c, s, tau;
     //float a1, b1, c1, s1, tau1;
+    long long pos1, pos2;
     SEXP list;
 
     p=INTEGER_VALUE(p0);
@@ -366,25 +446,30 @@ SEXP delete_col(SEXP R, SEXP p0, SEXP k0, SEXP z, SEXP nz0, SEXP flagfloat)
     if(isFloat){
       PROTECT(R=AS_INTEGER(R));
       pR1=FLOAT(R);
+      pR2=(double *) R_alloc(0, sizeof(double));   // will not be used
 
       PROTECT(z=AS_INTEGER(z));
       pz1=FLOAT(z);
+      pz2=(double *) R_alloc(0, sizeof(double));   // will not be used
     }else{
       PROTECT(R=AS_NUMERIC(R));
       pR2=NUMERIC_POINTER(R);
+      pR1=(float *) R_alloc(0, sizeof(float));   // will not be used
 
       PROTECT(z=AS_NUMERIC(z));
       pz2=NUMERIC_POINTER(z);
+      pz1=(float *) R_alloc(0, sizeof(float));   // will not be used
     }
 
     for(i=k-1; i<p-1; i++) // loop thats goes j=i+1,...,p-1
     {
+        pos1=(long long)p*(long long)i + (long long)i;
         if(isFloat){
-          a=pR1[p*i + i];
-          b=pR1[p*i + i + 1];
+          a=pR1[pos1];
+          b=pR1[pos1 + 1];
         }else{
-          a=pR2[p*i + i];
-          b=pR2[p*i + i + 1];
+          a=pR2[pos1];
+          b=pR2[pos1 + 1];
         }
         if(b!=0.0f)
         {
@@ -401,39 +486,41 @@ SEXP delete_col(SEXP R, SEXP p0, SEXP k0, SEXP z, SEXP nz0, SEXP flagfloat)
 
            // update r and z
            if(isFloat){
-             pR1[p*i + i]=c*a - s*b;
-             pR1[p*i + i + 1]=s*a + c*b;
+             pR1[pos1]=c*a - s*b;
+             pR1[pos1 + 1]=s*a + c*b;
            }else{
-             pR2[p*i + i]=c*a - s*b;
-             pR2[p*i + i + 1]=s*a + c*b;
+             pR2[pos1]=c*a - s*b;
+             pR2[pos1 + 1]=s*a + c*b;
            }
 
            for(j=i+1; j<p-1; j++)  // loop thats goes j=i+1,...,p-1
            {
+             pos2=(long long)p*(long long)j + (long long)i;
              if(isFloat){
-               a=pR1[p*j + i];
-               b=pR1[p*j + i + 1];
-               pR1[p*j + i]=c*a - s*b;
-               pR1[p*j + i + 1]=s*a + c*b;
+               a=pR1[pos2];
+               b=pR1[pos2 + 1];
+               pR1[pos2]=c*a - s*b;
+               pR1[pos2 + 1]=s*a + c*b;
              }else{
-               a=pR2[p*j + i];
-               b=pR2[p*j + i + 1];
-               pR2[p*j + i]=c*a - s*b;
-               pR2[p*j + i + 1]=s*a + c*b;
+               a=pR2[pos2];
+               b=pR2[pos2 + 1];
+               pR2[pos2]=c*a - s*b;
+               pR2[pos2 + 1]=s*a + c*b;
              }
            }
            for(j=0; j<nz; j++)  // loop thats goes j=1,...,nz
            {
+             pos2=(long long)p*(long long)j + (long long)i;
               if(isFloat){
-               a=pz1[p*j + i];
-               b=pz1[p*j + i + 1];
-               pz1[p*j + i]=c*a - s*b;
-               pz1[p*j + i + 1]=s*a + c*b;
+               a=pz1[pos2];
+               b=pz1[pos2 + 1];
+               pz1[pos2]=c*a - s*b;
+               pz1[pos2 + 1]=s*a + c*b;
              }else{
-               a=pz2[p*j + i];
-               b=pz2[p*j + i + 1];
-               pz2[p*j + i]=c*a - s*b;
-               pz2[p*j + i + 1]=s*a + c*b;
+               a=pz2[pos2];
+               b=pz2[pos2 + 1];
+               pz2[pos2]=c*a - s*b;
+               pz2[pos2 + 1]=s*a + c*b;
              }
            }
         }
@@ -451,35 +538,32 @@ SEXP delete_col(SEXP R, SEXP p0, SEXP k0, SEXP z, SEXP nz0, SEXP flagfloat)
 
 // ----------------------------------------------------------
 // ----------------------------------------------------------
-
-SEXP writeBinFileFloat(SEXP filename, SEXP n, SEXP p, SEXP size, SEXP X,
-   SEXP nRowNames, SEXP nColNames, SEXP rowNames, SEXP colNames, SEXP flagfloat)
+SEXP writeBinFileFloat(SEXP filename, SEXP n, SEXP p, SEXP size, SEXP X, SEXP flagfloat)
 {
     FILE *f=NULL;
     int i, j;
-    int nrows, ncols, sizevar, sizeRowNames, sizeColNames, isFloat;
+    long long pos1;
+    int nrows, ncols, sizevar, isFloat;
     //int inc=1;
     float *pX1;
     double *pX2;
     //double *linedouble;
-    const char *s;
-    char space[]="\0";
     float valuefloat;
     SEXP list;
 
     nrows=INTEGER_VALUE(n);
     ncols=INTEGER_VALUE(p);
     sizevar=INTEGER_VALUE(size);
-    sizeRowNames=INTEGER_VALUE(nRowNames);
-    sizeColNames=INTEGER_VALUE(nColNames);
     isFloat=asLogical(flagfloat);
 
     if(isFloat){
       PROTECT(X=AS_INTEGER(X));
       pX1=FLOAT(X);
+      pX2=(double *) R_alloc(0, sizeof(double));   // will not be used
     }else{
       PROTECT(X=AS_NUMERIC(X));
       pX2=NUMERIC_POINTER(X);
+      pX1=(float *) R_alloc(0, sizeof(float));   // will not be used
     }
 
     f=fopen(CHAR(STRING_ELT(filename,0)),"wb");
@@ -487,39 +571,23 @@ SEXP writeBinFileFloat(SEXP filename, SEXP n, SEXP p, SEXP size, SEXP X,
     fwrite(&ncols,4, 1 , f);
     fwrite(&sizevar,4, 1 , f);
     fwrite(&isFloat,4, 1 , f);
-    fwrite(&sizeRowNames,4, 1 , f);
-    fwrite(&sizeColNames,4, 1 , f);
 
-    // Write rownames and colnames
-    if(sizeRowNames > 0){
-      for(i=0; i<nrows; i++){
-         s=CHAR(STRING_ELT(rowNames, i));
-         fwrite(s, 1, strlen(s), f);
-         fwrite(&space, 1, 1, f);
-      }
-    }
-    if(sizeColNames > 0){
-      for(j=0; j<ncols; j++){
-          s=CHAR(STRING_ELT(colNames, j));
-          fwrite(s, 1, strlen(s), f);
-          fwrite(&space, 1, 1, f);
-      }
-    }
     // Write lines
     for(i=0; i<nrows; i++)
     {
       for(j=0; j<ncols; j++)
       {
+        pos1=(long long)nrows*(long long)j + (long long)i;
         if(sizevar==4)
         {
           if(isFloat){
-            fwrite(pX1+nrows*j + i,sizevar, 1 , f);
+            fwrite(pX1+pos1,sizevar, 1 , f);
           }else{
-            valuefloat = pX2[nrows*j + i];
+            valuefloat = pX2[pos1];
             fwrite(&valuefloat,sizevar, 1 , f);
           }
         }else{
-          fwrite(pX2+nrows*j + i,sizevar, 1 , f);
+          fwrite(pX2+pos1,sizevar, 1 , f);
         }
       }
     }
@@ -543,15 +611,19 @@ SEXP writeBinFileFloat(SEXP filename, SEXP n, SEXP p, SEXP size, SEXP X,
 SEXP readBinFileFloat(SEXP filename, SEXP nsetRow, SEXP nsetCol, SEXP setRow, SEXP setCol)
 {
     FILE *f=NULL;
-    int i, j, k;
+    int i, j;
+    //int k;
+    off_t file_length;
+    off_t offset;
     int *psetRow, *psetCol;
-    int nrows, ncols, sizevar, lsrow, lscol, sizeRowNames, sizeColNames, isFloat;
-    int n, p, nr; // number of elements read
+    int nrows, ncols, sizevar, lsrow, lscol, isFloat;
+    int n, p, intvalue, nerror; // number of elements read
     float *pX1;
     float  *linefloat;
     double *pX2;
     double *linedouble;
-    SEXP list, rowNames, colNames, X;
+    long long pos1;
+    SEXP list, X;
 
     lsrow=INTEGER_VALUE(nsetRow);
     lscol=INTEGER_VALUE(nsetCol);
@@ -562,30 +634,27 @@ SEXP readBinFileFloat(SEXP filename, SEXP nsetRow, SEXP nsetCol, SEXP setRow, SE
     PROTECT(setCol=AS_INTEGER(setCol));
     psetCol=INTEGER_POINTER(setCol);
 
+    nerror=0;
     f=fopen(CHAR(STRING_ELT(filename,0)),"rb");
-    nr=fread(&nrows, 4, 1, f);
-    if(nr<1){
-      Rprintf("    Warning: The function failed to read information on the number of rows\n");
+    intvalue=fread(&nrows, 4, 1, f);
+    if(intvalue<1){
+      Rprintf("    Error: The function failed to read information on the number of rows\n");
+      nerror++;
     }
-    nr=fread(&ncols, 4, 1, f);
-    if(nr<1){
-      Rprintf("    Warning: The function failed to read information on the number of columns\n");
+    intvalue=fread(&ncols, 4, 1, f);
+    if(intvalue<1){
+      Rprintf("    Error: The function failed to read information on the number of columns\n");
+      nerror++;
     }
-    nr=fread(&sizevar, 4, 1, f);
-    if(nr<1){
-      Rprintf("    Warning: The function failed to read information on the size in bytes\n");
+    intvalue=fread(&sizevar, 4, 1, f);
+    if(intvalue<1){
+      Rprintf("    Error: The function failed to read information on the size in bytes\n");
+      nerror++;
     }
-    nr=fread(&isFloat, 4, 1, f);
-    if(nr<1){
-      Rprintf("    Warning: The function failed to read information whether is 'float32'\n");
-    }
-    nr=fread(&sizeRowNames, 4, 1, f);
-    if(nr<1){
-      Rprintf("    Warning: The function failed to read information on rows names\n");
-    }
-    nr=fread(&sizeColNames, 4, 1, f);
-    if(nr<1){
-      Rprintf("    Warning: The function failed to read information on columns names\n");
+    intvalue=fread(&isFloat, 4, 1, f);
+    if(intvalue<1){
+      Rprintf("    Error: The function failed to read information on variable type\n");
+      nerror++;
     }
 
     n=lsrow > 0 ? lsrow : nrows;
@@ -597,116 +666,102 @@ SEXP readBinFileFloat(SEXP filename, SEXP nsetRow, SEXP nsetCol, SEXP setRow, SE
 
       X=PROTECT(allocMatrix(INTSXP, n, p));
       pX1=FLOAT(X);
+      pX2=(double *) R_alloc(0, sizeof(double));   // will not be used
     }else{
       linedouble=(double *) R_alloc(ncols, sizeof(double));
       linefloat=(float *) R_alloc(0, sizeof(float));   // will not be used
 
       X=PROTECT(allocMatrix(REALSXP, n, p));
       pX2=NUMERIC_POINTER(X);
+      pX1=(float *) R_alloc(0, sizeof(float));   // will not be used
     }
 
-    PROTECT(rowNames = allocVector(STRSXP, nrows));
-    char lineRowNames[sizeRowNames];
 
-    PROTECT(colNames = allocVector(STRSXP, ncols));
-    char lineColNames[sizeColNames];
+    fseeko(f, 0, SEEK_END);
+    file_length=ftello(f);
+    //Rprintf("    file_length= %lld \n",file_length);
+    offset=(long long)nrows*(long long)ncols*(long long)sizevar + 16;
+    //Rprintf("    Offset= %lld \n",offset);
 
-    const char *s[100];
-
-    // Read rownames and colnames
-    if(sizeRowNames > 0){
-      nr=fread(&lineRowNames,sizeRowNames,1,f);
-      if(nr<1){
-        Rprintf("    Warning: The function failed to read rows names of the file\n");
-      }
-      i=0;
-      j=0;
-      memset(s,'\0',sizeof(s));
-      for(k=0; k<sizeRowNames; k++)
-      {
-        if(lineRowNames[k]=='\0'){
-            SET_STRING_ELT(rowNames, i, mkChar(*s));
-            j=0;
-            i++;
-            memset(s,'\0',sizeof(s));
-        }else{
-            s[j]=&lineRowNames[k];
-            j++;
-        }
-      }
-    }
-    if(sizeColNames > 0){
-      nr=fread(&lineColNames,sizeColNames,1,f);
-      if(nr<1){
-        Rprintf("    Warning: The function failed to read columns names of the file\n");
-      }
-      i=0;
-      j=0;
-      memset(s,'\0',sizeof(s));
-      for(k=0; k<sizeColNames; k++)
-      {
-        if(lineColNames[k]=='\0'){
-            SET_STRING_ELT(colNames, i, mkChar(*s));
-            j=0;
-            i++;
-            memset(s,'\0',sizeof(s));
-        }else{
-            s[j]=&lineColNames[k];
-            j++;
-        }
-      }
-    }
-    // Read lines
-    for(i=0; i<n; i++)
+    if(offset==file_length)
     {
-        if(lsrow > 0){
-            // Move to the line indicated by setRow
-            fseek(f, 24 + sizeRowNames + sizeColNames + ncols*sizevar*(psetRow[i]-1), SEEK_SET);
-        }
-
-        if(isFloat || sizevar==4){
-            nr=fread(linefloat,sizevar,ncols,f);
-        }else{
-            nr=fread(linedouble,sizevar,ncols,f);
-        }
-        if(nr<ncols){
-          Rprintf("    Warning: The function failed to read items at line %d of the file\n",i+1);
-        }
-
-        for(j=0; j<p; j++)
-        {
-          if(isFloat || sizevar==4){
-            if(lscol>0)
+      //Rprintf("    Reading lines... \n");
+      fseeko(f, 16, SEEK_SET);
+      for(i=0; i<n; i++)
+      {
+          if(lsrow > 0){
+              // Move to the line indicated by setRow
+            if(psetRow[i]<=nrows)
             {
-                pX1[n*j + i]=linefloat[psetCol[j]-1];
+              offset=16 + (long long)ncols*(long long)sizevar*((long long)psetRow[i]-1);
+              intvalue=fseeko(f, offset, SEEK_SET);
+              if(intvalue != 0){
+                 Rprintf("    Error in line %d: fseek failed at offset=%lld \n",psetRow[i],offset);
+                 nerror++;
+              }
             }else{
-                pX1[n*j + i]=linefloat[j];
+              Rprintf("    Error in reading row %d: file contains only %d rows \n",psetRow[i],nrows);
+              nerror++;
             }
+          }
+
+          if(isFloat || sizevar==4){
+              intvalue=fread(linefloat,sizevar,ncols,f);
           }else{
+              intvalue=fread(linedouble,sizevar,ncols,f);
+          }
+          if(intvalue<ncols){
+            Rprintf("    Error: The function failed to read data at row %d \n",i+1);
+            nerror++;
+          }
+          // Read columns
+          for(j=0; j<p; j++)
+          {
+            pos1=(long long)n*(long long)j + (long long)i;
+            if(isFloat || sizevar==4){
               if(lscol>0)
               {
-                  pX2[n*j + i]=linedouble[psetCol[j]-1];
+                  if(psetCol[j]>ncols){
+                    Rprintf("    Error in reading column %d: file contains only %d columns \n",psetCol[j],ncols);
+                    nerror++;
+                  }
+                  pX1[pos1]=linefloat[psetCol[j]-1];
               }else{
-                  pX2[n*j + i]=linedouble[j];
+                  pX1[pos1]=linefloat[j];
               }
+            }else{
+                if(lscol>0)
+                {
+                  if(psetCol[j]>ncols){
+                    Rprintf("    Error in reading column %d: file contains only %d columns \n",psetCol[j],ncols);
+                    nerror++;
+                  }
+                  pX2[pos1]=linedouble[psetCol[j]-1];
+                }else{
+                  pX2[pos1]=linedouble[j];
+                }
+            }
           }
-        }
+          if(nerror>0){
+            break;
+          }
+      }
+    }else{
+      Rprintf("    Error: The function failed to read data from file \n");
+      nerror++;
     }
 
     fclose(f);
 
-    PROTECT(list = allocVector(VECSXP, 9));
+    PROTECT(list = allocVector(VECSXP, 6));
     // Attaching outputs to list:
     SET_VECTOR_ELT(list, 0, ScalarInteger(n));
     SET_VECTOR_ELT(list, 1, ScalarInteger(p));
     SET_VECTOR_ELT(list, 2, ScalarInteger(sizevar));
     SET_VECTOR_ELT(list, 3, ScalarInteger(isFloat));
-    SET_VECTOR_ELT(list, 4, ScalarInteger(sizeRowNames));
-    SET_VECTOR_ELT(list, 5, ScalarInteger(sizeColNames));
-    SET_VECTOR_ELT(list, 6, rowNames);
-    SET_VECTOR_ELT(list, 7, colNames);
-    SET_VECTOR_ELT(list, 8, X);
+    SET_VECTOR_ELT(list, 4, ScalarInteger(nerror));
+    SET_VECTOR_ELT(list, 5, X);
 
-    UNPROTECT(6);
+    UNPROTECT(4);
     return(list);
 }

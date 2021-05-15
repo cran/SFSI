@@ -6,7 +6,6 @@
 \title{Binary files}
 \usage{
 saveBinary(X, file = paste0(tempdir(), "/file.bin"), 
- row.names = TRUE, col.names = TRUE, 
  type = c("float","double"), verbose = TRUE)
   
 readBinary(file = paste0(tempdir(), "/file.bin"), 
@@ -16,10 +15,6 @@ readBinary(file = paste0(tempdir(), "/file.bin"),
 \item{X}{(numeric matrix) Data to save}
 
 \item{file}{(character) Name of the binary file to save/read}
-
-\item{row.names}{\code{TRUE} or \code{FALSE} to whether save rows' names}
-
-\item{col.names}{\code{TRUE} or \code{FALSE} to whether save columns' names}
 
 \item{type}{(character) Either 'float' or 'double' for single (4 bytes) or double precision (8 bytes), respectively,
 that matrix to save will occupy}

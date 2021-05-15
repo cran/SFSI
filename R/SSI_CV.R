@@ -14,7 +14,7 @@ SSI_CV <- function(y, X = NULL, b = NULL, Z = NULL, K, indexK = NULL,
     method <- match.arg(method)
 
     if(is.logical(trn)){
-       if(length(y) != length(trn)) stop("Object 'trn' must be of the same length of 'y'\n")
+       if(length(y) != length(trn)) stop("Object 'trn' must be of the same length of 'y'")
        trn <- which(trn)
     }
     if(is.character(K)){
@@ -24,7 +24,7 @@ SSI_CV <- function(y, X = NULL, b = NULL, Z = NULL, K, indexK = NULL,
     if(!float::storage.mode(K) %in% c("float32","double")) storage.mode(K) <- "double"
 
     if(!is.null(Z)){
-      if(length(dim(Z))!=2) stop("Object 'Z' must be a matrix with nrow(Z)=n and ncol(Z)=nrow(K)\n")
+      if(length(dim(Z)) != 2) stop("Object 'Z' must be a matrix with nrow(Z)=n and ncol(Z)=nrow(K)")
       K <- float::tcrossprod(Z,float::tcrossprod(Z,K))   # Z%*%K%*%t(Z)
     }
 

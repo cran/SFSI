@@ -1,5 +1,5 @@
 #====================================================================
-# Covariance matrix to distance matrix
+# Covariance matrix to distance matrix (user-level)
 #====================================================================
 cov2dist <- function(V,void=FALSE)
 {
@@ -30,7 +30,7 @@ cov2dist <- function(V,void=FALSE)
 }
 
 #====================================================================
-# Covariance matrix to correlation matrix
+# Covariance matrix to correlation matrix (user-level)
 #====================================================================
 cov2cor2 <- function(V,void=FALSE)
 {
@@ -63,6 +63,37 @@ cov2cor2 <- function(V,void=FALSE)
 }
 
 #====================================================================
+# Add the value 'a' to the diagonal of 'V' matix
+#====================================================================
+add2diag <- function(V,a,void=FALSE)
+{
+  if((sum(dim(V))/2)^2 != length(V)) stop("Object 'V' must be a squared matrix")
+  if(!float::storage.mode(V) %in% c("float32","double")) storage.mode(V) <- "double"
+
+  p <- ncol(V)
+  isFloat <- float::storage.mode(V)=="float32"
+
+  #dyn.load("c_utils.so")
+  if(void)
+  {
+    if(isFloat){
+      out <- .Call('addvalue2diag',as.integer(p),V@Data,as.numeric(a),isFloat)
+    }else{
+      out <- .Call('addvalue2diag',as.integer(p),V,as.numeric(a),isFloat)
+    }
+  }else{
+    if(isFloat){
+      out <- V@Data[]
+    }else out <- V[]
+
+    tmp <- .Call('addvalue2diag',as.integer(p),out,as.numeric(a),isFloat)
+    if(isFloat) out <- float::float32(out)
+  }
+  #dyn.unload("c_utils.so")
+  out
+}
+
+#====================================================================
 # Used by the 'plotPath' function
 #====================================================================
 getIndexCorrelated <- function(X,maxCor=0.8)
@@ -76,7 +107,7 @@ getIndexCorrelated <- function(X,maxCor=0.8)
 }
 
 #====================================================================
-# Collect all outputs when divided acording to 'subset' parameter
+# Collect all outputs when divided acording to 'subset' parameter (user-level)
 #====================================================================
 collect <- function(prefix="")
 {
@@ -191,10 +222,10 @@ deleteCol <- function(R, z, k = p)
 }
 
 #====================================================================
-# Save a file as binary
+# Save a file as binary (user-level)
 #====================================================================
 saveBinary <- function(X,file = paste0(tempdir(),"/file.bin"),
-              row.names = TRUE, col.names = TRUE, type = c("float","double"), verbose = TRUE)
+              type = c("float","double"), verbose = TRUE)
 {
   type <- match.arg(type)
 
@@ -202,22 +233,6 @@ saveBinary <- function(X,file = paste0(tempdir(),"/file.bin"),
   if(!float::storage.mode(X) %in% c("double","float32")) storage.mode(X) <- "double"
 
   unlink(file)
-  if(row.names & !is.null(rownames(X))){
-    rowNames <- rownames(X)
-    if(any(nchar(rownames(X))>100)) stop("All rownames must be shorter than 100 characters long")
-    nRowNames <- sum(nchar(rownames(X))) + nrow(X)
-    if(nRowNames > .Machine$integer.max | nRowNames > 2^31 - 1) stop("Row names are too long")
-  }else{
-    rowNames <- "";   nRowNames <- 0
-  }
-  if(col.names & !is.null(colnames(X))){
-    colNames <- colnames(X)
-    if(any(nchar(colnames(X))>100)) stop("All colnames must be shorter than 100 characters long")
-    nColNames <- sum(nchar(colnames(X))) + ncol(X)
-    if(nColNames > .Machine$integer.max | nColNames > 2^31 - 1) stop("Column names are too long")
-  }else{
-    colNames <- "";   nColNames <- 0
-  }
 
   if(float::storage.mode(X)=="float32" & type!='float'){
     type <- 'float'
@@ -228,21 +243,23 @@ saveBinary <- function(X,file = paste0(tempdir(),"/file.bin"),
   size <- ifelse(type=="float",4,8)
 
   if(isFloat){
-    out <- .Call('writeBinFileFloat',file,nrow(X),ncol(X),as.integer(size),X@Data,
-               as.integer(nRowNames),as.integer(nColNames),rowNames,colNames,isFloat)
+    out <- .Call('writeBinFileFloat',file,nrow(X),ncol(X),
+           as.integer(size),X@Data,isFloat)
    }else{
-    out <- .Call('writeBinFileFloat',file,nrow(X),ncol(X),as.integer(size),X,
-               as.integer(nRowNames),as.integer(nColNames),rowNames,colNames,isFloat)
+    out <- .Call('writeBinFileFloat',file,nrow(X),ncol(X),
+           as.integer(size),X,isFloat)
   }
 
   if(verbose){
+    tmp <- c(Gb=1E9,Mb=1E6,Kb=1E3,b=1E0)
+    sz <- file.size(file)/tmp[min(which(file.size(file)/tmp>1))]
     cat("Saved file '",file,"'\n")
-    cat("     nrow=",nrow(X),", ncol=",ncol(X),", type=",type,", size=",size,"bytes, file.size=",file.size(file)/1024,"Kb\n")
+    cat("     nrow=",nrow(X),", ncol=",ncol(X),", type=",type,", size=",size,"bytes, file.size=",round(sz,2),names(sz),"\n")
   }
 }
 
 #====================================================================
-# Read a file as binary
+# Read a file as binary (user-level)
 #====================================================================
 readBinary <- function(file = paste0(tempdir(),"/file.bin"),
                   indexRow = NULL, indexCol = NULL, verbose = TRUE)
@@ -258,28 +275,28 @@ readBinary <- function(file = paste0(tempdir(),"/file.bin"),
   X <- .Call("readBinFileFloat",file,nsetRow,nsetCol,
              as.integer(indexRow),as.integer(indexCol))
 
-  n <- X[[1]]; p <- X[[2]]; size <- X[[3]]; isFloat <- X[[4]]
-  hasRowNames <- X[[5]]>0
-  hasColNames <- X[[6]]>0
-  rownamesX <- colnamesX <- NULL
-  if(hasRowNames){
-      rownamesX <- X[[7]]
-      if(nsetRow>0)  rownamesX <- rownamesX[indexRow]
+  n <- X[[1]]; p <- X[[2]]; size <- X[[3]]
+  isFloat <- X[[4]]
+  nError <- X[[5]]
+
+  if(nError==0){
+    if(isFloat | size==4){
+      X <- float::float32(X[[6]])
+      type <- "float"
+    }else{
+      X <- X[[6]]
+      type <- "double"
+    }
+    if(verbose){
+      tmp <- c(Gb=1E9,Mb=1E6,Kb=1E3,b=1E0)
+      sz <- object.size(X)/tmp[min(which(object.size(X)/tmp>1))]
+      cat("Loaded file '",file,"'\n")
+      cat("     nrow=",n,", ncol=",p,", type=",type,", size=",size,"bytes, object.size=",round(sz,2),names(sz),"\n")
+    }
+
+  }else{
+    X <- NULL
   }
-  if(hasColNames){
-      colnamesX <- X[[8]]
-      if(nsetCol>0)  colnamesX <- colnamesX[indexCol]
-  }
-
-  if(isFloat | size==4){
-    X <- float::float32(X[[9]])
-  }else X <- X[[9]]
-
-  if(hasRowNames) rownames(X) <- rownamesX
-  if(hasColNames) colnames(X) <- colnamesX
-  if(verbose)
-    cat("Loaded file '",file,"'\n nrow=",n,", ncol=",p,", size=",size,"bytes\n")
-
   return(X)
 }
 
@@ -370,6 +387,7 @@ dlogLik <- function(lambda,n,c0,Uty,UtX,d)
 #====================================================================
 # Derivative of the Log-restricted Likelihood (REML)
 #====================================================================
+# tt=dlogResLik(lambda,n=n,c0=c0,Uty=Uty,UtX=UtX,d=d)
 dlogResLik <- function(lambda,n,c0,Uty,UtX,d)
 {
   dbar <- 1/(lambda*d+1)
@@ -432,7 +450,7 @@ searchInt <- function(method,interval,n,c0,Uty,UtX,d,maxIter,tol,lower,upper,var
     }
     #aa <- rep(NA,3)
     #if(class(tmp) == "list") aa=c(tmp$root,tmp$f.root,tmp$estim.prec)
-    #cat("Interval ",i-1,"[",bb[i-1],",",bb[i],"]: root=",aa[1]," f.root=",aa[2]," prec=",aa[3],"\n")
+    #cat("Interval ",i-1,"[",interval[i-1],",",interval[i],"]: root=",aa[1]," f.root=",aa[2]," prec=",aa[3],"\n")
     if(i == length(interval) | !is.na(convergence)) flag <- FALSE
   }
   list(lambda0=lambda0,varU=varU,varE=varE,convergence=convergence,dbar=dbar,bHat=bHat)
@@ -470,7 +488,7 @@ getSecondAxis <- function(lambda,df,maxLength=6)
 }
 
 #====================================================================
-# Plot the top 2 PCs of the K matrix showing tst and trn points
+# Plot the top 2 PCs of the K matrix showing tst and trn points (user-level)
 #====================================================================
 # Z = NULL; indexK = subsetG = tst = U = d = group = group.shape = set.color = set.size = df = NULL
 # axis.labels = TRUE; curve = FALSE; bg.color = "gray20"; unified = TRUE; ntst = 36;
@@ -482,7 +500,7 @@ plotNet <- function(fm, B, Z = NULL, K, indexK = NULL, subsetG = NULL,
            set.color = NULL, set.size = NULL, df = NULL, title, axis.labels = TRUE,
            curve = FALSE, bg.color = "gray20", unified = TRUE, ntst = 36,
            line.color = "gray90", line.tick = 0.3, legend.pos="right",
-           point.color = "gray20",sets = c("Testing","Supporting","Non-active"))
+           point.color = "gray20", sets = c("Testing","Supporting","Non-active"))
 {
   set <- PC1 <- PC2 <- PC1_TRN <- PC1_TST <- PC2_TRN <- PC2_TST <- NULL
   legend.pos <- match.arg(legend.pos,
@@ -699,7 +717,7 @@ plotNet <- function(fm, B, Z = NULL, K, indexK = NULL, subsetG = NULL,
 
 
 #====================================================================
-# Plot the coefficients path in a penalized regression
+# Plot the coefficients path in a penalized regression (user-level)
 #====================================================================
 # Z=NULL; K=G2; indexK = NULL; tst=NULL; title=NULL; maxCor=0.85
 plotPath <- function(fm, Z=NULL, K=NULL, indexK = NULL, tst=NULL, title=NULL, maxCor=0.85)
@@ -823,7 +841,7 @@ plotPath <- function(fm, Z=NULL, K=NULL, indexK = NULL, tst=NULL, title=NULL, ma
   |    ._____| | | |       ._____| | .__| |__.     Marco Lopez-Cruz       |
   |    |_______| |_|       |_______| |_______|     Gustavo de los Campos  |
   |                                                                       |
-  |    Sparse Family and Selection Index. Version 0.3.0 (Apr 29, 2021)    |
+  |    Sparse Family and Selection Index. Version 0.4.0 (May 12, 2021)    |
   |    Type 'citation('SFSI')' to know how to cite SFSI                   |
   |    Type 'help(package='SFSI',help_type='html')' to see help           |
   |    Type 'browseVignettes('SFSI')' to see documentation                |

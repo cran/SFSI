@@ -4,7 +4,8 @@
 \title{Genetic covariances}
 \usage{
 getGenCov(y1, y2, X = NULL, Z = NULL, K = NULL, 
-      U = NULL, d = NULL, scale = TRUE, mc.cores = 1, ...)
+          U = NULL, d = NULL, scale = TRUE, 
+          mc.cores = 1, warn = FALSE, ...)
 }
 \arguments{
 \item{y1}{(numeric vector) Response variable 1}
@@ -24,6 +25,8 @@ getGenCov(y1, y2, X = NULL, Z = NULL, K = NULL,
 \item{scale}{\code{TRUE} or \code{FALSE} to scale y1 and y2 by their corresponding standard deviations so the resulting variables will have unit variance}
 
 \item{mc.cores}{(integer) Number of cores used. The analysis is run in parallel when \code{mc.cores} is greater than 1. Default is \code{mc.cores=1}}
+
+\item{warn}{\code{TRUE} or \code{FALSE} to whether show warnings}
 
 \item{...}{Other arguments passed to the function 'fitBLUP'} 
 }

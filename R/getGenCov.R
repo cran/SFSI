@@ -1,6 +1,6 @@
 # y1=y; y2=x; X=Z=U=d=NULL; K=G; mc.cores=5; scale=TRUE
 getGenCov <- function(y1, y2, X = NULL, Z = NULL, K = NULL, U = NULL,
-           d = NULL, scale = TRUE, mc.cores = 1, ...)
+           d = NULL, scale = TRUE, mc.cores = 1, warn = FALSE, ...)
 {
   if(!is.matrix(y2))
     stop("Object 'y2' must be a matrix with 'nrow(y2)' equal to the number of elements in 'y1'")
@@ -29,7 +29,7 @@ getGenCov <- function(y1, y2, X = NULL, Z = NULL, K = NULL, U = NULL,
       }
       G <- K
     }else{
-      if(!is.matrix(Z)) stop("Object 'Z' must be a matrix")
+      if(length(dim(Z)) != 2) stop("Object 'Z' must be a matrix")
       if(is.null(K)){
         G <- float::tcrossprod(Z)  # G = ZKZ'  with K=I
       }else{
@@ -47,12 +47,12 @@ getGenCov <- function(y1, y2, X = NULL, Z = NULL, K = NULL, U = NULL,
     if(is.null(d)) stop("You are providing the eigenvectors, but not the eigenvalues")
   }
 
-  fm1 <- fitBLUP(y1,BLUP=FALSE,X=X,U=U,d=d, ...)   # Model for variable 1
+  fm1 <- fitBLUP(y1,BLUP=FALSE,X=X,U=U,d=d,warn=warn, ...)   # Model for variable 1
 
   compApply <- function(j)
   {
-     fm2 <- fitBLUP(y2[,j],BLUP=FALSE,X=X,U=U,d=d,...)       # Model for variable 2
-     fm3 <- fitBLUP(y1 + y2[,j],BLUP=FALSE,X=X,U=U,d=d,...)  # Model for variable 3
+     fm2 <- fitBLUP(y2[,j],BLUP=FALSE,X=X,U=U,d=d,warn=warn, ...)       # Model for variable 2
+     fm3 <- fitBLUP(y1 + y2[,j],BLUP=FALSE,X=X,U=U,d=d,warn=warn, ...)  # Model for variable 3
 
      cat(1, file = con, append = TRUE)
      utils::setTxtProgressBar(pb,nchar(scan(con,what="character",quiet=TRUE))/ncol(y2))

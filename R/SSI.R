@@ -1,6 +1,7 @@
-#X = Z = indexK = subset = saveAt = name = NULL; lambda=NULL
-#alpha = 1; nLambda = 100; method = "CD1"; K=G; b=NULL;
-#mc.cores = 1; tol = 1E-4; maxIter = 300; verbose = TRUE
+
+# X = Z = indexK = saveAt = name = subset= NULL; lambda=b=NULL
+# alpha = 1; nLambda = 100; commonLambda = TRUE; minLambda = .Machine$double.eps^0.5
+# mc.cores = 1; tol = 1E-4; maxIter = 300; verbose = TRUE; method = c("REML","ML")[1]
 
 SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, indexK = NULL,
          h2 = NULL, trn = seq_along(y), tst = seq_along(y),
@@ -44,9 +45,10 @@ SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, indexK = NULL,
     K <- float::tcrossprod(Z,float::tcrossprod(Z,K))   # Z%*%K%*%t(Z)
   }
 
-  if(length(dim(K))!=2 | (length(K) != n^2))
+  if(length(dim(K))!=2 | (length(K) != n^2)){
     stop("Product Z %*% K %*% t(Z) must be a squared matrix with number of rows",
      "\n(and columns) equal to the number of elements in 'y'")
+  }
 
   dimnames(K) <- NULL
   RHS <- K[trn,tst,drop=FALSE]
@@ -75,9 +77,7 @@ SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, indexK = NULL,
   Xb <- drop(X%*%b)
 
   # Standardizing
-  vv <- (1-h2)/h2
-  if(isFloat) vv <- float::fl((1-h2)/h2)
-  for(i in 1:nTRN)  K[i,i] <- K[i,i] + vv
+  add2diag(K,a=(1-h2)/h2,void=TRUE)   # Add the value (1-h2)/h2 to the diagonal of K
   sdx <- sqrt(float::diag(K))
   cov2cor2(K,void=TRUE)   # Equal to K=cov2cor(K) but faster
   RHS <- float::sweep(RHS,1L,sdx,FUN="/")  # Scale each row of RHS

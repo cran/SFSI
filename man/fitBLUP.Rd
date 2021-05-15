@@ -16,7 +16,7 @@ fitBLUP(y, X = NULL, Z = NULL, K = NULL, U = NULL, d = NULL,
 
 \item{Z}{(numeric matrix) Design matrix for random effects. When \code{Z=NULL} an identity matrix is considered (default) thus \ifelse{html}{\out{<b>G</b> = <b>K</b>}}{\eqn{\textbf{G = K}}{G = K}}; otherwise \ifelse{html}{\out{<b>G</b> = <b>Z K Z'</b>}}{\eqn{\textbf{G} = \textbf{Z K Z'}}{G = Z K Z'}} is used}
 
-\item{K}{(numeric matrix) Kinship relationships. This can be a name of a binary file where the matrix is stored}
+\item{K}{(numeric matrix) Kinship relationships. This can be of the "float32" type as per the 'float' R-package, or a (character) name of a binary file where the matrix is stored}
 
 \item{U}{(numeric matrix) Eigenvectors from spectral value decomposition of \ifelse{html}{\out{<b>G</b> = <b>U D U'</b>}}{\eqn{\textbf{G} = \textbf{U D U'}}{G = U D U'}}}
 
@@ -118,12 +118,15 @@ Solutions are found using the GEMMA (Genome-wide Efficient Mixed Model Analysis)
   cor(y[trn],fm1$u[trn])       # Prediction accuracy in training set
   fm1$h2                       # Heritability
   
+  \donttest{
   if(requireNamespace("float")){
    # Using a 'float' type variable
    G2 = float::fl(G)
    fm2 = fitBLUP(yNA, K=G2)
    max(abs(fm1$u-fm2$u))  # Check for discrepances
   }
+  }
+
 }
 \references{
 VanRaden PM (2008). Efficient methods to compute genomic predictions. \emph{Journal of Dairy Science}, \bold{91}(11), 4414–4423.
