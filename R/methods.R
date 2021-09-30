@@ -19,7 +19,7 @@ coef.SSI <- function(object,...,df=NULL,tst=NULL)
 
   filename <- basename(object$file_beta)
   isSingleFile <- all(substr(filename,nchar(filename)-5,nchar(filename)) == "_B.bin")
-  isSingleFile <- isSingleFile & length(filename)==1
+  isSingleFile <- isSingleFile & length(filename)==1  # When saved using 'saveAt'
   posBetaInd <- c(0,cumsum(rep(ncol(object$df),length(object$tst))))
 
   BETA <- vector("list",length(tst))
@@ -29,31 +29,31 @@ coef.SSI <- function(object,...,df=NULL,tst=NULL)
 
     if(is.null(object$subset) & !isSingleFile)
     {
-      indexRow <- NULL
-      if(!is.null(df))   indexRow <- which.df
-      tmp <- readBinary(paste0(object$file_beta,j,".bin"),indexRow=indexRow,verbose=FALSE)
+      indexCol <- NULL
+      if(!is.null(df))   indexCol <- which.df
+      tmp <- readBinary(paste0(object$file_beta,j,".bin"),indexCol=indexCol,verbose=FALSE)
     }else{
       if(isSingleFile){
-          indexRow <- (posBetaInd[j]+1):posBetaInd[j+1]
-          if(!is.null(df))  indexRow <- posBetaInd[j] + which.df
+          indexCol <- (posBetaInd[j]+1):posBetaInd[j+1]
+          if(!is.null(df))  indexCol <- posBetaInd[j] + which.df
 
-          tmp <- readBinary(object$file_beta,indexRow=indexRow,verbose=FALSE)
+          tmp <- readBinary(object$file_beta,indexCol=indexCol,verbose=FALSE)
       }else{
         # For the case with subset
         f <- which((posTSTind[-length(posTSTind)] < j) & (j <= posTSTind[-1]))
         posBetaInd0 <- c(0,cumsum(rep(ncol(object$df),object$subset_size[f])))
 
         j2 <- j - posTSTind[f]
-        indexRow <- (posBetaInd0[j2]+1):posBetaInd0[j2+1]
-        if(!is.null(df))  indexRow <- posBetaInd[j2] + which.df
+        indexCol <- (posBetaInd0[j2]+1):posBetaInd0[j2+1]
+        if(!is.null(df))  indexCol <- posBetaInd[j2] + which.df
 
-        tmp <- readBinary(object$file_beta[f],indexRow=indexRow,verbose=FALSE)
+        tmp <- readBinary(object$file_beta[f],indexCol=indexCol,verbose=FALSE)
       }
       #cat("i=",i,"j=",j,"j2=",j2,"\n")
     }
     BETA[[i]] <- tmp # Matrix::Matrix(tmp, sparse=TRUE)
   }
-  if(!is.null(df)) BETA <- do.call(rbind,BETA)
+  if(!is.null(df)) BETA <- do.call(cbind,BETA)
 
   BETA
 }
@@ -66,7 +66,7 @@ fitted.LASSO <- function(object,...)
   if(length(args0)==0) stop("A matrix of predictors must be provided")
 
   X <- args0[[1]]
-  yHat <- tcrossprod(X,as.matrix(object$beta))
+  yHat <- X%*%as.matrix(object$beta)
   colnames(yHat) <- paste0("yHat",1:ncol(yHat))
   yHat
 }
@@ -81,7 +81,7 @@ fitted.SSI <- function(object,...)
   if(length(indexdrop)>0) yTRN[indexdrop] <- 0
 
   uHat <- do.call(rbind,lapply(seq_along(object$tst),function(i){
-    float::tcrossprod(coef.SSI(object,tst=object$tst[i])[[1]],t(yTRN))[,1]
+    float::crossprod(coef.SSI(object,tst=object$tst[i])[[1]],yTRN)[,1]
   }))
   dimnames(uHat) <- list(object$tst,paste0("SSI.",1:ncol(uHat)))
 
@@ -218,11 +218,11 @@ plot.SSI_CV <- function(...,py=c("accuracy","MSE"), title=NULL,showFolds=FALSE)
     {
         fm0 <- object[[j]]
         names(fm0) <- paste0("CV",1:length(fm0))
-          rawdat <- do.call(rbind,lapply(fm0,function(x)reshape::melt(x[[py]])))
+          rawdat <- do.call(rbind,lapply(fm0,function(x)reshape2::melt(x[[py]])))
           colnames(rawdat) <- c("fold","SSI","y")
           rawdat <- data.frame(CV=unlist(lapply(strsplit(rownames(rawdat),"\\."),function(x)x[1])),rawdat)
-          rawdat$df <- do.call(rbind,lapply(fm0,function(x)reshape::melt(x[['df']])))$value
-          rawdat$lambda <- do.call(rbind,lapply(fm0,function(x)reshape::melt(x[['lambda']])))$value
+          rawdat$df <- do.call(rbind,lapply(fm0,function(x)reshape2::melt(x[['df']])))$value
+          rawdat$lambda <- do.call(rbind,lapply(fm0,function(x)reshape2::melt(x[['lambda']])))$value
           rawdat$negLogLambda <- -log(rawdat$lambda)
           #rawdat <- data.frame(obj=j,model=fm0[[1]]$name,method=fm0[[1]]$method,rawdat,stringsAsFactors=FALSE)
           rawdat <- data.frame(obj=j,model=fm0[[1]]$name,rawdat,stringsAsFactors=FALSE)

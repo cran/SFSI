@@ -173,11 +173,11 @@ trial plots and reported as each line reflectance.
 
 Grain yield and image data were pre-adjusted using mixed-effects model that accounted for genotype, trial, replicate, and sub-block. No pre-adjusting was made for DTH, DTM, and PH traits. Pre-adjusted phenotypes were obtained by subtracting from the phenotypic record the mean plus BLUPs of trial, replicate, and sub-block effects.
 
-Lines were sequenced using GBS technology. Next, SNP were extracted and filtered so that lines >50\% missing data were removed. Markers were recoded as –1, 0, and 1, corresponding to homozygous for the minor allele, heterozygous, and homozygous for the major allele, respectively. Next, markers with a minor allele frequency >0.05 and >15\% of missing data were removed. Remaining SNPs with missing values were imputed with the mean of observed genotypes. Only marker information on 3,274 SNPs for 967 lines remained after quality filters. 
+Lines were sequenced using GBS technology. Next, SNP were extracted and filtered so that lines >50\% missing data were removed. Markers were recoded as –1, 0, and 1, corresponding to homozygous for the minor allele, heterozygous, and homozygous for the major allele, respectively. Next, markers with a minor allele frequency <0.05 and >15\% of missing data were removed. Remaining SNPs with missing values were imputed with the mean of observed genotypes. Only marker information on 3,274 SNPs for 967 lines remained after quality filters. 
 
-Marker information, phenotypic and reflectance for all four environments are provided through the `SFSI` R-package (development version), available at the `GitHub` repository https://github.com/MarcooLopez/SFSI. 
+The CRAN version includes the `wheatHTP` dataset containing (un-replicated) YLD from all environments E1,...,E4, and reflectance (latest time-point only) data from the environment E1 only. Marker data is also included in the dataset. The phenotypic and reflectance data are averages (line effects from mixed models) for 776 lines evaluated in 28 trials (with at least 26 lines each) for which marker information on 3,438 SNPs is available.
 
-The CRAN version of the package includes data from the *Bed-5IR* environment only and reflectance data for the latest time-point only. This data set contains the phenotypic and reflectance adjusted means for 967 lines evaluated in 35 trials for which marker information on 3,274 SNPs is available.
+The GitHub (development) version of the `SFSI` R-package (https://github.com/MarcooLopez/SFSI) includes also the `wheatHTP` dataset plus `wheatHTP.E1`,...,`wheatHTP.E4` datasets containing replicated (adjusted) phenotypic and reflectance data for all four environments, respectively.
 
 # Implementation
 
@@ -185,7 +185,7 @@ The above described data will be used to generate selection indices for grain yi
 
 ## Data downloading
 
-Data wil be taken from the `SFSI` R-package (GitHub version). Each file corresponds to one environment and contains objects `Y`, `WL`, and `VI`. Matrix `Y` contains pre-adjusted observations for YLD, DTH, DTM, and PH. Object `WL` is a list type containing the hyper-spectral image data for all 9 time-points. Element `WL[[j]]`,  $j=1,...,9$, is a matrix with 250 columns (wavelengths) and rows matched with those of matrix `Y`. Likewise, the object `VI` is a list with 9 elements being two-columns matrices containing green and
+Data wil be taken from the `SFSI` R-package (GitHub version). Each file corresponds to one environment and contains objects `Y`, `X`, and `VI`. Matrix `Y` contains pre-adjusted observations for YLD, DTH, DTM, and PH. Object `X` is a list type containing the hyper-spectral image data for all 9 time-points. Element `X[[j]]`,  $j=1,...,9$, is a matrix with 250 columns (wavelengths) and rows matched with those of matrix `Y`. Likewise, the object `VI` is a list with 9 elements being two-columns matrices containing green and
 red NDVI. Following code shows how to prepare data for a single environment which will be used in later analyses. For demostration purposes, only data from 9 trials will be considered
 
 ```{r, Box1, eval=FALSE}
@@ -203,7 +203,7 @@ trials <- as.numeric(as.character(Y$trial))
 index <- trials %in% unique(trials)[1:9]   # For ease, only 9 trials
 trials <- trials[index]
 Y <- Y[index,]
-WL <- lapply(WL,function(x)x[index,])
+X <- lapply(X,function(x)x[index,])
                 
 Y$gid <- factor(as.character(Y$gid)) 
 Z <- model.matrix(~0+gid,data=Y)
@@ -211,7 +211,7 @@ K <- tcrossprod(Z)               # Connection of replicates
 y <- as.vector(Y[,"YLD"])
 
 # Save file
-save(y,trials,K,WL,file="prepared_data.RData")
+save(y,trials,K,X,file="prepared_data.RData")
 ```
 
 
@@ -283,7 +283,7 @@ for(tp in timepoints){
     indexTRN <- which(partitions[,k]==1)
     
     # Training set
-    xTRN <- scale(WL[[tp]][indexTRN,])
+    xTRN <- scale(X[[tp]][indexTRN,])
     yTRN <- as.vector(scale(y[indexTRN]))
     KTRN <- K[indexTRN,indexTRN]   # Relationship matrix (given by replicates)
   
@@ -323,7 +323,7 @@ for(tp in timepoints){
     indexTRN <- which(partitions[,k]==1)
     
     # Training set
-    xTRN <- scale(WL[[tp]][indexTRN,])
+    xTRN <- scale(X[[tp]][indexTRN,])
     VARx <- var(xTRN)
     EVDx <- eigen(VARx)
     
@@ -340,7 +340,7 @@ for(tp in timepoints){
     # L1-PSI
     fm <- solveEN(VARx, gencov[,k],nLambda=100)
     # fm <- lars2(VARx, gencov[,k])  # Second option
-    beta <- as.matrix(fm$beta)[-1,]
+    beta <- t(fm$beta)[-1,]
     bL1PSI[[k]] <- data.frame(I(beta),df=fm$df[-1],lambda=fm$lambda[-1])
   }
   save(bSI,bPCSI,bL1PSI,file=paste0("coefficients_tp_",tp,".RData"))
@@ -367,7 +367,7 @@ for(tp in timepoints){
     indexTST <- which(partitions[,k]==2)
     
     # Testing set
-    xTST <- scale(WL[[tp]][indexTST,])
+    xTST <- scale(X[[tp]][indexTST,])
     yTST <- as.vector(scale(y[indexTST]))
     KTST <- K[indexTST,indexTST]   # Connection given by replicates
     
@@ -523,7 +523,7 @@ for(k in 1:nPart)
     indexTRN <- which(partitions[,k]==1)
     
     # Training set
-    xTRN <- scale(do.call(cbind,WL[timepoints])[indexTRN,])
+    xTRN <- scale(do.call(cbind,X[timepoints])[indexTRN,])
     VARx <- var(xTRN)
     EVDx <- eigen(VARx)
     
@@ -534,7 +534,7 @@ for(k in 1:nPart)
     
     # L1-PSI
     fm <- solveEN(VARx, Gencov[,k],nLambda=100,maxIter=200,tol=1E-3)
-    beta <- as.matrix(fm$beta)[-1,]
+    beta <- t(fm$beta)[-1,]
     bL1PSI[[k]] <- data.frame(I(beta),df=fm$df[-1],lambda=fm$lambda[-1])
 }
 save(bPCSI,bL1PSI,nPart,file="multi_timepoint_coefficients.RData")
@@ -558,7 +558,7 @@ for(k in 1:nPart)
     indexTST <- which(partitions[,k]==2)
     
     # Testing set
-    xTST <- scale(do.call(cbind,WL[timepoints])[indexTST,])
+    xTST <- scale(do.call(cbind,X[timepoints])[indexTST,])
     yTST <- as.vector(scale(y[indexTST]))
     KTST <- K[indexTST,indexTST]   # Connection given by replicates
         
@@ -627,7 +627,7 @@ load("varComps.RData")    # Load the SVD of ZZ' to speed computation
 load("multi_timepoint_accuracy.RData")
 
 # Get genetic covariances
-x <- scale(do.call(cbind,WL))
+x <- scale(do.call(cbind,X))
 fm <- getGenCov(y1=y,y2=x,U=evdK$vectors,d=evdK$values, mc.cores=5,warn=FALSE)
 gencov <- fm$covU
 
@@ -641,8 +641,8 @@ lambda <- mean(AccSI$lambda[AccSI$Model=="L1PSI_multi"])
 VARx <- var(x)
 beta <- solveEN(VARx,gencov,lambda=lambda)$beta
 
-wl <- factor(rep(gsub("wl","",colnames(WL[[1]])),length(WL)))
-Timepoint <- factor(rep(seq(length(WL)),each=ncol(WL[[1]])))
+wl <- factor(rep(gsub("wl","",colnames(X[[1]])),length(X)))
+Timepoint <- factor(rep(seq(length(X)),each=ncol(X[[1]])))
 dat <- data.frame(beta=as.vector(beta),Timepoint,wl)
 dat$beta[abs(dat$beta) < .Machine$double.eps] <- NA
 

@@ -1,4 +1,4 @@
-## ----eval=FALSE----------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  library(SFSI)
 #  if(requireNamespace("BGLR")){
 #   data(wheat, package="BGLR")     # Load data from the BGLR package
@@ -13,7 +13,7 @@
 #  # Save data
 #  save(y, G, file="geno_pheno.RData")
 
-## ----eval=FALSE----------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  load("geno_pheno.RData") # Load data
 #  
 #  # Fit model
@@ -23,7 +23,7 @@
 #  
 #  save(fm0, file="varComps.RData")
 
-## ----eval=FALSE----------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  nPart <- 5                        # Number of partitions
 #  load("geno_pheno.RData")          # Load data
 #  
@@ -37,7 +37,7 @@
 #  }
 #  save(partitions, file="partitions.RData")    # Save partitions
 
-## ----eval=FALSE----------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  # Load data
 #  load("geno_pheno.RData"); load("varComps.RData"); load("partitions.RData")
 #  
@@ -65,7 +65,7 @@
 #  }
 #  save(mu,h2,accSSI,file="results_accuracy.RData")
 
-## ----eval=FALSE----------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  load("results_accuracy.RData")
 #  
 #  dat <- data.frame(do.call(rbind,lapply(split(accSSI,accSSI$SSI),
@@ -81,7 +81,7 @@
 #     ggplot2::geom_point(data=dat2,ggplot2::aes(color=Model),size=2.5)
 #  }
 
-## ----eval=FALSE----------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  load("geno_pheno.RData");   load("varComps.RData")
 #  load("partitions.RData");   load("results_accuracy.RData")
 #  
@@ -104,7 +104,7 @@
 #  }
 #  save(accSSI_CV,lambdaCV,dfCV,file="results_accuracyCV.RData")
 
-## ----eval=FALSE----------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  load("results_accuracy.RData"); load("results_accuracyCV.RData")
 #  
 #  dat <- data.frame(GBLUP=accSSI[accSSI$SSI=="GBLUP",]$acc,SSI=accSSI_CV)
@@ -119,7 +119,7 @@
 #    ggplot2::annotate("text",tmp[1]-tmp[2],tmp[1],label=round(mean(dat$SSI),3))
 #  }
 
-## ----eval=FALSE----------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  load("results_accuracyCV.RData")
 #  
 #  dat <- data.frame(df=as.vector(dfCV))
@@ -132,7 +132,7 @@
 #      ggplot2::labs(x=bquote("Support set size(" *n[sup]*")"),y="Frequency")
 #  }
 
-## ----eval=FALSE----------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  # Load data
 #  load("geno_pheno.RData"); load("partitions.RData"); load("results_accuracyCV.RData")
 #  

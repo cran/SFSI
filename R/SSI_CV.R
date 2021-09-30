@@ -1,9 +1,9 @@
-# y=y; X = NULL; Z = NULL; K=G2; indexK = NULL; b=NULL; h2 = NULL; trn = trn; alpha = 1;
+# y=y; X = NULL; Z = NULL; K=G2; b=NULL; h2 = NULL; trn = trn; alpha = 1;
 # lambda = NULL; nLambda = 100; minLambda = .Machine$double.eps^0.5; nCV = 1; nFolds = 5;
 # seed = NULL; method = c("CD1","CD2")[1];
 # mc.cores = 1; tol = 1E-4; maxIter = 500; name = NULL; verbose = TRUE
 
-SSI_CV <- function(y, X = NULL, b = NULL, Z = NULL, K, indexK = NULL,
+SSI_CV <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
               h2 = NULL, trn = seq_along(y), alpha = 1, lambda = NULL,
               nLambda = 100, minLambda = .Machine$double.eps^0.5,
               nCV = 1, nFolds = 5, seed = NULL, commonLambda = TRUE,
@@ -18,7 +18,7 @@ SSI_CV <- function(y, X = NULL, b = NULL, Z = NULL, K, indexK = NULL,
        trn <- which(trn)
     }
     if(is.character(K)){
-        K <- readBinary(K,indexRow=indexK,indexCol=indexK)
+        K <- readBinary(K)
     }
 
     if(!float::storage.mode(K) %in% c("float32","double")) storage.mode(K) <- "double"
@@ -39,7 +39,7 @@ SSI_CV <- function(y, X = NULL, b = NULL, Z = NULL, K, indexK = NULL,
       trn0 <- trn[folds != ind]
       tst0 <- trn[folds == ind]
 
-      fm <- SSI(y, X=X, b=b, K=K, h2=h2, trn=trn0, tst=tst0, alpha=alpha,
+      fm <- SSI(y, X=X, b=b, K=K, D=D, h2=h2, trn=trn0, tst=tst0, alpha=alpha,
               method=method, lambda=lambda, nLambda=nLambda,
               minLambda=minLambda, tol=tol, maxIter=maxIter,
               commonLambda=commonLambda, mc.cores=mc.cores2, verbose=FALSE)

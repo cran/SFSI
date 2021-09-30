@@ -4,14 +4,14 @@
 \alias{SSI_CV}
 \title{Sparse Selection Index}
 \usage{
-SSI(y, X = NULL, b = NULL, Z = NULL, K, indexK = NULL, 
+SSI(y, X = NULL, b = NULL, Z = NULL, K, D = NULL, 
     h2 = NULL, trn = seq_along(y), tst = seq_along(y), 
     subset = NULL, alpha = 1, lambda = NULL, nLambda = 100,
     minLambda = .Machine$double.eps^0.5, commonLambda = TRUE,
     tol = 1E-4, maxIter = 500, method = c("REML","ML"),
     saveAt = NULL, name = NULL, mc.cores = 1, verbose = TRUE)
     
-SSI_CV(y, X = NULL, b = NULL, Z = NULL, K, indexK = NULL, 
+SSI_CV(y, X = NULL, b = NULL, Z = NULL, K, D = NULL, 
       h2 = NULL, trn = seq_along(y), alpha = 1, lambda = NULL,
       nLambda = 100, minLambda = .Machine$double.eps^0.5,
       nCV = 1, nFolds = 5, seed = NULL, commonLambda = TRUE,
@@ -29,9 +29,9 @@ SSI_CV(y, X = NULL, b = NULL, Z = NULL, K, indexK = NULL,
 
 \item{K}{(numeric matrix) Kinship relationships. This can be of the "float32" type as per the 'float' R-package, or a (character) name of a binary file where the matrix is stored}
 
-\item{indexK}{(integer vector) Which columns and rows will be read when \code{K} is the name of a binary file. Default \code{indexK=NULL} will read the whole matrix}
+\item{D}{(numeric matrix) Relationships among residuals (usually an identity matrix). When \code{D=NULL} an identity matrix is considered (default)}
 
-\item{h2}{(numeric) Heritability of the response variable. When \code{h2=NULL} (default), the heritability is calculated from training data from variance components estimated using the function 'fitBLUP' (see \code{help(fitBLUP)})}
+\item{h2}{(numeric) Heritability of the response variable. When \code{h2=NULL} (default), it is calculated from training data estimated using the function 'fitBLUP' (see \code{help(fitBLUP)}). It is used to set the residual to genetic variance ratio given by \code{(1-h2)/h2}}
 
 \item{trn}{(integer vector) Which elements from vector \code{y} are in training set. Default \code{trn=seq_along(y)} will consider all individuals as training}
 
@@ -116,7 +116,7 @@ where
 \ifelse{html}{\out{<b>e</b>}}{\eqn{\textbf{e}}{e}} is the vector of environmental residuals, and
 \ifelse{html}{\out{<b>X</b>}}{\eqn{\textbf{X}}{X}} and \ifelse{html}{\out{<b>Z</b>}}{\eqn{\textbf{Z}}{Z}} are design matrices conecting the fixed and genetic effects with replicates. Genetic values are assumed to follow a Normal distribution as
 \ifelse{html}{\out{<b>g</b> ~ N(<b>0</b>,&sigma;<sup>2</sup><sub>u</sub><b>K</b>)}}{\eqn{\textbf{g}\sim N(\textbf{0},\sigma^2_u\textbf{K})}{g ~ N(0,sigma^2_u K)}}, and environmental terms are assumed
-\ifelse{html}{\out{<b>e</b> ~ N(<b>0</b>,&sigma;<sup>2</sup><sub>e</sub><b>I</b>)}}{\eqn{\textbf{e}\sim N(\textbf{0},\sigma^2_e\textbf{I})}{e ~ N(0,sigma^2_e I)}}.
+\ifelse{html}{\out{<b>e</b> ~ N(<b>0</b>,&sigma;<sup>2</sup><sub>e</sub><b>D</b>)}}{\eqn{\textbf{e}\sim N(\textbf{0},\sigma^2_e\textbf{D})}{e ~ N(0,sigma^2_e D)}}, usually \ifelse{html}{\out{<b>D</b>=<b>I</b>}}{\eqn{\textbf{D}=\textbf{I}}{D = I}}.
 
 The resulting vector of genetic values
 \ifelse{html}{\out{<b>u</b> = <b>Z g</b>}}{\eqn{\textbf{u}=\textbf{Z}\textbf{g}}{u = Z g}} will therefore follow 
@@ -134,25 +134,25 @@ The values \ifelse{html}{\out{<b>u</b><sub>tst</sub> = (u<sub>i</sub>)}}{\eqn{\t
 where \ifelse{html}{\out{<b>&beta;</b><sub>i</sub>}}{\eqn{\boldsymbol{\beta}_i}{beta_i}}
 is a vector of weights that are found separately for each individual in the testing set, by minimizing the penalized mean squared error function
 
-\ifelse{html}{\out{<center>-<b>G</b>'<sub>trn,tst(i)</sub> <b>&beta;</b><sub>i</sub> + 1/2 <b>&beta;</b>'<sub>i</sub>(<b>G</b><sub>trn,trn</sub> + &lambda;<sub>0</sub><b>I</b>)<b>&beta;</b><sub>i</sub> + &lambda; J(<b>&beta;</b><sub>i</sub>)</center>}}{\deqn{-\textbf{G}_{trn,tst(i)}' \boldsymbol{\beta}_i + 1/2 \boldsymbol{\beta}_i'(\textbf{G}_{trn,trn} + \lambda_0\textbf{I}) \boldsymbol{\beta}_i + \lambda J(\boldsymbol{\beta}_i)}{-G'[trn,tst(i)] beta_i + 1/2 beta_i'(G[trn,trn] + lambda_0 I)beta_i + lambda J(beta_i)}}
+\ifelse{html}{\out{<center>-<b>G</b>'<sub>trn,tst(i)</sub> <b>&beta;</b><sub>i</sub> + 1/2 <b>&beta;</b>'<sub>i</sub>(<b>G</b><sub>trn</sub> + &theta;<b>D</b>)<b>&beta;</b><sub>i</sub> + &lambda; J(<b>&beta;</b><sub>i</sub>)</center>}}{\deqn{-\textbf{G}_{trn,tst(i)}' \boldsymbol{\beta}_i + 1/2 \boldsymbol{\beta}_i'(\textbf{G}_{trn} + \theta\textbf{D}) \boldsymbol{\beta}_i + \lambda J(\boldsymbol{\beta}_i)}{-G'[trn,tst(i)] beta_i + 1/2 beta_i'(G[trn] + theta D)beta_i + lambda J(beta_i)}}
 
 where
 \ifelse{html}{\out{<b>G</b><sub>trn,tst(i)</sub>}}{\eqn{\textbf{G}_{trn,tst(i)}}{G[trn,tst(i)}}
 is the \ifelse{html}{\out{i<sup>th</sup>}}{\eqn{i^{th}}{i^th}} column of the
-sub-matrix of \ifelse{html}{\out{<b>G</b>}}{\eqn{\textbf{G}}{G}} whose rows correspond to the training set and columns to the testing set,
-\ifelse{html}{\out{<b>G</b><sub>trn,trn</sub>}}{\eqn{\textbf{G}_{trn,trn}}{G[trn,trn]}}
-is the sub-matrix corresponding to the training set, and \ifelse{html}{\out{&lambda;<sub>0</sub> = (1 - h<sup>2</sup>)/h<sup>2</sup>}}{\eqn{\lambda_0=(1-h^2)/h^2}{lambda_0 = (1 - h^2)/h^2}} is a shrinkage parameter expressed in terms of the heritability, \ifelse{html}{\out{h<sup>2</sup> = &sigma;<sup>2</sup><sub>u</sub>/(&sigma;<sup>2</sup><sub>u</sub> + &sigma;<sup>2</sup><sub>e</sub>)}}{\eqn{h^2=\sigma^2_u/(\sigma^2_u+\sigma^2_e)}{h^2 = sigma^2_u/(sigma^2_u + sigma^2_e)}}, \ifelse{html}{\out{&lambda;}}{\eqn{\lambda}{lambda}} is the penalization parameter, and
+sub-matrix of \ifelse{html}{\out{<b>G</b>}}{\eqn{\textbf{G}}{G}} whose rows correspond to the training set and columns to the testing set;
+\ifelse{html}{\out{<b>G</b><sub>trn</sub>}}{\eqn{\textbf{G}_{trn}}{G[trn]}}
+is the sub-matrix corresponding to the training set; \ifelse{html}{\out{&theta; = &sigma;<sup>2</sup><sub>e</sub>/&sigma;<sup>2</sup><sub>u</sub>}}{\eqn{\theta=\sigma^2_e/\sigma^2_u}{theta = sigma^e/sigma^2_u}} is the residual to genetic variance ratio that can be expressed in terms of the heritability, \ifelse{html}{\out{h<sup>2</sup> = &sigma;<sup>2</sup><sub>u</sub>/(&sigma;<sup>2</sup><sub>u</sub> + &sigma;<sup>2</sup><sub>e</sub>)}}{\eqn{h^2=\sigma^2_u/(\sigma^2_u+\sigma^2_e)}{h^2 = sigma^2_u/(sigma^2_u + sigma^2_e)}}, as \ifelse{html}{\out{&theta; = (1 - h<sup>2</sup>)/h<sup>2</sup>}}{\eqn{\theta=(1-h^2)/h^2}{theta = (1 - h^2)/h^2}}; \ifelse{html}{\out{&lambda;}}{\eqn{\lambda}{lambda}} is the penalization parameter; and
 \ifelse{html}{\out{J(<b>&beta;</b><sub>i</sub>)}}{\eqn{J(\boldsymbol{\beta}_i)}{J(beta_i)}}
 is a penalty function given by
 \ifelse{html}{\out{<center>1/2(1-&alpha;)||<b>&beta;</b><sub>i</sub>||<sub>2</sub><sup>2</sup> + &alpha;||<b>&beta;</b><sub>i</sub>||<sub>1</sub></center>}}{\deqn{1/2(1-\alpha)||\boldsymbol{\beta}_i||_2^2 + \alpha||\boldsymbol{\beta}_i||_1}{1/2(1-alpha)||beta_i||_2^2 + alpha||beta_i||_1}}
 
 where \ifelse{html}{\out{0 &le; &alpha; &le; 1}}{\eqn{0\leq\alpha\leq 1}{0 <= alpha <= 1}}, and
-\ifelse{html}{\out{||<b>&beta;</b><sub>i</sub>||<sub>1</sub> = &sum;|&beta;<sub>ij</sub>|}}{\eqn{||\boldsymbol{\beta}_i||_1=\sum|\beta_{ij}|}{||beta_i||_1 = sum(|beta_ij|)}} and
-\ifelse{html}{\out{||<b>&beta;</b><sub>i</sub>||<sub>2</sub><sup>2</sup> = &sum;&beta;<sub>ij</sub><sup>2</sup>}}{\eqn{||\boldsymbol{\beta}_i||_2^2=\sum\beta_{ij}^2}{||beta_i||_2^2 = sum(beta_ij^2)}} are the L1 and (squared) L2-norms, respectively.
+\ifelse{html}{\out{||<b>&beta;</b><sub>i</sub>||<sub>1</sub> = &sum;<sub>j=1</sub>|&beta;<sub>ij</sub>|}}{\eqn{||\boldsymbol{\beta}_i||_1=\sum_{j=1}^{n_{trn}}|\beta_{ij}|}{||beta_i||_1 = sum(|beta_ij|)}} and
+\ifelse{html}{\out{||<b>&beta;</b><sub>i</sub>||<sub>2</sub><sup>2</sup> = &sum;<sub>j=1</sub>&beta;<sub>ij</sub><sup>2</sup>}}{\eqn{||\boldsymbol{\beta}_i||_2^2=\sum_{j=1}^{n_{trn}}\beta_{ij}^2}{||beta_i||_2^2 = sum(beta_ij^2)}} are the L1 and (squared) L2-norms, respectively.
 
-Function 'SSI' calculates each individual solution using the function 'solveEN' (via the Coordinate Descent algorithm, see \code{help(solveEN)}) by setting the argument \code{P} equal to
-\ifelse{html}{\out{<b>G</b><sub>trn,trn</sub> + &lambda;<sub>0</sub><b>I</b>}}{\eqn{\textbf{G}_{trn,trn}+\lambda_0\textbf{I}}{G[trn,trn] + lambda_0 I}}
-and \code{v} equal to
+Function 'SSI' calculates each individual solution using the function 'solveEN' (via the Coordinate Descent algorithm, see \code{help(solveEN)}) by setting the argument \code{Sigma} equal to
+\ifelse{html}{\out{<b>G</b><sub>trn</sub> + &theta;<b>D</b>}}{\eqn{\textbf{G}_{trn}+\theta\textbf{D}}{G[trn] + theta D}}
+and \code{Gamma} equal to
 \ifelse{html}{\out{<b>G</b><sub>trn,tst(i)</sub>}}{\eqn{\textbf{G}_{trn,tst(i)}}{G[trn,tst(i)]}}.
 
 Function 'SSI_CV' performs cross-validation within the training data specified in argument \code{trn}. Training data is divided into \eqn{k}{k} folds and the SSI is sequentially calculated for (all individuals in) one fold (testing set) using information from the remaining folds (training set).
@@ -160,12 +160,14 @@ Function 'SSI_CV' performs cross-validation within the training data specified i
 \examples{
   require(SFSI)
   data(wheatHTP)
-  X = scale(X[1:200,])/sqrt(ncol(X))    # Subset and scale markers
-  G = tcrossprod(X)                     # Genomic relationship matrix
-  y = as.vector(scale(Y[1:200,"YLD"]))  # Subset ans scale response variable
+  
+  index = which(Y$CV == 1)              # Use only a subset of data
+  M = scale(M[index,])/sqrt(ncol(M))    # Subset and scale markers
+  G = tcrossprod(M)                     # Genomic relationship matrix
+  y = as.vector(scale(Y[index,"E1"]))   # Subset ans scale response variable
   
   # Training and testing sets
-  tst = 1:ceiling(0.3*length(y))
+  tst = seq(1,length(y),by=3)
   trn = (seq_along(y))[-tst]
 
   # Calculate heritability using training data

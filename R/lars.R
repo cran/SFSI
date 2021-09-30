@@ -1,20 +1,20 @@
 
-lars2 <- function(P, v, method=c("LAR","LAR-LASSO"), maxDF=NULL,
+lars2 <- function(Sigma, Gamma, method=c("LAR","LAR-LASSO"), maxDF=NULL,
     eps=.Machine$double.eps,scale=TRUE,verbose=FALSE)
 {
   method <- match.arg(method)
 
-  v <- as.vector(v)
-  dimnames(P) <- NULL
-  p <- length(v)
+  Gamma <- as.vector(Gamma)
+  dimnames(Sigma) <- NULL
+  p <- length(Gamma)
 
-  if((sum(dim(P))/2)^2 != p^2)
-      stop("Object 'P' must be a p*p squared matrix where p=length(v)")
+  if((sum(dim(Sigma))/2)^2 != p^2)
+      stop("Object 'Sigma' must be a p*p squared matrix where p=length(Gamma)")
 
-  if(!float::storage.mode(P) %in% c("float32","double")) storage.mode(P) <- "double"
-  if(!float::storage.mode(v) %in% c("float32","double")) storage.mode(v) <- "double"
+  if(!float::storage.mode(Sigma) %in% c("float32","double")) storage.mode(Sigma) <- "double"
+  if(!float::storage.mode(Gamma) %in% c("float32","double")) storage.mode(Gamma) <- "double"
   isFloat <- FALSE
-  if(float::storage.mode(P)=="float32" | float::storage.mode(v)=="float32"){
+  if(float::storage.mode(Sigma)=="float32" | float::storage.mode(Gamma)=="float32"){
         isFloat <- TRUE
   }
 
@@ -23,16 +23,16 @@ lars2 <- function(P, v, method=c("LAR","LAR-LASSO"), maxDF=NULL,
   textPrint <- c(" Step","\tSec/Step","\tVariable")
 
   if(scale){
-    sdx <- sqrt(float::diag(P))
-    P <- cov2cor2(P)  # Equal to P=cov2cor(P) but faster
-    v <- v/sdx
+    sdx <- sqrt(float::diag(Sigma))
+    Sigma <- cov2cor2(Sigma)  # Equal to Sigma=cov2cor(Sigma) but faster
+    Gamma <- Gamma/sdx
   }else{
     sdx <- rep(1,p)
   }
 
   ignores <- NULL
   if(is.null(maxDF))  maxDF <- p
-  beta <- matrix(0,maxDF*8,p)
+  beta <- matrix(0, p, maxDF*8)  # p x nLambda
   lambda <- double(maxDF*8)
   active <- NULL
   drops <- FALSE
@@ -42,7 +42,7 @@ lars2 <- function(P, v, method=c("LAR","LAR-LASSO"), maxDF=NULL,
   time <- proc.time()[3]
   while((length(active) < maxDF) & (length(active) < (p-length(ignores))))
   {
-    covar <- v[inactive]
+    covar <- Gamma[inactive]
     Cmax <- max(abs(covar))
     if(Cmax < eps*100){
       if(verbose) cat(" Max |corr| = 0; exiting...\n")
@@ -57,7 +57,7 @@ lars2 <- function(P, v, method=c("LAR","LAR-LASSO"), maxDF=NULL,
       new <- inactive[new]
       for(inew in new)
       {
-        R <- upDateR(P[inew,inew],R,as.vector(P[inew,active]),eps=eps)
+        R <- upDateR(Sigma[inew,inew],R,as.vector(Sigma[inew,active]),eps=eps)
         if(attr(R,"rank")==length(active))
         {
           nR <- seq(length(active))
@@ -69,7 +69,7 @@ lars2 <- function(P, v, method=c("LAR","LAR-LASSO"), maxDF=NULL,
           }
         }else{
           active <- c(active,inew)
-          Sign <- c(Sign,sign(v[inew]))
+          Sign <- c(Sign,sign(Gamma[inew]))
           if(verbose){
             cat("--------------------------------------------------------------\n")
             tmp <- proc.time()[3]
@@ -87,15 +87,15 @@ lars2 <- function(P, v, method=c("LAR","LAR-LASSO"), maxDF=NULL,
     if((length(active) >= (p-length(ignores)))){
         gamhat <- Cmax/A
     }else{
-      # a <- drop(w %*% P[active, -c(active,ignores),drop=FALSE])
-      a <- float::crossprod(P[active, -c(active,ignores),drop=FALSE],w)[,1]
+      # a <- drop(w %*% Sigma[active, -c(active,ignores),drop=FALSE])
+      a <- float::crossprod(Sigma[active, -c(active,ignores),drop=FALSE],w)[,1]
       gam <- c((Cmax-covar)/(A-a),(Cmax+covar)/(A+a))
       gamhat <- min(gam[gam > eps],Cmax/A)
     }
     if(method == "LAR-LASSO")
     {
       dropid <- NULL
-      b1 <- beta[k,active]
+      b1 <- beta[active,k]
       z1 <- -b1/w
       zmin <- min(z1[z1 > eps],gamhat)
       if(zmin < gamhat){
@@ -103,10 +103,10 @@ lars2 <- function(P, v, method=c("LAR","LAR-LASSO"), maxDF=NULL,
           drops <- z1 == zmin
       }else drops <- FALSE
     }
-    beta[k+1,] <- beta[k,]
-    beta[k+1,active] <- beta[k+1,active] + gamhat*w
-    # v <- v - gamhat*P[,active,drop=FALSE]%*%w
-    v <- v - gamhat*float::crossprod(P[active, ,drop=FALSE],w)[,1]
+    beta[,k+1] <- beta[,k]
+    beta[active,k+1] <- beta[active,k+1] + gamhat*w
+    # Gamma <- Gamma - gamhat*Sigma[,active,drop=FALSE]%*%w
+    Gamma <- Gamma - gamhat*float::crossprod(Sigma[active, ,drop=FALSE],w)[,1]
     if(method == "LAR-LASSO" && any(drops))
     {
       dropid <- seq(drops)[drops]
@@ -122,16 +122,16 @@ lars2 <- function(P, v, method=c("LAR","LAR-LASSO"), maxDF=NULL,
         R <- downDateR(R,id)
       }
       dropid <- active[drops]
-      beta[k+1,dropid] <- 0
+      beta[dropid,k+1] <- 0
       active <- active[!drops]
       Sign <- Sign[!drops]
     }
     inactive <- im[-c(active, ignores)]
   }
-  beta <- beta[seq(k+1), ,drop = FALSE]
+  beta <- beta[,seq(k+1) ,drop = FALSE]
   lambda  <-  c(lambda[seq(k)],0)
-  if(scale) beta <- sweep(beta,2L,as.numeric(sdx),FUN="/")
-  df <- do.call(c,lapply(1:nrow(beta),function(i) sum(abs(beta[i,])>0)))
+  if(scale) beta <- sweep(beta,1L,as.numeric(sdx),FUN="/")
+  df <- do.call(c,lapply(1:ncol(beta),function(j) sum(abs(beta[,j])>0)))
 
   out <- list(method=method,beta=beta,lambda=lambda,df=df)
   class(out) <- "LASSO"

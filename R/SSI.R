@@ -1,9 +1,9 @@
 
-# X = Z = indexK = saveAt = name = subset= NULL; lambda=b=NULL
+# X = Z = saveAt = name = subset= NULL; lambda=b=NULL
 # alpha = 1; nLambda = 100; commonLambda = TRUE; minLambda = .Machine$double.eps^0.5
-# mc.cores = 1; tol = 1E-4; maxIter = 300; verbose = TRUE; method = c("REML","ML")[1]
+# mc.cores = 1; tol = 1E-4; maxIter = 500; verbose = TRUE; method = c("REML","ML")[1]
 
-SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, indexK = NULL,
+SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
          h2 = NULL, trn = seq_along(y), tst = seq_along(y),
          subset = NULL, alpha = 1, lambda = NULL, nLambda = 100,
          minLambda = .Machine$double.eps^0.5, commonLambda = TRUE,
@@ -24,7 +24,7 @@ SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, indexK = NULL,
   nTRN <- length(trn);  nTST <- length(tst)
 
   if(is.character(K)){
-      K <- readBinary(K,indexRow=indexK,indexCol=indexK)
+      K <- readBinary(K)
   }
 
   if(!float::storage.mode(K) %in% c("float32","double")) storage.mode(K) <- "double"
@@ -34,7 +34,7 @@ SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, indexK = NULL,
   {
     X <- model.matrix(~1,data=data.frame(rep(1,n)))
   }else{
-    if(is.vector(X)){
+    if(length(dim(X))<2){
       X <- stats::model.matrix(~X)
       if(ncol(X)>2)  colnames(X)[-1] <- substr(colnames(X)[-1],2,nchar(colnames(X)[-1]))
     }
@@ -47,10 +47,18 @@ SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, indexK = NULL,
 
   if(length(dim(K))!=2 | (length(K) != n^2)){
     stop("Product Z %*% K %*% t(Z) must be a squared matrix with number of rows",
-     "\n(and columns) equal to the number of elements in 'y'")
+     "\n(and columns) equal to n: number of elements in 'y'")
+  }
+  dimnames(K) <- NULL
+
+  if(!is.null(D)){
+    if((sum(dim(D))/2)^2 != n^2){
+      stop("Object 'D' must be a nxn squared matrix with n: number of elements in 'y'")
+    }
+    dimnames(D) <- NULL
+    D <- D[trn,trn]
   }
 
-  dimnames(K) <- NULL
   RHS <- K[trn,tst,drop=FALSE]
   K <- K[trn,trn]
 
@@ -77,7 +85,11 @@ SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, indexK = NULL,
   Xb <- drop(X%*%b)
 
   # Standardizing
-  add2diag(K,a=(1-h2)/h2,void=TRUE)   # Add the value (1-h2)/h2 to the diagonal of K
+  if(is.null(D)){
+    add2diag(K,a=(1-h2)/h2,void=TRUE)   #diag(K) <- diag(K) + (1-h2)/h2
+  }else{
+    K <- K + ((1-h2)/h2)*D
+  }
   sdx <- sqrt(float::diag(K))
   cov2cor2(K,void=TRUE)   # Equal to K=cov2cor(K) but faster
   RHS <- float::sweep(RHS,1L,sdx,FUN="/")  # Scale each row of RHS
@@ -91,7 +103,7 @@ SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, indexK = NULL,
     if(length(dim(lambda))==2){
         if(nrow(lambda) != nTST) stop("Object 'lambda' must be a vector or a matrix with nTST rows")
     }else{
-      if(!is.vector(lambda,mode="numeric") | any(diff(lambda) >0))
+      if(length(dim(lambda))==2 | mode(lambda)!="numeric" | any(diff(lambda) >0))
         stop("Object 'lambda' must be a vector of decreasing numbers")
     }
   }
@@ -114,10 +126,6 @@ SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, indexK = NULL,
   }
 
   if(verbose){
-    #cat(" G[trn,trn]: ","dim=",nrow(K),"x",ncol(K),", storage mode=",float::storage.mode(K),
-    #      ", size=",utils::object.size(K)/1024,"Kb\n")
-    #cat(" G[trn,tst]: ","dim=",nrow(RHS),"x",ncol(RHS),", storage mode=",float::storage.mode(RHS),
-    #      ", size=",utils::object.size(RHS)/1024,"Kb\n")
     cat(" Fitting SSI model for nTST=",length(tst),tmp," and nTRN=",nTRN," individuals\n",sep="")
   }
 
@@ -132,7 +140,7 @@ SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, indexK = NULL,
                minLambda=minLambda,alpha=alpha,tol=tol,maxIter=maxIter)
 
     # Return betas to the original scale by dividing by sdx
-    saveBinary(sweep(fm$beta,2L,as.numeric(sdx),FUN="/"),file=paste0(tmpdir,"/",file_beta,ind,".bin"),
+    saveBinary(sweep(fm$beta,1L,as.numeric(sdx),FUN="/"),file=paste0(tmpdir,"/",file_beta,ind,".bin"),
          type=file_type,verbose=FALSE)
 
     if(verbose){
@@ -178,7 +186,7 @@ SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, indexK = NULL,
 
     if(!file.exists(dirname(filenames[1])))  dir.create(dirname(filenames[1]),recursive = TRUE)
 
-    saveBinary(do.call(rbind,coef.SSI(out)),file=filenames[1],type="float",verbose=FALSE)
+    saveBinary(do.call(cbind,coef.SSI(out)),file=filenames[1],type="float",verbose=FALSE)
     out$file_beta <- filenames[1]
     out$subset <- subset
     out$subset_size <- subset_size

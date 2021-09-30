@@ -1,15 +1,15 @@
-# X= Z=K= indexK = NULL; BLUP=TRUE; method=c("REML","ML")[1]; h2=NULL
+# Z=U=d=indexK = NULL; BLUP=TRUE; method=c("REML","ML")[1]; h2=NULL
 # return.Hinv = FALSE; tol=1E-5; maxIter=1000; interval=c(1E-9,1E9); warn=TRUE
 
 fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, U = NULL, d = NULL,
-                    indexK = NULL, h2 = NULL, BLUP = TRUE, method = c("REML","ML"),
+                    h2 = NULL, BLUP = TRUE, method = c("REML","ML"),
                     return.Hinv = FALSE, tol = 1E-5, maxIter = 1000,
                     interval = c(1E-9,1E9), warn = TRUE)
 {
   method <- match.arg(method)
 
   if(is.character(K)){
-    K <- readBinary(K,indexRow=indexK,indexCol=indexK)
+    K <- readBinary(K)
   }
   y <- as.vector(y)
   indexOK <- which(!is.na(y))
@@ -19,7 +19,7 @@ fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, U = NULL, d = NULL,
   {
     X <- stats::model.matrix(~1,data=data.frame(rep(1,length(y))))
   }else{
-    if(is.vector(X)){
+    if(length(dim(X))<2){
       X <- stats::model.matrix(~X)
       if(ncol(X)>2)  colnames(X)[-1] <- substr(colnames(X)[-1],2,nchar(colnames(X)[-1]))
     }
@@ -77,42 +77,40 @@ fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, U = NULL, d = NULL,
   c0 <- ncol(X)-1
 
   varP <- var(y[indexOK])*sum(d)/length(d) # mean(d)
-  convergence <- lambda0 <- varU <- varE <- bHat <- dbar <- NA
+  convergence <- lambda0 <- varU <- varE <- bHat <- dbar <- msg <- NA
 
   if(is.null(h2))
   {
-    tt <- searchInt(method,interval,n=n,c0=c0,Uty=Uty,UtX=UtX,d=d,maxIter=maxIter,
-       tol=tol,lower=interval[1],upper=interval[2],varP=varP)
-    convergence <- tt$convergence
+    tt <- searchInt(method,interval=interval,n=n,c0=c0,Uty=Uty,UtX=UtX,d=d,
+           maxIter=maxIter,tol=tol,lower=interval[1],upper=interval[2],varP=varP)
 
-    if(is.na(convergence))
+    if(is.na(tt$convergence))
     {
       # Divide seeking interval into smaller intervals
       bb <- exp(seq(log(interval[1]),log(interval[2]),length=200))
-      tt <- searchInt(method,bb,n=n,c0=c0,Uty=Uty,UtX=UtX,d=d,maxIter=maxIter,
-        tol=tol,lower=interval[1],upper=interval[2],varP=varP)
-      convergence <- tt$convergence
+      tt <- searchInt(method,interval=bb,n=n,c0=c0,Uty=Uty,UtX=UtX,d=d,
+             maxIter=maxIter,tol=tol,lower=interval[1],upper=interval[2],varP=varP)
 
-      if(is.na(convergence)){
+      if(is.na(tt$convergence)){
         # Search in the lower bound
-        bb <- exp(seq(log(interval[1]^2),log(interval[1]),length=200))
-        tt <- searchInt(method,bb,n=n,c0=c0,Uty=Uty,UtX=UtX,d=d,maxIter=maxIter,
-          tol=tol,lower=interval[1],upper=interval[2],varP=varP)
-        convergence <- tt$convergence
+        bb <- exp(seq(log(interval[1]^2),log(interval[1]^0.5),length=200))
+        tt <- searchInt(method,interval=bb,n=n,c0=c0,Uty=Uty,UtX=UtX,d=d,
+               maxIter=maxIter,tol=tol,lower=interval[1],upper=interval[2],varP=varP)
 
-        if(is.na(convergence)){
+        if(is.na(tt$convergence)){
           # Search in the upper bound
-          bb <- exp(seq(log(interval[2]),log(interval[2]^2),length=200))
-          tt <- searchInt(method,bb,n=n,c0=c0,Uty=Uty,UtX=UtX,d=d,maxIter=maxIter,
-            tol=tol,lower=interval[1],upper=interval[2],varP=varP)
-          convergence <- tt$convergence
+          bb <- exp(seq(log(interval[2]^0.5),log(interval[2]^2),length=200))
+          tt <- searchInt(method,interval=bb,n=n,c0=c0,Uty=Uty,UtX=UtX,d=d,
+                 maxIter=maxIter,tol=tol,lower=interval[1],upper=interval[2],varP=varP)
         }
       }
     }
+    msg <- tt$msg
     lambda0 <- tt$lambda0
     bHat <- tt$bHat
     dbar <- tt$dbar
     varU <- tt$varU; varE <- tt$varE
+    convergence <- ifelse(is.na(tt$convergence),FALSE,tt$convergence)
 
   }else{
     lambda0 <- h2/(1-h2)
@@ -167,7 +165,8 @@ fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, U = NULL, d = NULL,
   if(warn){
     if(ifelse(is.na(convergence),is.na(lambda0),!convergence)){
       warning("Convergence was not reached in the 'GEMMA' algorithm.",immediate.=TRUE)
-     }
+    }
+    if(!is.na(msg)) warning(msg,immediate.=TRUE)
   }
 
   h2 <- varU/(varU + varE)

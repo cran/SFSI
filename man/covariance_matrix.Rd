@@ -7,13 +7,15 @@
 \usage{
 cov2dist(V, void = FALSE)
 
-cov2cor2(V, void = FALSE)
+cov2cor2(V, a = 1, void = FALSE)
 }
 \arguments{
 \item{V}{(numeric matrix) Symmetric variance-covariance matrix among \eqn{p}{p} variables. It can be of the "float32" type as per the 'float' R-package}
 
 \item{void}{\code{TRUE} or \code{FALSE} to whether return or not return the output.
 When \code{FALSE} no result is displayed but the input \code{V} is modified. Default \code{void=FALSE}}
+
+\item{a}{(numeric) A number to multiply the whole resulting matrix by. Default \code{a=1}}
 }
 \value{
 Function 'cov2dist' returns a matrix containing the (square) Euclidean distances. Function 'cov2cor2' returns a correlation matrix
@@ -57,10 +59,9 @@ Variances are obtained from the diagonal values while covariances are obtained f
 }
 \examples{
   require(SFSI)
+  data(wheatHTP)
   
-  # Simulate matrix
-  n = 100; p=5
-  X = scale(matrix(rnorm(n*p),ncol=p),FALSE,rep(1,p))
+  X = scale(Y[,4:7])
   (V = crossprod(X))             # Covariance matrix 
   
   # Covariance matrix to distance matrix

@@ -3,13 +3,13 @@
 \alias{lars2}
 \title{Least Angle Regression to solve LASSO-type problems}
 \usage{
-lars2(P, v, method = c("LAR", "LAR-LASSO"), maxDF = NULL,
+lars2(Sigma, Gamma, method = c("LAR", "LAR-LASSO"), maxDF = NULL,
   eps = .Machine$double.eps, scale = TRUE, verbose = FALSE)
 }
 \arguments{
-\item{P}{(numeric matrix) Variance-covariance matrix of predictors. It can be of the "float32" type as per the 'float' R-package}
+\item{Sigma}{(numeric matrix) Variance-covariance matrix of predictors. It can be of the "float32" type as per the 'float' R-package}
 
-\item{v}{(numeric vector) Covariance between response variable and predictors}
+\item{Gamma}{(numeric vector) Covariance between response variable and predictors}
 
 \item{method}{(character) Either:
 \itemize{
@@ -18,13 +18,13 @@ lars2(P, v, method = c("LAR", "LAR-LASSO"), maxDF = NULL,
 }
 Default is \code{method='LAR'}}
 
-\item{maxDF}{(integer) Maximum number of predictors in the last LARS solution.
-Default \code{maxDF=NULL} will calculate solution for all the predictors}
+\item{maxDF}{(integer) Maximum number of non-zero coefficients in the last LARS solution.
+Default \code{maxDF=NULL} will calculate solutions for the entire lambda sequence}
 
 \item{eps}{(numeric) An effective zero. Default is the machine precision}
 
-\item{scale}{\code{TRUE} or \code{FALSE} to scale matrix \code{P} for variables with unit variance and scale \code{v} by the standard deviation of the corresponding predictor
-taken from the diagonal of \code{P}}
+\item{scale}{\code{TRUE} or \code{FALSE} to scale matrix \code{Sigma} for variables with unit variance and scale \code{Gamma} by the standard deviation of the corresponding predictor
+taken from the diagonal of \code{Sigma}}
 
 \item{verbose}{\code{TRUE} or \code{FALSE} to whether printing each LARS step}
 }
@@ -32,7 +32,7 @@ taken from the diagonal of \code{P}}
 Returns a list object with the following elements:
 \itemize{
   \item \code{lambda}: (vector) all the sequence of values of the LASSO penalty.
-  \item \code{beta}: (matrix) regression coefficients for each predictor (in columns) associated to each value of the penalization parameter lambda (in rows).
+  \item \code{beta}: (matrix) regression coefficients for each predictor (in rows) associated to each value of the penalization parameter lambda (in columns).
   \item \code{df}: (vector) degrees of freedom, number of non-zero predictors associated to each value of lambda.
 }
 The returned object is of the class 'LASSO' for which methods \code{fitted} exist. Function \code{plotPath} can be also used
@@ -58,13 +58,13 @@ is a residual.
 The regression coefficients
 \ifelse{html}{\out{<b>&beta;</b>}}{\eqn{\boldsymbol{\beta}}{beta}}
 are estimated as function of the variance matrix among
-predictors (\ifelse{html}{\out{<b>P</b>}}{\eqn{\textbf{P}}{P}}) and the covariance vector between response and predictors (\ifelse{html}{\out{<b>v</b>}}{\eqn{\textbf{v}}{v}}) by minimizing the penalized mean squared error function
+predictors (\ifelse{html}{\out{<b>&Sigma;</b>}}{\eqn{\boldsymbol{\Sigma}}{Sigma}}) and the covariance vector between response and predictors (\ifelse{html}{\out{<b>&Gamma;</b>}}{\eqn{\boldsymbol{\Gamma}}{Gamma}}) by minimizing the penalized mean squared error function
 
-\ifelse{html}{\out{<center>-<b>v</b>' <b>&beta;</b> + 1/2 <b>&beta;</b>'<b>P</b><b>&beta;</b> + 1/2 &lambda; ||<b>&beta;</b>||<sub>1</sub></center>}}{\deqn{-\textbf{v}' \boldsymbol{\beta} + 1/2 \boldsymbol{\beta}'\textbf{P} \boldsymbol{\beta} + 1/2\lambda||\boldsymbol{\beta}||_1}{-v' beta + 1/2 beta' P beta + 1/2 lambda ||beta||_1}}
+\ifelse{html}{\out{<center>-<b>&Gamma;</b>' <b>&beta;</b> + 1/2 <b>&beta;</b>'<b>&Sigma;</b><b>&beta;</b> + 1/2 &lambda; ||<b>&beta;</b>||<sub>1</sub></center>}}{\deqn{-\boldsymbol{\Gamma}' \boldsymbol{\beta} + 1/2 \boldsymbol{\beta}'\boldsymbol{\Sigma} \boldsymbol{\beta} + 1/2\lambda||\boldsymbol{\beta}||_1}{-Gamma' beta + 1/2 beta' Sigma beta + 1/2 lambda ||beta||_1}}
 
 where \ifelse{html}{\out{&lambda;}}{\eqn{\lambda}{lambda}}
 is the penalization parameter and
-\ifelse{html}{\out{||<b>&beta;</b>||<sub>1</sub> = &sum;|&beta;<sub>j</sub>|}}{\eqn{||\boldsymbol{\beta}||_1=\sum{|\beta_j|}}{||beta||_1=sum(|beta_j|)}}
+\ifelse{html}{\out{||<b>&beta;</b>||<sub>1</sub> = &sum;<sub>j=1</sub>|&beta;<sub>j</sub>|}}{\eqn{||\boldsymbol{\beta}||_1=\sum_{j=1}^p{|\beta_j|}}{||beta||_1=sum(|beta_j|)}}
 is the L1-norm.
 
 The algorithm to find solutions for each \ifelse{html}{\out{&beta;<sub>j</sub>}}{\eqn{\beta_j}{beta_j}} is fully described in Efron (2004) in which the "current correlation" between the predictor
@@ -73,22 +73,22 @@ and the residual
 \ifelse{html}{\out{e<sub>i</sub> = y<sub>i</sub> - <b>x</b>'<sub>i</sub> <b>&beta;</b>}}{\eqn{e_i=y_i-\textbf{x}_i'\boldsymbol{\beta}}{e_i = y_i - x'_i beta}}
 is expressed (up-to a constant) as
 
-\ifelse{html}{\out{<center>r<sub>j</sub> = v<sub>j</sub> - <b>P</b>'<sub>j</sub> <b>&beta;</b></center>}}{\deqn{r_j=v_j-\textbf{P}_j'\boldsymbol{\beta}}{r_j = v_j - P'_j beta}}
+\ifelse{html}{\out{<center>r<sub>j</sub> = &Gamma;<sub>j</sub> - <b>&Sigma;</b>'<sub>j</sub> <b>&beta;</b></center>}}{\deqn{r_j=\Gamma_j-\boldsymbol{\Sigma}_j'\boldsymbol{\beta}}{r_j = Gamma_j - Sigma'_j beta}}
 
 where
-\ifelse{html}{\out{v<sub>j</sub>}}{\eqn{v_j}{v_j}}
+\ifelse{html}{\out{&Gamma;<sub>j</sub>}}{\eqn{\Gamma_j}{Gamma_j}}
 is the \ifelse{html}{\out{j<sup>th</sup>}}{\eqn{j^{th}}{j^th}} element of
-\ifelse{html}{\out{<b>v</b>}}{\eqn{\textbf{v}}{v}} and
-\ifelse{html}{\out{<b>P</b><sub>j</sub>}}{\eqn{\textbf{P}_j}{P_j}}
+\ifelse{html}{\out{<b>&Gamma;</b>}}{\eqn{\boldsymbol{\Gamma}}{Gamma}} and
+\ifelse{html}{\out{<b>&Sigma;</b><sub>j</sub>}}{\eqn{\boldsymbol{\Sigma}_j}{Sigma_j}}
 is the \ifelse{html}{\out{j<sup>th</sup>}}{\eqn{j^{th}}{j^th}} column of the matrix
-\ifelse{html}{\out{<b>P</b>}}{\eqn{\textbf{P}}{P}}
+\ifelse{html}{\out{<b>&Sigma;</b>}}{\eqn{\boldsymbol{\Sigma}}{Sigma}}
 }
 \examples{
   require(SFSI)
   data(wheatHTP)
   
-  y = as.vector(Y[,"YLD"])  # Response variable
-  X = scale(WL)             # Predictors
+  y = as.vector(Y[,"E1"])  # Response variable
+  X = scale(X_E1)           # Predictors
 
   # Training and testing sets
   tst = 1:ceiling(0.3*length(y))

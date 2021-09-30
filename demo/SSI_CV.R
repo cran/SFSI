@@ -3,12 +3,14 @@ setwd(tempdir())
 
 library(SFSI)
 data(wheatHTP)
-X = scale(X[1:400,])/sqrt(ncol(X))   # Subset and scale markers
-G = tcrossprod(X)                    # Genomic relationship matrix
-y = as.vector(scale(Y[1:400,"YLD"])) # Subset response variable
+
+index = which(Y$CV %in% 1:2)
+M = scale(M[index,])/sqrt(ncol(M))   # Subset and scale markers
+G = tcrossprod(M)                    # Genomic relationship matrix
+y = as.vector(scale(Y[index,"E1"]))  # Subset response variable
 
 # Predicting a testing set using training set
-tst = sample(seq_along(y),ceiling(0.3*length(y)))
+tst = seq(1,length(y),by=3)
 trn = (seq_along(y))[-tst]
 
 # Obtain lambda from cross-validation (in traning set)

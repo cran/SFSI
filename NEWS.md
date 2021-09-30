@@ -1,3 +1,18 @@
+# Version 1.0.0 (Sep-30-2021)
+
+## New features
+
+  - Function 'solveEN' allows early stop when a user-provided number of non-zero predictors (at a given value of lambda) is reached (argument 'maxDF')
+  - Functions 'solveEN' and 'lars2' return object 'beta' as matrix with predictors in rows (rather than in columns)
+  - Function 'cov2cor2' allows multiply the resulting correlation matrix times a constant 'a' (default is 'a=1')
+  - Provided 'wheatHTP' dataset includes now an array of 4-folds partitions ('CV' column in object 'Y') and calculations of genetic and residual covariances between YLD and each of the wavelengths ('genCOV_xy' and 'resCOV_xy' objects), and among YLD from each environment ('genCOV_yy' object). Residuals covariances among YLD from each environment ('resCOV_yy' object) is also included
+
+## Bug fixes
+
+  - Function 'fitBLUP' performs the new checking varU <= 2*var(y) to declare a possible error if FALSE
+  - Function reshape2::melt is used instead of reshape::melt
+
+
 # Version 0.4.0 (May-12-2021)
 
 ## New features
@@ -18,3 +33,4 @@
 ## Features
 
 - First released version
+- Function 'solveMixed' (from GitHub version) was renamed to 'fitBLUP'

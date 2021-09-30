@@ -20,11 +20,11 @@ Predicted values for a provided matrix of predictors \code{X}
   require(SFSI)
   data(wheatHTP)
   
-  y = as.vector(Y[,"YLD"])  # Response variable
-  X = scale(WL)             # Predictors
+  y = as.vector(Y[,"E1"])  # Response variable
+  X = scale(X_E1)          # Predictors
   
   # Training and testing sets
-  tst = 1:ceiling(0.3*length(y))
+  tst = seq(1,length(y),by=3)
   trn = seq_along(y)[-tst]
 
   # Calculate covariances in training set

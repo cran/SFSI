@@ -24,21 +24,23 @@
 //      maxtole:   Maximum value between two consecutive solutions for beta to be accepted for convergence
 //      maxsteps:  Number of iterations to run before the updating stops
 // ----------------------------------------------------------
-SEXP updatebeta(SEXP n, SEXP XtX, SEXP Xty, SEXP q, SEXP lambda, SEXP a, SEXP maxtole, SEXP maxsteps, SEXP echo, SEXP flagfloat)
+SEXP updatebeta(SEXP n, SEXP XtX, SEXP Xty, SEXP q, SEXP lambda, SEXP a, SEXP maxtole, SEXP maxsteps, SEXP maxDF, SEXP echo, SEXP flagfloat)
 {
     float *pXtX1, *pXty1;
     double *pXtX2, *pXty2, *plambda, alpha, maxTol, eps;
     double L1, L2, maxdiff;
-    int i, j, k, np, maxIter, iter, nlambda, verbose, isFloat;
+    int i, j, k, np, maxIter, iter, nlambda, verbose, isFloat, maxdf;
+    int *pDF;
     //int inc=1;
     double delta, bOLS, bNew;
     double *pB, *b, *currfit;
     long long pos1;
-    SEXP list, B;
+    SEXP list, DF, B;
 
     np=INTEGER_VALUE(n);
     nlambda=INTEGER_VALUE(q);
     maxIter=INTEGER_VALUE(maxsteps);
+    maxdf=INTEGER_VALUE(maxDF);
     verbose=asLogical(echo);
     alpha=NUMERIC_VALUE(a);
     maxTol=NUMERIC_VALUE(maxtole);
@@ -47,21 +49,28 @@ SEXP updatebeta(SEXP n, SEXP XtX, SEXP Xty, SEXP q, SEXP lambda, SEXP a, SEXP ma
     if(isFloat){
       PROTECT(XtX=AS_INTEGER(XtX));
       pXtX1=FLOAT(XtX);
+      pXtX2=(double *) R_alloc(0, sizeof(double)); // will not be used
 
       PROTECT(Xty=AS_INTEGER(Xty));
       pXty1=FLOAT(Xty);
+      pXty2=(double *) R_alloc(0, sizeof(double)); // will not be used
     }else{
       PROTECT(XtX=AS_NUMERIC(XtX));
       pXtX2=NUMERIC_POINTER(XtX);
+      pXtX1=(float *) R_alloc(0, sizeof(float)); // will not be used
 
       PROTECT(Xty=AS_NUMERIC(Xty));
       pXty2=NUMERIC_POINTER(Xty);
+      pXty1=(float *) R_alloc(0, sizeof(float)); // will not be used
 	  }
 
     PROTECT(lambda=AS_NUMERIC(lambda));
     plambda=NUMERIC_POINTER(lambda);
 
-    B = PROTECT(allocMatrix(REALSXP, nlambda, np));
+    DF = PROTECT(allocVector(INTSXP, nlambda));
+    pDF=INTEGER_POINTER(DF);
+
+    B = PROTECT(allocMatrix(REALSXP, np, nlambda)); // dimension N predictors x N lambdas
     pB=NUMERIC_POINTER(B);
 
     b=(double *) R_alloc(np, sizeof(double));
@@ -69,6 +78,7 @@ SEXP updatebeta(SEXP n, SEXP XtX, SEXP Xty, SEXP q, SEXP lambda, SEXP a, SEXP ma
 
     memset(currfit,0, sizeof(double)*np);  // Initialize all currentfit to zero
     memset(b,0, sizeof(double)*np);  // Initialize all coefficients to zero
+    for(j=0; j<nlambda; j++) pDF[j]=np;
 
     eps = DBL_EPSILON;
 
@@ -127,20 +137,24 @@ SEXP updatebeta(SEXP n, SEXP XtX, SEXP Xty, SEXP q, SEXP lambda, SEXP a, SEXP ma
             }
         }
         //F77_NAME(dcopy)(&np, b, &inc, pB+k, &nlambda);
-        for(i=0; i<np; i++){
-          pB[k+i*nlambda]=b[i];
+        pDF[k]=0;
+        for(j=0; j<np; j++){
+          if(fabs(b[j])>eps) pDF[k]++;
+          pB[k*np+j]=b[j];
+          //pB[k+j*nlambda]=b[j];
         }
+        if(maxdf<np && pDF[k]>=maxdf) break;
     }
 
     // Creating a list with 1 vector elements:
-    PROTECT(list = allocVector(VECSXP, 1));
+    PROTECT(list = allocVector(VECSXP, 2));
     SET_VECTOR_ELT(list, 0, B);
+    SET_VECTOR_ELT(list, 1, DF);
 
-    UNPROTECT(5);
+    UNPROTECT(6);
 
     return(list);
 }
-
 // ----------------------------------------------------------
 // Transform a covariance matrix to a (squared) distance matrix
 // The distance between variables i and j is
@@ -225,10 +239,11 @@ SEXP cov2distance(SEXP n, SEXP V, SEXP flagfloat)
 //      n:       Number of variables (columns in V)
 //      V:       Covariance matrix
 // ----------------------------------------------------------
-SEXP cov2correlation(SEXP n, SEXP V, SEXP flagfloat)
+SEXP cov2correlation(SEXP n, SEXP V, SEXP flagfloat, SEXP a)
 {
     float *pV1, *psdx1;
     double *pV2, *psdx2;
+    double a0;
     int np, nOK;
     int i, j, isFloat;
     long long pos1;
@@ -236,6 +251,7 @@ SEXP cov2correlation(SEXP n, SEXP V, SEXP flagfloat)
 
     np=INTEGER_VALUE(n);
     isFloat=asLogical(flagfloat);
+    a0=NUMERIC_VALUE(a);
 
     if(isFloat){
       PROTECT(V=AS_INTEGER(V));
@@ -260,11 +276,11 @@ SEXP cov2correlation(SEXP n, SEXP V, SEXP flagfloat)
         pos1=(long long)np*(long long)i + (long long)i;
         if(isFloat){
           psdx1[i]=sqrt(pV1[pos1]);
-          pV1[pos1]=1;
+          pV1[pos1]=a0*1;
           nOK=nOK+isfinite(1/psdx1[i]);
         }else{
           psdx2[i]=sqrt(pV2[pos1]);
-          pV2[pos1]=1;
+          pV2[pos1]=a0*1;
           nOK=nOK+isfinite(1/psdx2[i]);
         }
     }
@@ -275,14 +291,14 @@ SEXP cov2correlation(SEXP n, SEXP V, SEXP flagfloat)
         {
           if(isFloat){
             pos1=(long long)np*(long long)j + (long long)i;
-            pV1[pos1]=pV1[pos1]/(psdx1[j]*psdx1[i]);
+            pV1[pos1]=a0*pV1[pos1]/(psdx1[j]*psdx1[i]);
             pos1=(long long)np*(long long)i + (long long)j;
-            pV1[pos1]=pV1[pos1]/(psdx1[j]*psdx1[i]);
+            pV1[pos1]=a0*pV1[pos1]/(psdx1[j]*psdx1[i]);
           }else{
             pos1=(long long)np*(long long)j + (long long)i;
-            pV2[pos1]=pV2[pos1]/(psdx2[j]*psdx2[i]);
+            pV2[pos1]=a0*pV2[pos1]/(psdx2[j]*psdx2[i]);
             pos1=(long long)np*(long long)i + (long long)j;
-            pV2[pos1]=pV2[pos1]/(psdx2[j]*psdx2[i]);
+            pV2[pos1]=a0*pV2[pos1]/(psdx2[j]*psdx2[i]);
           }
         }
     }

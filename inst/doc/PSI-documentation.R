@@ -1,4 +1,4 @@
-## ---- Box1, eval=FALSE---------------------------------------------------
+## ---- Box1, eval=FALSE--------------------------------------------------------
 #  rm(list = ls())
 #  
 #  site <-  "https://github.com/MarcooLopez/SFSI/blob/master/data"
@@ -13,7 +13,7 @@
 #  index <- trials %in% unique(trials)[1:9]   # For ease, only 9 trials
 #  trials <- trials[index]
 #  Y <- Y[index,]
-#  WL <- lapply(WL,function(x)x[index,])
+#  X <- lapply(X,function(x)x[index,])
 #  
 #  Y$gid <- factor(as.character(Y$gid))
 #  Z <- model.matrix(~0+gid,data=Y)
@@ -21,9 +21,9 @@
 #  y <- as.vector(Y[,"YLD"])
 #  
 #  # Save file
-#  save(y,trials,K,WL,file="prepared_data.RData")
+#  save(y,trials,K,X,file="prepared_data.RData")
 
-## ---- Box2, eval=FALSE---------------------------------------------------
+## ---- Box2, eval=FALSE--------------------------------------------------------
 #  library(SFSI)
 #  
 #  # Load data
@@ -37,7 +37,7 @@
 #  
 #  save(fm0,evdK,file="varComps.RData")
 
-## ---- Box3, eval=FALSE---------------------------------------------------
+## ---- Box3, eval=FALSE--------------------------------------------------------
 #  load("prepared_data.RData") # load data
 #  
 #  #---------- parameters ------------#
@@ -58,7 +58,7 @@
 #  }
 #  save(partitions,pTST,nPart,timepoints,file="parameters.RData")
 
-## ---- Box4, eval=FALSE---------------------------------------------------
+## ---- Box4, eval=FALSE--------------------------------------------------------
 #  load("prepared_data.RData"); load("parameters.RData")
 #  
 #  for(tp in timepoints){
@@ -69,7 +69,7 @@
 #      indexTRN <- which(partitions[,k]==1)
 #  
 #      # Training set
-#      xTRN <- scale(WL[[tp]][indexTRN,])
+#      xTRN <- scale(X[[tp]][indexTRN,])
 #      yTRN <- as.vector(scale(y[indexTRN]))
 #      KTRN <- K[indexTRN,indexTRN]   # Relationship matrix (given by replicates)
 #  
@@ -83,7 +83,7 @@
 #    cat("Time-point=",tp,". Done \n")
 #  }
 
-## ---- Box5a, eval=FALSE--------------------------------------------------
+## ---- Box5a, eval=FALSE-------------------------------------------------------
 #  load("prepared_data.RData"); load("parameters.RData")
 #  
 #  for(tp in timepoints){
@@ -97,7 +97,7 @@
 #      indexTRN <- which(partitions[,k]==1)
 #  
 #      # Training set
-#      xTRN <- scale(WL[[tp]][indexTRN,])
+#      xTRN <- scale(X[[tp]][indexTRN,])
 #      VARx <- var(xTRN)
 #      EVDx <- eigen(VARx)
 #  
@@ -114,14 +114,14 @@
 #      # L1-PSI
 #      fm <- solveEN(VARx, gencov[,k],nLambda=100)
 #      # fm <- lars2(VARx, gencov[,k])  # Second option
-#      beta <- as.matrix(fm$beta)[-1,]
+#      beta <- t(fm$beta)[-1,]
 #      bL1PSI[[k]] <- data.frame(I(beta),df=fm$df[-1],lambda=fm$lambda[-1])
 #    }
 #    save(bSI,bPCSI,bL1PSI,file=paste0("coefficients_tp_",tp,".RData"))
 #    cat("Time-point=",tp,". Done \n")
 #  }
 
-## ---- Box5b, eval=FALSE--------------------------------------------------
+## ---- Box5b, eval=FALSE-------------------------------------------------------
 #  load("prepared_data.RData"); load("parameters.RData")
 #  
 #  for(tp in timepoints){
@@ -133,7 +133,7 @@
 #      indexTST <- which(partitions[,k]==2)
 #  
 #      # Testing set
-#      xTST <- scale(WL[[tp]][indexTST,])
+#      xTST <- scale(X[[tp]][indexTST,])
 #      yTST <- as.vector(scale(y[indexTST]))
 #      KTST <- K[indexTST,indexTST]   # Connection given by replicates
 #  
@@ -161,7 +161,7 @@
 #    cat("Time-point=",tp,". Done \n")
 #  }
 
-## ---- Box6, eval=FALSE---------------------------------------------------
+## ---- Box6, eval=FALSE--------------------------------------------------------
 #  tp <- 9      # Time-point
 #  load(paste0("accuracy_tp_",tp,".RData"))
 #  
@@ -185,7 +185,7 @@
 #   plot1; plot2
 #  }
 
-## ---- Box7, eval=FALSE---------------------------------------------------
+## ---- Box7, eval=FALSE--------------------------------------------------------
 #  tp <- 9      # Time-point
 #  load(paste0("accuracy_tp_",tp,".RData"))
 #  
@@ -205,7 +205,7 @@
 #     ggplot2::geom_text(ggplot2::aes(label=sprintf("%.2f",accuracy),y=accuracy*0.5))
 #  }
 
-## ---- Box8, eval=FALSE---------------------------------------------------
+## ---- Box8, eval=FALSE--------------------------------------------------------
 #  load("parameters.RData")
 #  AccSI <- c()
 #  for(tp in timepoints)
@@ -228,7 +228,7 @@
 #      ggplot2::theme_bw() + ggplot2::geom_line() + ggplot2::geom_point() #+ geom_errorbar(aes(ymin=accuracy-se,ymax=accuracy+se),width=0.2)
 #  }
 
-## ---- Box9a, eval=FALSE--------------------------------------------------
+## ---- Box9a, eval=FALSE-------------------------------------------------------
 #  load("prepared_data.RData"); load("parameters.RData")
 #  
 #  Gencov <- c()   # To stack all covariances from all time-points
@@ -245,7 +245,7 @@
 #      indexTRN <- which(partitions[,k]==1)
 #  
 #      # Training set
-#      xTRN <- scale(do.call(cbind,WL[timepoints])[indexTRN,])
+#      xTRN <- scale(do.call(cbind,X[timepoints])[indexTRN,])
 #      VARx <- var(xTRN)
 #      EVDx <- eigen(VARx)
 #  
@@ -256,12 +256,12 @@
 #  
 #      # L1-PSI
 #      fm <- solveEN(VARx, Gencov[,k],nLambda=100,maxIter=200,tol=1E-3)
-#      beta <- as.matrix(fm$beta)[-1,]
+#      beta <- t(fm$beta)[-1,]
 #      bL1PSI[[k]] <- data.frame(I(beta),df=fm$df[-1],lambda=fm$lambda[-1])
 #  }
 #  save(bPCSI,bL1PSI,nPart,file="multi_timepoint_coefficients.RData")
 
-## ---- Box9b, eval=FALSE--------------------------------------------------
+## ---- Box9b, eval=FALSE-------------------------------------------------------
 #  load("parameters.RData")
 #  load("multi_timepoint_coefficients.RData")
 #  
@@ -272,7 +272,7 @@
 #      indexTST <- which(partitions[,k]==2)
 #  
 #      # Testing set
-#      xTST <- scale(do.call(cbind,WL[timepoints])[indexTST,])
+#      xTST <- scale(do.call(cbind,X[timepoints])[indexTST,])
 #      yTST <- as.vector(scale(y[indexTST]))
 #      KTST <- K[indexTST,indexTST]   # Connection given by replicates
 #  
@@ -296,7 +296,7 @@
 #  }
 #  save(AccSI,file="multi_timepoint_accuracy.RData")
 
-## ---- Box10, eval=FALSE--------------------------------------------------
+## ---- Box10, eval=FALSE-------------------------------------------------------
 #  tp <- 9      # Time-point
 #  load(paste0("accuracy_tp_",tp,".RData"))
 #  load("multi_timepoint_accuracy.RData")
@@ -318,12 +318,12 @@
 #    ggplot2::geom_text(ggplot2::aes(label=sprintf("%.2f",accuracy),y=accuracy*0.5))
 #  }
 
-## ---- Box11, eval=FALSE--------------------------------------------------
+## ---- Box11, eval=FALSE-------------------------------------------------------
 #  load("varComps.RData")    # Load the SVD of ZZ' to speed computation
 #  load("multi_timepoint_accuracy.RData")
 #  
 #  # Get genetic covariances
-#  x <- scale(do.call(cbind,WL))
+#  x <- scale(do.call(cbind,X))
 #  fm <- getGenCov(y1=y,y2=x,U=evdK$vectors,d=evdK$values, mc.cores=5,warn=FALSE)
 #  gencov <- fm$covU
 #  
@@ -337,8 +337,8 @@
 #  VARx <- var(x)
 #  beta <- solveEN(VARx,gencov,lambda=lambda)$beta
 #  
-#  wl <- factor(rep(gsub("wl","",colnames(WL[[1]])),length(WL)))
-#  Timepoint <- factor(rep(seq(length(WL)),each=ncol(WL[[1]])))
+#  wl <- factor(rep(gsub("wl","",colnames(X[[1]])),length(X)))
+#  Timepoint <- factor(rep(seq(length(X)),each=ncol(X[[1]])))
 #  dat <- data.frame(beta=as.vector(beta),Timepoint,wl)
 #  dat$beta[abs(dat$beta) < .Machine$double.eps] <- NA
 #  
