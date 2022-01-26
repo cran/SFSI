@@ -18,11 +18,11 @@ fm1 = SSI_CV(y,K=G,trn=trn,nFolds=5,nCV=2)
 lambda = summary(fm1)$optCOR["mean","lambda"]
 
 # Fit the index with the obtained lambda
-fm2 = SSI(y,K=G,h2=NULL,trn=trn,tst=tst,lambda=lambda)
+fm2 = SSI(y,K=G,theta=NULL,trn=trn,tst=tst,lambda=lambda)
 summary(fm2)$accuracy        # Testing set accuracy
 
 # Compare the accuracy with that of the non-sparse index
-fm3 = SSI(y,K=G,h2=NULL,trn=trn,tst=tst,lambda=0)
+fm3 = SSI(y,K=G,theta=NULL,trn=trn,tst=tst,lambda=0)
 summary(fm3)$accuracy
 
 setwd(oldwd)

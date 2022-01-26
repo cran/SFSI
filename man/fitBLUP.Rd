@@ -3,7 +3,7 @@
 \title{Function fitBLUP}
 \usage{
 fitBLUP(y, X = NULL, Z = NULL, K = NULL, U = NULL, 
-        d = NULL, h2 = NULL, BLUP = TRUE, 
+        d = NULL, theta = NULL, BLUP = TRUE, 
         method = c("REML","ML"), return.Hinv = FALSE, 
         tol = 1E-5, maxIter = 1000, interval = c(1E-9,1E9),
         warn = TRUE)  
@@ -21,7 +21,7 @@ fitBLUP(y, X = NULL, Z = NULL, K = NULL, U = NULL,
 
 \item{d}{(numeric vector) Eigenvalues from spectral value decomposition of \ifelse{html}{\out{<b>G</b> = <b>U D U'</b>}}{\eqn{\textbf{G} = \textbf{U D U'}}{G = U D U'}}}
 
-\item{h2}{(numeric) Heritability of the response variable. When it is not \code{NULL}, the variance components are not estimated and only fixed and random effects are computed}
+\item{theta}{(numeric) Residual/genetic variances ratio. When it is not \code{NULL}, the variance components are not estimated and only fixed and random effects are computed}
 
 \item{BLUP}{\code{TRUE} or \code{FALSE} to whether return the random effects estimates}
 
@@ -84,10 +84,10 @@ is a matrix of weights given by
 \ifelse{html}{\out{<center><b>H</b> = <b>G</b><sub>trn</sub> (<b>G</b><sub>trn</sub> + &theta;<b>D</b>)<sup>-1</sup></center>}}{\deqn{\textbf{H}=\textbf{G}_{trn}(\textbf{G}_{trn} + \theta\textbf{D})^{-1}}{H = G[trn](G[trn] + theta D)^-1}}
 
 where \ifelse{html}{\out{<b>G</b><sub>trn</sub>}}{\eqn{\textbf{G}_{trn}}{G[trn]}}
-is the sub-matrix corresponding to the training set, and \ifelse{html}{\out{&theta; = &sigma;<sup>2</sup><sub>e</sub>/&sigma;<sup>2</sup><sub>u</sub>}}{\eqn{\theta=\sigma_e^2/\sigma_u^2}{theta = sigma^2_e/sigma^2_u}} is the variance components ratio representing a shrinkage parameter. This parameter is expressed in terms of the heritability, \ifelse{html}{\out{h<sup>2</sup> = &sigma;<sup>2</sup><sub>u</sub>/(&sigma;<sup>2</sup><sub>u</sub> + &sigma;<sup>2</sup><sub>e</sub>)}}{\eqn{h^2=\sigma^2_u/(\sigma^2_u+\sigma^2_e)}{h^2 = sigma^2_u/(sigma^2_u + sigma^2_e)}}, as \ifelse{html}{\out{&theta; = (1 - h<sup>2</sup>)/h<sup>2</sup>}}{\eqn{\theta=(1-h^2)/h^2}{theta = (1 - h^2)/h^2}}.
+is the sub-matrix corresponding to the training set, and \ifelse{html}{\out{&theta; = &sigma;<sup>2</sup><sub>e</sub>/&sigma;<sup>2</sup><sub>u</sub>}}{\eqn{\theta=\sigma_e^2/\sigma_u^2}{theta = sigma^2_e/sigma^2_u}} is the residual/genetic variances ratio representing a shrinkage parameter. This parameter is expressed in terms of the heritability, \ifelse{html}{\out{h<sup>2</sup> = &sigma;<sup>2</sup><sub>u</sub>/(&sigma;<sup>2</sup><sub>u</sub> + &sigma;<sup>2</sup><sub>e</sub>)}}{\eqn{h^2=\sigma^2_u/(\sigma^2_u+\sigma^2_e)}{h^2 = sigma^2_u/(sigma^2_u + sigma^2_e)}}, as \ifelse{html}{\out{&theta; = (1 - h<sup>2</sup>)/h<sup>2</sup>}}{\eqn{\theta=(1-h^2)/h^2}{theta = (1 - h^2)/h^2}}.
 
 The prediction of values \ifelse{html}{\out{<b>u</b><sub>tst</sub>}}{\eqn{\textbf{u}_{tst}}{u_tst}} corresponding to un-observed data (testing set) can be done by using 
-\ifelse{html}{\out{<center><b>H</b> = <b>G</b><sub>tst,trn</sub> (<b>G</b><sub>trn</sub> + &lambda;<sub>0</sub><b>D</b>)<sup>-1</sup></center>}}{\deqn{\textbf{H}=\textbf{G}_{tst,trn}(\textbf{G}_{trn} + \lambda_0\textbf{D})^{-1}}{H = G[tst,trn](G[trn] + lambda_0 D)^-1}}
+\ifelse{html}{\out{<center><b>H</b> = <b>G</b><sub>tst,trn</sub> (<b>G</b><sub>trn</sub> + &theta;<b>D</b>)<sup>-1</sup></center>}}{\deqn{\textbf{H}=\textbf{G}_{tst,trn}(\textbf{G}_{trn} + \theta\textbf{D})^{-1}}{H = G[tst,trn](G[trn] + theta D)^-1}}
 
 where
 \ifelse{html}{\out{<b>G</b><sub>tst,trn</sub>}}{\eqn{\textbf{G}_{tst,trn}}{G[tst,trn]}}
@@ -114,6 +114,7 @@ Solutions are found using the GEMMA (Genome-wide Efficient Mixed Model Analysis)
   plot(y[tst],fm1$u[tst])      # Predicted vs observed values in testing set
   cor(y[tst],fm1$u[tst])       # Prediction accuracy in testing set
   cor(y[trn],fm1$u[trn])       # Prediction accuracy in training set
+  fm1$theta                    # Residual/Genetic variances ratio
   fm1$h2                       # Heritability
   
   \donttest{

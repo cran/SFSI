@@ -14,12 +14,13 @@ y = scale(Y[index,"E1"])            # Subset response variable
 fm1 = fitBLUP(y,K=G)
 fm1$varU
 fm1$varE
+fm1$theta
 fm1$h2
 cor(y,fm1$u)                 # Prediction accuracy
 
 # Same model different parametrization
 fm2 = fitBLUP(y,Z=M)
-fm2$varU; fm2$varE; fm2$h2
+fm2$varU; fm2$varE; fm2$theta; fm2$h2
 cor(y,M%*%fm2$u)             # Prediction accuracy
 
 # Training and testing sets

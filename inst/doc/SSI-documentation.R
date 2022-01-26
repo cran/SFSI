@@ -18,8 +18,9 @@
 #  
 #  # Fit model
 #  fm0 <- fitBLUP(y, K=G)
-#  fm0$h2 <- fm0$varU/(fm0$varU+fm0$varE)  # Estimate heritability
-#  c(fm0$varU,fm0$varE,fm0$h2)             # Variance components (varU,varE,h2)
+#  fm0$theta <- fm0$varE/fm0$varU          # Residual/genetic variances ratio
+#  fm0$h2 <- fm0$varU/(fm0$varU+fm0$varE)  # Heritability
+#  c(fm0$varU,fm0$varE,fm0$theta,fm0$h2)   # Print variance components
 #  
 #  save(fm0, file="varComps.RData")
 

@@ -4,7 +4,7 @@
 # mc.cores = 1; tol = 1E-4; maxIter = 500; verbose = TRUE; method = c("REML","ML")[1]
 
 SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
-         h2 = NULL, trn = seq_along(y), tst = seq_along(y),
+         theta = NULL, h2 = NULL, trn = seq_along(y), tst = seq_along(y),
          subset = NULL, alpha = 1, lambda = NULL, nLambda = 100,
          minLambda = .Machine$double.eps^0.5, commonLambda = TRUE,
          tol = 1E-4, maxIter = 500, method = c("REML","ML"),
@@ -62,7 +62,7 @@ SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
   RHS <- K[trn,tst,drop=FALSE]
   K <- K[trn,trn]
 
-  if(is.null(h2))
+  if(is.null(theta) & is.null(h2))
   {
     # Fit LMM to get variance components and estimate fixed effects as GLS
     fm <- fitBLUP(y[trn],X=X[trn, ,drop=FALSE],K=K,method=method)
@@ -70,25 +70,36 @@ SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
       varU <- fm$varU
       varE <- fm$varE
       h2 <- varU/(varU + varE)
+      theta <- varE/varU
       b <- fm$b
     }else stop("Convergence was not reached in the 'GEMMA' algorithm. \n\t",
            "Please provide a heritability estimate in 'h2' parameter")
   }else{   # Only estimate fixed effects as GLS
     varU <- varE <- NULL
+    if(!is.null(theta) & !is.null(h2)){
+      cat("Both 'theta' and 'h2' are provided. Only 'theta' will be considered\n")
+      h2 <- NULL
+    }
+    if(is.null(theta)){
+      theta <- (1-h2)/h2
+    }else{
+      h2 <- 1/(1+theta)
+    }
     if(is.null(b)){
-      b <- fitBLUP(y[trn],X=X[trn,,drop=FALSE],K=K,BLUP=FALSE,h2=h2)$b
+      b <- fitBLUP(y[trn],X=X[trn,,drop=FALSE],K=K,BLUP=FALSE,theta=theta)$b
     }else{
       if(length(b) != ncol(X)) stop("The length of 'b' must be the same as the number of columns of 'X'\n")
     }
+
   }
   if(h2 < 0.001) warning("The 'heritability' is too small. Results may be affected",immediate.=TRUE)
   Xb <- drop(X%*%b)
 
   # Standardizing
   if(is.null(D)){
-    add2diag(K,a=(1-h2)/h2,void=TRUE)   #diag(K) <- diag(K) + (1-h2)/h2
+    add2diag(K,a=theta,void=TRUE)   #diag(K) <- diag(K) + theta
   }else{
-    K <- K + ((1-h2)/h2)*D
+    K <- K + theta*D
   }
   sdx <- sqrt(float::diag(K))
   cov2cor2(K,void=TRUE)   # Equal to K=cov2cor(K) but faster
@@ -171,8 +182,8 @@ SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
     stop("Some sub-processes failed. Something went wrong during the analysis.")
   }
 
-  out <- list(name=name, y=y, Xb=Xb, b=b, varU=varU,
-              varE=varE, h2=h2, trn=trn, tst=tst, alpha=alpha,
+  out <- list(name=name, y=y, Xb=Xb, b=b, varU=varU, varE=varE,
+              theta=theta, h2=h2, trn=trn, tst=tst, alpha=alpha,
               df = do.call("rbind",lapply(out,function(x)x$df)),
               lambda = do.call("rbind",lapply(out,function(x)x$lambda)),
               file_beta=paste0(tmpdir,"/",file_beta))

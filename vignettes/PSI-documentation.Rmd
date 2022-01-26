@@ -16,7 +16,7 @@ output:
     toc: true
 bibliography: references.bib
 vignette: |
-  %\VignetteIndexEntry{Documentation: Regularized selection indices for breeding value prediction using hyper-spectral image data (Lopez-Cruz et. al., 2020, Sci Rep. 10:8195)}
+  %\VignetteIndexEntry{Documentation: Lopez-Cruz et. al. (2020) Sci. Rep. 10:8195)}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -173,7 +173,7 @@ trial plots and reported as each line reflectance.
 
 Grain yield and image data were pre-adjusted using mixed-effects model that accounted for genotype, trial, replicate, and sub-block. No pre-adjusting was made for DTH, DTM, and PH traits. Pre-adjusted phenotypes were obtained by subtracting from the phenotypic record the mean plus BLUPs of trial, replicate, and sub-block effects.
 
-Lines were sequenced using GBS technology. Next, SNP were extracted and filtered so that lines >50\% missing data were removed. Markers were recoded as –1, 0, and 1, corresponding to homozygous for the minor allele, heterozygous, and homozygous for the major allele, respectively. Next, markers with a minor allele frequency <0.05 and >15\% of missing data were removed. Remaining SNPs with missing values were imputed with the mean of observed genotypes. Only marker information on 3,274 SNPs for 967 lines remained after quality filters. 
+Lines were sequenced using GBS technology. Next, SNP were extracted and filtered so that lines >50\% missing data were removed. Markers were recoded as –1, 0, and 1, corresponding to homozygous for the minor allele, heterozygous, and homozygous for the major allele, respectively. Next, markers with a minor allele frequency <0.05 and >15\% of missing data were removed. Remaining SNPs with missing values were imputed with the mean of observed genotypes.
 
 The CRAN version includes the `wheatHTP` dataset containing (un-replicated) YLD from all environments E1,...,E4, and reflectance (latest time-point only) data from the environment E1 only. Marker data is also included in the dataset. The phenotypic and reflectance data are averages (line effects from mixed models) for 776 lines evaluated in 28 trials (with at least 26 lines each) for which marker information on 3,438 SNPs is available.
 

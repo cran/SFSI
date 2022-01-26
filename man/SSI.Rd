@@ -5,15 +5,15 @@
 \title{Sparse Selection Index}
 \usage{
 SSI(y, X = NULL, b = NULL, Z = NULL, K, D = NULL, 
-    h2 = NULL, trn = seq_along(y), tst = seq_along(y), 
+    theta = NULL, h2 = NULL, trn = seq_along(y), tst = seq_along(y), 
     subset = NULL, alpha = 1, lambda = NULL, nLambda = 100,
     minLambda = .Machine$double.eps^0.5, commonLambda = TRUE,
     tol = 1E-4, maxIter = 500, method = c("REML","ML"),
     saveAt = NULL, name = NULL, mc.cores = 1, verbose = TRUE)
     
 SSI_CV(y, X = NULL, b = NULL, Z = NULL, K, D = NULL, 
-      h2 = NULL, trn = seq_along(y), alpha = 1, lambda = NULL,
-      nLambda = 100, minLambda = .Machine$double.eps^0.5,
+      theta = NULL, h2 = NULL, trn = seq_along(y), alpha = 1, 
+      lambda = NULL, nLambda = 100, minLambda = .Machine$double.eps^0.5,
       nCV = 1, nFolds = 5, seed = NULL, commonLambda = TRUE,
       tol = 1E-4, maxIter = 500, method = c("REML","ML"), 
       name = NULL, mc.cores = 1, verbose = TRUE)
@@ -31,7 +31,9 @@ SSI_CV(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
 
 \item{D}{(numeric matrix) Relationships among residuals (usually an identity matrix). When \code{D=NULL} an identity matrix is considered (default)}
 
-\item{h2}{(numeric) Heritability of the response variable. When \code{h2=NULL} (default), it is calculated from training data estimated using the function 'fitBLUP' (see \code{help(fitBLUP)}). It is used to set the residual to genetic variance ratio given by \code{(1-h2)/h2}}
+\item{theta}{(numeric) Residual/genetic variances ratio. When \code{theta=NULL} (default), it is calculated from training data using the function 'fitBLUP' (see \code{help(fitBLUP)})}
+
+\item{h2}{(numeric) Heritability of the response variable. When \code{h2=NULL} (default), it is calculated from training data using the function 'fitBLUP' (see \code{help(fitBLUP)}). It is used to set the residual/genetic variances ratio \code{theta}}
 
 \item{trn}{(integer vector) Which elements from vector \code{y} are in training set. Default \code{trn=seq_along(y)} will consider all individuals as training}
 
@@ -170,21 +172,22 @@ Function 'SSI_CV' performs cross-validation within the training data specified i
   tst = seq(1,length(y),by=3)
   trn = (seq_along(y))[-tst]
 
-  # Calculate heritability using training data
+  # Calculate variance components ratio using training data
   yNA <- y
   yNA[tst] <- NA
   fm0 = fitBLUP(yNA,K=G)
+  theta = fm0$varE/fm0$varU
   h2 = fm0$varU/(fm0$varU + fm0$varE)
   
   # Sparse selection index
-  fm1 = SSI(y,K=G,h2=h2,trn=trn,tst=tst)
+  fm1 = SSI(y,K=G,theta=theta,trn=trn,tst=tst)
   summary(fm1)$optCOR
   
   \donttest{
   if(requireNamespace("float")){
   # Using a 'float' type variable for K
   G2 = float::fl(G)
-  fm2 = SSI(y,K=G2,h2=h2,trn=trn,tst=tst)
+  fm2 = SSI(y,K=G2,theta=theta,trn=trn,tst=tst)
   summary(fm2)$optCOR  # compare with above results
   }
   }
@@ -194,11 +197,11 @@ Function 'SSI_CV' performs cross-validation within the training data specified i
   # obtained from cross-validation in a traning set
   #---------------------------------------------------
   # Run a cross validation in training set
-  fm2 = SSI_CV(y,K=G,h2=h2,trn=trn,nFolds=5,name="1 5CV")
+  fm2 = SSI_CV(y,K=G,theta=theta,trn=trn,nFolds=5,name="1 5CV")
   lambda = summary(fm2)$optCOR["mean","lambda"]
   
   # Fit the index with the obtained lambda
-  fm3 = SSI(y,K=G,h2=h2,trn=trn,tst=tst,lambda=lambda)
+  fm3 = SSI(y,K=G,theta=theta,trn=trn,tst=tst,lambda=lambda)
   summary(fm3)$accuracy        # Testing set accuracy
 
   # Compare the accuracy with that of the non-sparse index (G-BLUP)
@@ -206,7 +209,7 @@ Function 'SSI_CV' performs cross-validation within the training data specified i
   
   \donttest{
   # Obtain an 'optimal' lambda by repeating the CV several times
-  fm22 = SSI_CV(y,K=G,h2=h2,trn=trn,nCV=5,name="5 5CV")
+  fm22 = SSI_CV(y,K=G,theta=theta,trn=trn,nCV=5,name="5 5CV")
   plot(fm22,fm2)
   }
 }

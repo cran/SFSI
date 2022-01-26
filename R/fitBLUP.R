@@ -1,8 +1,8 @@
-# Z=U=d=indexK = NULL; BLUP=TRUE; method=c("REML","ML")[1]; h2=NULL
+# Z=U=d=indexK = NULL; BLUP=TRUE; method=c("REML","ML")[1]; theta=NULL
 # return.Hinv = FALSE; tol=1E-5; maxIter=1000; interval=c(1E-9,1E9); warn=TRUE
 
 fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, U = NULL, d = NULL,
-                    h2 = NULL, BLUP = TRUE, method = c("REML","ML"),
+                    theta = NULL, BLUP = TRUE, method = c("REML","ML"),
                     return.Hinv = FALSE, tol = 1E-5, maxIter = 1000,
                     interval = c(1E-9,1E9), warn = TRUE)
 {
@@ -77,10 +77,11 @@ fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, U = NULL, d = NULL,
   c0 <- ncol(X)-1
 
   varP <- var(y[indexOK])*sum(d)/length(d) # mean(d)
-  convergence <- lambda0 <- varU <- varE <- bHat <- dbar <- msg <- NA
+  convergence <- varU <- varE <- bHat <- dbar <- msg <- NA
 
-  if(is.null(h2))
+  if(is.null(theta))
   {
+    ratio <- NA
     tt <- searchInt(method,interval=interval,n=n,c0=c0,Uty=Uty,UtX=UtX,d=d,
            maxIter=maxIter,tol=tol,lower=interval[1],upper=interval[2],varP=varP)
 
@@ -106,39 +107,39 @@ fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, U = NULL, d = NULL,
       }
     }
     msg <- tt$msg
-    lambda0 <- tt$lambda0
+    ratio <- tt$ratio
     bHat <- tt$bHat
     dbar <- tt$dbar
     varU <- tt$varU; varE <- tt$varE
     convergence <- ifelse(is.na(tt$convergence),FALSE,tt$convergence)
 
   }else{
-    lambda0 <- h2/(1-h2)
-    dbar <- 1/(lambda0*d + 1)
+    ratio <- 1/theta
+    dbar <- 1/(ratio*d + 1)
     qq1 <- t(Uty*dbar)%*%UtX
     qq2 <- solve(sweep(t(UtX),2L,dbar,FUN="*")%*%UtX)
     ytPy <- drop(sum(dbar*Uty^2)-qq1%*%qq2%*%t(qq1))
     bHat <- drop(qq2%*%t(qq1))
     varE <- ifelse(method=="REML",ytPy/(n-c0-1),ytPy/n)
-    varU <- lambda0*varE
+    varU <- ratio*varE
   }
 
 
   uHat <- Hinv <- NULL
-  if(return.Hinv | (BLUP & !is.na(lambda0) & !isGeigen)){
+  if(return.Hinv | (BLUP & !is.na(ratio) & !isGeigen)){
     if(float::storage.mode(U) == "float32"){
-      Hinv <- float::tcrossprod(float::sweep(U,2L,float::fl(lambda0*dbar),FUN="*"),U)
+      Hinv <- float::tcrossprod(float::sweep(U,2L,float::fl(ratio*dbar),FUN="*"),U)
     }else{
-      Hinv <- float::tcrossprod(float::sweep(U,2L,lambda0*dbar,FUN="*"),U)
+      Hinv <- float::tcrossprod(float::sweep(U,2L,ratio*dbar,FUN="*"),U)
     }
   }
 
   # Compute BLUP: uHat = KZ'V^{-1} (y-X*b)   with V = varU*ZKZ' + varE*I
-  if(BLUP & !is.na(lambda0))
+  if(BLUP & !is.na(ratio))
   {
     yStar <- y[indexOK] - X[indexOK ,,drop=FALSE]%*%bHat
     if(isGeigen){
-      H <- float::tcrossprod(sweep(U,2L,d*lambda0*dbar,FUN="*"),U)
+      H <- float::tcrossprod(sweep(U,2L,d*ratio*dbar,FUN="*"),U)
       uHat <- as.vector(H%*%yStar)
     }else{
       if(is.null(Z) & is.null(K)){  # Z=NULL, K=NULL
@@ -163,15 +164,16 @@ fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, U = NULL, d = NULL,
   }
 
   if(warn){
-    if(ifelse(is.na(convergence),is.na(lambda0),!convergence)){
+    if(ifelse(is.na(convergence),is.na(ratio),!convergence)){
       warning("Convergence was not reached in the 'GEMMA' algorithm.",immediate.=TRUE)
     }
     if(!is.na(msg)) warning(msg,immediate.=TRUE)
   }
 
+  theta <- varE/varU
   h2 <- varU/(varU + varE)
 
-  out <- list(varE = varE, varU = varU, h2 = h2, b = bHat, u = uHat,
+  out <- list(varE = varE, varU = varU, theta=theta, h2 = h2, b = bHat, u = uHat,
               Hinv = Hinv, convergence = convergence, method = method)
   return(out)
 }

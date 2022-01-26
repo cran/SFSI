@@ -14,7 +14,7 @@ output:
     toc: true
 bibliography: references.bib
 vignette: |
-  %\VignetteIndexEntry{Documentation: Optimal breeding value prediction using a Sparse Selection Index (Lopez-Cruz and de los Campos, 2020, Genetics)}
+  %\VignetteIndexEntry{Documentation: Lopez-Cruz and de los Campos (2021) Genetics 218(1):1-10}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -44,13 +44,13 @@ where $\boldsymbol{\beta}_i=\{\beta_{ij}\}$ is a vector of weights which are obt
 This optimization problem can be reduced to
 
 \begin{equation*}
-\hat{\boldsymbol{\beta}}_i = \underset{\boldsymbol{\beta}_i}{\text{arg min}}\left[\frac{1}{2}\boldsymbol{\beta}'_i(\textbf{G}+\lambda_0 \textbf{I})\boldsymbol{\beta}_i - \textbf{G}'_i\boldsymbol{\beta}_i\right]
+\hat{\boldsymbol{\beta}}_i = \underset{\boldsymbol{\beta}_i}{\text{arg min}}\left[\frac{1}{2}\boldsymbol{\beta}'_i(\textbf{G}+\theta \textbf{I})\boldsymbol{\beta}_i - \textbf{G}'_i\boldsymbol{\beta}_i\right]
 \end{equation*}
 
-where $\lambda_0=\sigma_\varepsilon^2/\sigma_u^2=(1-h^2)/h^2$  is the ratio of the error to the genetic variance, which can be expressed in terms of the **heritability**, $h^2$. The solution to the above problem can be shown to be 
+where $\theta=\sigma_\varepsilon^2/\sigma_u^2=(1-h^2)/h^2$  is the ratio of the residual to the genetic variance, which can be expressed in terms of the **heritability**, $h^2$. The solution to the above problem can be shown to be 
 
 \begin{equation*}
-\hat{\boldsymbol{\beta}}_i = (\textbf{G}+\lambda_0 \textbf{I})^{-1}\textbf{G}_i 
+\hat{\boldsymbol{\beta}}_i = (\textbf{G}+\theta \textbf{I})^{-1}\textbf{G}_i 
 \end{equation*}
 
 The vector $\hat{\boldsymbol{\beta}}_i$ can be shown to be the $i^{th}$ row of the Hat matrix of the **BLUPs of the genetic values** of the individuals in the prediction set, thus, depending on whether $\textbf{G}$ is a pedigree- or genomic-derived relationship matrix, the standard SI is equivalent to a **pedigree-** [@Henderson1963] or **genomic-BLUP**, respectively.
@@ -60,7 +60,7 @@ The vector $\hat{\boldsymbol{\beta}}_i$ can be shown to be the $i^{th}$ row of t
 Sparsity (and possibly differential shrinkage on the $\hat{\boldsymbol{\beta}}_i$) can be achieved by adding an L1-penalty to the above optimization function; therefore,
 
 \begin{equation*}
-\tilde{\boldsymbol{\beta}}_i = \underset{\boldsymbol{\beta}_i}{\text{arg min}}\left[\frac{1}{2}\boldsymbol{\beta}'_i(\textbf{G}+\lambda_0 \textbf{I})\boldsymbol{\beta}_i - \textbf{G}'_i\boldsymbol{\beta}_i + \lambda\sum_{j=1}^n|\beta_{ij}|\right]
+\tilde{\boldsymbol{\beta}}_i = \underset{\boldsymbol{\beta}_i}{\text{arg min}}\left[\frac{1}{2}\boldsymbol{\beta}'_i(\textbf{G}+\theta \textbf{I})\boldsymbol{\beta}_i - \textbf{G}'_i\boldsymbol{\beta}_i + \lambda\sum_{j=1}^n|\beta_{ij}|\right]
 \end{equation*}
 
 The above optimization problem does not have a closed-form solution; however, solutions can be obtained using a Coordinate Descent algorithm very similar to the one used to solve LASSO problems [@Lopez-Cruz2020]. The value $\lambda=0$ produces the coefficients of the standard SI (or G-BLUP).
@@ -110,8 +110,9 @@ load("geno_pheno.RData") # Load data
 
 # Fit model
 fm0 <- fitBLUP(y, K=G) 
-fm0$h2 <- fm0$varU/(fm0$varU+fm0$varE)  # Estimate heritability
-c(fm0$varU,fm0$varE,fm0$h2)             # Variance components (varU,varE,h2)
+fm0$theta <- fm0$varE/fm0$varU          # Residual/genetic variances ratio
+fm0$h2 <- fm0$varU/(fm0$varU+fm0$varE)  # Heritability
+c(fm0$varU,fm0$varE,fm0$theta,fm0$h2)   # Print variance components
 
 save(fm0, file="varComps.RData")
 ```

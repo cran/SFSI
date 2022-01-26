@@ -368,16 +368,16 @@ tr_Pi <- function(i,UtX,dbar){
 #====================================================================
 # Derivative of the Log Likelihood (ML)
 #====================================================================
-dlogLik <- function(lambda,n,c0,Uty,UtX,d)
+dlogLik <- function(ratio,n,c0,Uty,UtX,d)
 {
-  dbar <- 1/(lambda*d+1)
+  dbar <- 1/(ratio*d+1)
   #Tr_Hinv <- sum(dbar)
-  Tr_Hinv_G <- (n-sum(dbar))/lambda #(n-Tr_Hinv)/lambda
+  Tr_Hinv_G <- (n-sum(dbar))/ratio #(n-Tr_Hinv)/ratio
 
   ytPy <- atPia(c0+1,Uty,UtX=UtX,dbar=dbar)
   ytPPy <- atPiPia(c0+1,Uty,UtX=UtX,dbar=dbar)
 
-  ytPGPy <- (ytPy-ytPPy)/lambda
+  ytPGPy <- (ytPy-ytPPy)/ratio
 
   dd <- -0.5*Tr_Hinv_G + 0.5*n * ytPGPy/ytPy
 
@@ -387,17 +387,17 @@ dlogLik <- function(lambda,n,c0,Uty,UtX,d)
 #====================================================================
 # Derivative of the Log-restricted Likelihood (REML)
 #====================================================================
-# tt=dlogResLik(lambda,n=n,c0=c0,Uty=Uty,UtX=UtX,d=d)
-dlogResLik <- function(lambda,n,c0,Uty,UtX,d)
+# tt=dlogResLik(ratio,n=n,c0=c0,Uty=Uty,UtX=UtX,d=d)
+dlogResLik <- function(ratio,n,c0,Uty,UtX,d)
 {
-  dbar <- 1/(lambda*d+1)
+  dbar <- 1/(ratio*d+1)
   Tr_Px <- tr_Pi(c0+1,UtX=UtX,dbar=dbar)
-  Tr_Px_G <- (n-c0-1-Tr_Px)/lambda
+  Tr_Px_G <- (n-c0-1-Tr_Px)/ratio
 
   ytPy <-  atPia(c0+1,Uty,UtX=UtX,dbar=dbar)
   ytPPy <- atPiPia(c0+1,Uty,UtX=UtX,dbar=dbar)
 
-  ytPGPy <- (ytPy-ytPPy)/lambda
+  ytPGPy <- (ytPy-ytPPy)/ratio
 
   dd <- -0.5*Tr_Px_G + 0.5*(n-c0-1)* ytPGPy/ytPy
 
@@ -405,12 +405,12 @@ dlogResLik <- function(lambda,n,c0,Uty,UtX,d)
 }
 
 #====================================================================
-# Search for the root lambda0=varU/varE in a given interval
+# Search for the root ratio=varU/varE in a given interval
 #====================================================================
 searchInt <- function(method,interval,n,c0,Uty,UtX,d,maxIter,tol,lower,upper,varP)
 {
   flag <- TRUE; i <- 1
-  convergence <- lambda0 <- dbar <- varU <- varE <- bHat <- msg <- NA
+  convergence <- ratio <- dbar <- varU <- varE <- bHat <- msg <- NA
   while(flag)
   {
     i <- i + 1
@@ -425,29 +425,29 @@ searchInt <- function(method,interval,n,c0,Uty,UtX,d,maxIter,tol,lower,upper,var
     }
     if(class(tmp) == "list")
     {
-      lambda00 <- tmp$root
-      if(lambda00 <= lower){
-        lambda00 <- lower
+      ratio0 <- tmp$root
+      if(ratio0 <= lower){
+        ratio0 <- lower
         msg <- paste0("Root varU/varE is the lower bound ",lower)
       }else{
-        if(lambda00 >= upper){
-          lambda00 <- upper
+        if(ratio0 >= upper){
+          ratio0 <- upper
           msg <- paste0("Root varU/varE is the upper bound ",upper)
         }
       }
 
-      dbar <- 1/(lambda00*d + 1)
+      dbar <- 1/(ratio0*d + 1)
       qq1 <- t(Uty*dbar)%*%UtX
       qq2 <- solve(sweep(t(UtX),2L,dbar,FUN="*")%*%UtX)
       ytPy <- drop(sum(dbar*Uty^2)-qq1%*%qq2%*%t(qq1))
       bHat <- drop(qq2%*%t(qq1))
 
       varE <- ifelse(method=="REML",ytPy/(n-c0-1),ytPy/n)
-      varU <- lambda00*varE
+      varU <- ratio0*varE
 
       if(varU <= (2)*varP){  # A quality control-like
         convergence <- tmp$iter <= maxIter
-        lambda0 <-  lambda00
+        ratio <-  ratio0
       }
     }
     #aa <- rep(NA,3)
@@ -455,7 +455,7 @@ searchInt <- function(method,interval,n,c0,Uty,UtX,d,maxIter,tol,lower,upper,var
     #cat("Interval ",i-1,"[",interval[i-1],",",interval[i],"]: root=",aa[1]," f.root=",aa[2]," prec=",aa[3],"\n")
     if(i == length(interval) | !is.na(convergence)) flag <- FALSE
   }
-  list(lambda0=lambda0,varU=varU,varE=varE,convergence=convergence,
+  list(ratio=ratio,varU=varU,varE=varE,convergence=convergence,
        dbar=dbar,bHat=bHat,msg=msg)
 }
 
@@ -845,7 +845,7 @@ plotPath <- function(fm, Z=NULL, K=NULL, tst=NULL, title=NULL, maxCor=0.85)
   |    ._____| | | |       ._____| | .__| |__.     Marco Lopez-Cruz       |
   |    |_______| |_|       |_______| |_______|     Gustavo de los Campos  |
   |                                                                       |
-  |    Sparse Family and Selection Index. Version 1.0.0 (Sep 30, 2021)    |
+  |    Sparse Family and Selection Index. Version 1.0.1 (Jan 26, 2022)    |
   |    Type 'citation('SFSI')' to know how to cite SFSI                   |
   |    Type 'help(package='SFSI',help_type='html')' to see help           |
   |    Type 'browseVignettes('SFSI')' to see documentation                |

@@ -4,8 +4,8 @@
 # mc.cores = 1; tol = 1E-4; maxIter = 500; name = NULL; verbose = TRUE
 
 SSI_CV <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
-              h2 = NULL, trn = seq_along(y), alpha = 1, lambda = NULL,
-              nLambda = 100, minLambda = .Machine$double.eps^0.5,
+              theta = NULL, h2 = NULL, trn = seq_along(y), alpha = 1,
+              lambda = NULL, nLambda = 100, minLambda = .Machine$double.eps^0.5,
               nCV = 1, nFolds = 5, seed = NULL, commonLambda = TRUE,
               tol = 1E-4, maxIter = 500, method = c("REML","ML"),
               name = NULL, mc.cores = 1, verbose = TRUE)
@@ -39,17 +39,17 @@ SSI_CV <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
       trn0 <- trn[folds != ind]
       tst0 <- trn[folds == ind]
 
-      fm <- SSI(y, X=X, b=b, K=K, D=D, h2=h2, trn=trn0, tst=tst0, alpha=alpha,
-              method=method, lambda=lambda, nLambda=nLambda,
+      fm <- SSI(y, X=X, b=b, K=K, D=D, theta=theta, h2=h2, trn=trn0, tst=tst0,
+              alpha=alpha, method=method, lambda=lambda, nLambda=nLambda,
               minLambda=minLambda, tol=tol, maxIter=maxIter,
               commonLambda=commonLambda, mc.cores=mc.cores2, verbose=FALSE)
 
       if(isLOOCV){
           rr <- list(u=as.vector(fitted.SSI(fm)), varU=fm$varU, varE=fm$varE,
-                     h2=fm$h2, b=fm$b, tst=tst0, df=fm$df, lambda=fm$lambda)
+                     h2=fm$h2, theta=fm$theta, b=fm$b, tst=tst0, df=fm$df, lambda=fm$lambda)
       }else{
           fv <- summary.SSI(fm)
-          rr <- list(varU=fm$varU, varE=fm$varE, h2=fm$h2, b=fm$b, tst=tst0,
+          rr <- list(varU=fm$varU, varE=fm$varE, h2=fm$h2, theta=fm$theta, b=fm$b, tst=tst0,
                      df=fv$df, lambda=fv$lambda, accuracy=fv$accuracy, MSE=fv$MSE)
       }
 
@@ -102,6 +102,7 @@ SSI_CV <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
         varU0 <- mean(unlist(lapply(out,function(x)x$varU)))
         varE0 <- mean(unlist(lapply(out,function(x)x$varE)))
         h20 <- mean(unlist(lapply(out,function(x)x$h2)))
+        theta0 <- mean(unlist(lapply(out,function(x)x$theta)))
 
       }else{
         accuracy <- do.call("rbind",lapply(out,function(x)x$accuracy))
@@ -112,10 +113,11 @@ SSI_CV <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
         varU0 <- unlist(lapply(out,function(x)x$varU))
         varE0 <- unlist(lapply(out,function(x)x$varE))
         h20 <- unlist(lapply(out,function(x)x$h2))
+        theta0 <- unlist(lapply(out,function(x)x$theta))
       }
 
       res[[k]] <- list(name=name, folds=data.frame(trn,fold=folds),
-                   b=b0, varU=varU0, varE=varE0, h2=h20, accuracy=accuracy,
+                   b=b0, varU=varU0, varE=varE0, h2=h20, theta=theta0, accuracy=accuracy,
                    MSE=MSE, df=df, lambda=lambda0)
     }
     class(res) <- "SSI_CV"

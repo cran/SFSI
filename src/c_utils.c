@@ -680,14 +680,14 @@ SEXP readBinFileFloat(SEXP filename, SEXP nsetRow, SEXP nsetCol, SEXP setRow, SE
       linedouble=(double *) R_alloc(0, sizeof(double));   // will not be used
       linefloat=(float *) R_alloc(ncols, sizeof(float));
 
-      X=PROTECT(allocMatrix(INTSXP, n, p));
+      X=PROTECT(Rf_allocMatrix(INTSXP, n, p));
       pX1=FLOAT(X);
       pX2=(double *) R_alloc(0, sizeof(double));   // will not be used
     }else{
       linedouble=(double *) R_alloc(ncols, sizeof(double));
       linefloat=(float *) R_alloc(0, sizeof(float));   // will not be used
 
-      X=PROTECT(allocMatrix(REALSXP, n, p));
+      X=PROTECT(Rf_allocMatrix(REALSXP, n, p));
       pX2=NUMERIC_POINTER(X);
       pX1=(float *) R_alloc(0, sizeof(float));   // will not be used
     }
