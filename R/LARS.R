@@ -1,6 +1,6 @@
 
-lars2 <- function(Sigma, Gamma, method=c("LAR","LAR-LASSO"), maxDF=NULL,
-    eps=.Machine$double.eps,scale=TRUE,verbose=FALSE)
+LARS <- function(Sigma, Gamma, method=c("LAR","LAR-LASSO"), dfmax = NULL,
+    eps = .Machine$double.eps, scale = TRUE, verbose = FALSE)
 {
   method <- match.arg(method)
 
@@ -31,16 +31,16 @@ lars2 <- function(Sigma, Gamma, method=c("LAR","LAR-LASSO"), maxDF=NULL,
   }
 
   ignores <- NULL
-  if(is.null(maxDF))  maxDF <- p
-  beta <- matrix(0, p, maxDF*8)  # p x nLambda
-  lambda <- double(maxDF*8)
+  if(is.null(dfmax))  dfmax <- p
+  beta <- matrix(0, p, dfmax*8)  # p x nLambda
+  lambda <- double(dfmax*8)
   active <- NULL
   drops <- FALSE
   Sign <- NULL
   R <- NULL
   k <- 0
   time <- proc.time()[3]
-  while((length(active) < maxDF) & (length(active) < (p-length(ignores))))
+  while((length(active) < dfmax) & (length(active) < (p-length(ignores))))
   {
     covar <- Gamma[inactive]
     Cmax <- max(abs(covar))

@@ -4,9 +4,9 @@
 \title{Coordinate Descent algorithm to solve Elastic-Net-type problems}
 \usage{
 solveEN(Sigma, Gamma, alpha = 1, lambda = NULL, 
-        nLambda = 100, minLambda = .Machine$double.eps^0.5,
-        maxDF = NULL, scale = TRUE, tol = 1e-05, 
-        maxIter = 1000, verbose = FALSE)
+        nlambda = 100, lambda.min = .Machine$double.eps^0.5,
+        dfmax = NULL, scale = TRUE, tol = 1e-05, 
+        maxiter = 1000, verbose = FALSE)
 }
 \arguments{
 \item{Sigma}{(numeric matrix) Variance-covariance matrix of predictors. It can be of the "float32" type as per the 'float' R-package}
@@ -14,13 +14,15 @@ solveEN(Sigma, Gamma, alpha = 1, lambda = NULL,
 \item{Gamma}{(numeric vector) Covariance between response variable and predictors}
 
 \item{lambda}{(numeric vector) Penalization parameter sequence. Default is \code{lambda=NULL}, in this case a decreasing grid of
-\code{'nLambda'} lambdas will be generated starting from a maximum equal to
-\ifelse{html}{\out{<center><font face="Courier">max(abs(Gamma)/alpha)</font></center>}}{\deqn{\code{max(abs(Gamma)/alpha)}}{max(abs(Gamma)/alpha)}}
+\code{'nlambda'} lambdas will be generated starting from a maximum equal to
+
+\ifelse{html}{\out{<p style='text-align:center;font-family:courier'>max(abs(Gamma)/alpha)</p>}}{\deqn{\code{max(abs(Gamma)/alpha)}}{max(abs(Gamma)/alpha)}}
+
 to a minimum equal to zero. If \code{alpha=0} the grid is generated starting from a maximum equal to 5}
 
-\item{nLambda}{(integer) Number of lambdas generated when \code{lambda=NULL}}
+\item{nlambda}{(integer) Number of lambdas generated when \code{lambda=NULL}}
 
-\item{minLambda}{(numeric) Minimum value of lambda that are generated when \code{lambda=NULL}}
+\item{lambda.min}{(numeric) Minimum value of lambda that are generated when \code{lambda=NULL}}
 
 \item{alpha}{(numeric) Value between 0 and 1 for the weights given to the L1 and L2-penalties}
 
@@ -29,10 +31,10 @@ taken from the diagonal of \code{Sigma}}
 
 \item{tol}{(numeric) Maximum error between two consecutive solutions of the CD algorithm to declare convergence}
 
-\item{maxIter}{(integer) Maximum number of iterations to run the CD algorithm at each lambda step before convergence is reached}
+\item{maxiter}{(integer) Maximum number of iterations to run the CD algorithm at each lambda step before convergence is reached}
 
-\item{maxDF}{(integer) Maximum number of non-zero coefficients in the last solution.
-Default \code{maxDF=NULL} will calculate solutions for the entire lambda sequence}
+\item{dfmax}{(integer) Maximum number of non-zero coefficients in the last solution.
+Default \code{dfmax=NULL} will calculate solutions for the entire lambda grid}
 
 \item{verbose}{\code{TRUE} or \code{FALSE} to whether printing each CD step}
 }
@@ -43,7 +45,7 @@ Returns a list object containing the elements:
   \item \code{beta}: (matrix) regression coefficients for each predictor (in rows) associated to each value of the penalization parameter lambda (in columns).
   \item \code{df}: (vector) degrees of freedom, number of non-zero predictors associated to each value of lambda.
 }
-The returned object is of the class 'LASSO' for which methods \code{fitted} exist. Function 'plotPath' can be also used
+The returned object is of the class 'LASSO' for which methods \code{fitted} exist. Function 'path.plot' can be also used
 }
 \description{
 Computes the entire Elastic-Net solution for the regression coefficients for all
@@ -51,7 +53,8 @@ values of the penalization parameter, via the Coordinate Descent (CD) algorithm 
 }
 \details{
 Finds solutions for the regression coefficients in a linear model
-\ifelse{html}{\out{<center>y<sub>i</sub> = <b>x</b>'<sub>i</sub> <b>&beta;</b> + e<sub>i</sub></center>}}{\deqn{y_i=\textbf{x}_i'\boldsymbol{\beta}+e_i}{y_i = x'_i beta + e_i}}
+
+\ifelse{html}{\out{<p style='text-align:center'>y<sub>i</sub> = <b>x</b>'<sub>i</sub> <b>&beta;</b> + e<sub>i</sub></p>}}{\deqn{y_i=\textbf{x}_i'\boldsymbol{\beta}+e_i}{y_i = x'_i beta + e_i}}
 
 where
 \ifelse{html}{\out{y<sub>i</sub>}}{\eqn{y_i}{y_i}} is the response for the \ifelse{html}{\out{i<sup>th</sup>}}{\eqn{i^{th}}{i^th}} observation,
@@ -67,14 +70,14 @@ The regression coefficients
 are estimated as function of the variance matrix among
 predictors (\ifelse{html}{\out{<b>&Sigma;</b>}}{\eqn{\boldsymbol{\Sigma}}{Sigma}}) and the covariance vector between response and predictors (\ifelse{html}{\out{<b>&Gamma;</b>}}{\eqn{\boldsymbol{\Gamma}}{Gamma}}) by minimizing the penalized mean squared error function
 
-\ifelse{html}{\out{<center>-<b>&Gamma;</b>' <b>&beta;</b> + 1/2 <b>&beta;</b>' <b>&Sigma;</b> <b>&beta;</b> + &lambda; J(<b>&beta;</b>)</center>}}{\deqn{-\boldsymbol{\Gamma}' \boldsymbol{\beta} + 1/2 \boldsymbol{\beta}'\boldsymbol{\Sigma} \boldsymbol{\beta} + \lambda J(\boldsymbol{\beta})}{-Gamma' beta + 1/2 beta' Sigma beta + lambda J(beta)}}
+\ifelse{html}{\out{<p style='text-align:center'>-<b>&Gamma;</b>' <b>&beta;</b> + 1/2 <b>&beta;</b>' <b>&Sigma;</b> <b>&beta;</b> + &lambda; J(<b>&beta;</b>)</p>}}{\deqn{-\boldsymbol{\Gamma}' \boldsymbol{\beta} + 1/2 \boldsymbol{\beta}'\boldsymbol{\Sigma} \boldsymbol{\beta} + \lambda J(\boldsymbol{\beta})}{-Gamma' beta + 1/2 beta' Sigma beta + lambda J(beta)}}
 
 where \ifelse{html}{\out{&lambda;}}{\eqn{\lambda}{lambda}}
 is the penalization parameter and
 \ifelse{html}{\out{J(<b>&beta;</b>)}}{\eqn{J(\boldsymbol{\beta})}{J(beta)}}
 is a penalty function given by
 
-\ifelse{html}{\out{<center>1/2(1-&alpha;)||<b>&beta;</b>||<sub>2</sub><sup>2</sup> + &alpha;||<b>&beta;</b>||<sub>1</sub></center>}}{\deqn{1/2(1-\alpha)||\boldsymbol{\beta}||_2^2 + \alpha||\boldsymbol{\beta}||_1}{1/2(1-alpha)||beta||_2^2 + alpha||beta||_1}}
+\ifelse{html}{\out{<p style='text-align:center'>1/2(1-&alpha;)||<b>&beta;</b>||<sub>2</sub><sup>2</sup> + &alpha;||<b>&beta;</b>||<sub>1</sub></p>}}{\deqn{1/2(1-\alpha)||\boldsymbol{\beta}||_2^2 + \alpha||\boldsymbol{\beta}||_1}{1/2(1-alpha)||beta||_2^2 + alpha||beta||_1}}
 
 where \ifelse{html}{\out{0 &le; &alpha; &le; 1}}{\eqn{0\leq\alpha\leq 1}{0 <= alpha <= 1}}, and
 \ifelse{html}{\out{||<b>&beta;</b>||<sub>1</sub> = &sum;<sub>j=1</sub>|&beta;<sub>j</sub>|}}{\eqn{||\boldsymbol{\beta}||_1=\sum_{j=1}^p|\beta_j|}{||beta||_1 = sum(|beta_j|)}} and
@@ -82,13 +85,14 @@ where \ifelse{html}{\out{0 &le; &alpha; &le; 1}}{\eqn{0\leq\alpha\leq 1}{0 <= al
 
 The "partial residual" excluding the contribution of the predictor
 \ifelse{html}{\out{x<sub>ij</sub>}}{\eqn{x_{ij}}{x_ij}} is
-\ifelse{html}{\out{<center>e<sub>i</sub><sup>(j)</sup> = y<sub>i</sub> - <b>x</b>'<sub>i</sub> <b>&beta;</b> + x<sub>ij</sub>&beta;<sub>j</sub></center>}}{\deqn{e_i^{(j)}=y_i-\textbf{x}_i'\boldsymbol{\beta}+x_{ij}\beta_j}{r_i = y_i - x'_i beta + x_ij beta_j}}
+
+\ifelse{html}{\out{<p style='text-align:center'>e<sub>i</sub><sup>(j)</sup> = y<sub>i</sub> - <b>x</b>'<sub>i</sub> <b>&beta;</b> + x<sub>ij</sub>&beta;<sub>j</sub></p>}}{\deqn{e_i^{(j)}=y_i-\textbf{x}_i'\boldsymbol{\beta}+x_{ij}\beta_j}{r_i = y_i - x'_i beta + x_ij beta_j}}
 
 then the ordinary least-squares (OLS) coefficient of
 \ifelse{html}{\out{x<sub>ij</sub>}}{\eqn{x_{ij}}{x_ij}}
 on this residual is (up-to a constant)
 
-\ifelse{html}{\out{<center>&beta;<sub>j</sub><sup>(ols)</sup> = &Gamma;<sub>j</sub> - <b>&Sigma;</b>'<sub>j</sub> <b>&beta;</b> + &beta;<sub>j</sub></center>}}{\deqn{\beta_j^{(ols)}=\Gamma_j-\boldsymbol{\Sigma}_j'\boldsymbol{\beta}+\beta_j}{beta_j^ols = Gamma_j - Sigma'_j beta}}
+\ifelse{html}{\out{<p style='text-align:center'>&beta;<sub>j</sub><sup>(ols)</sup> = &Gamma;<sub>j</sub> - <b>&Sigma;</b>'<sub>j</sub> <b>&beta;</b> + &beta;<sub>j</sub></p>}}{\deqn{\beta_j^{(ols)}=\Gamma_j-\boldsymbol{\Sigma}_j'\boldsymbol{\beta}+\beta_j}{beta_j^ols = Gamma_j - Sigma'_j beta}}
 
 where
 \ifelse{html}{\out{&Gamma;<sub>j</sub>}}{\eqn{\Gamma_j}{Gamma_j}}

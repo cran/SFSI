@@ -1,9 +1,9 @@
 # Z=U=d=indexK = NULL; BLUP=TRUE; method=c("REML","ML")[1]; theta=NULL
-# return.Hinv = FALSE; tol=1E-5; maxIter=1000; interval=c(1E-9,1E9); warn=TRUE
+# return.Hinv = FALSE; tol=1E-5; maxiter=1000; interval=c(1E-9,1E9); warn=TRUE
 
 fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, U = NULL, d = NULL,
                     theta = NULL, BLUP = TRUE, method = c("REML","ML"),
-                    return.Hinv = FALSE, tol = 1E-5, maxIter = 1000,
+                    return.Hinv = FALSE, tol = 1E-5, maxiter = 1000,
                     interval = c(1E-9,1E9), warn = TRUE)
 {
   method <- match.arg(method)
@@ -83,26 +83,26 @@ fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, U = NULL, d = NULL,
   {
     ratio <- NA
     tt <- searchInt(method,interval=interval,n=n,c0=c0,Uty=Uty,UtX=UtX,d=d,
-           maxIter=maxIter,tol=tol,lower=interval[1],upper=interval[2],varP=varP)
+           maxiter=maxiter,tol=tol,lower=interval[1],upper=interval[2],varP=varP)
 
     if(is.na(tt$convergence))
     {
       # Divide seeking interval into smaller intervals
       bb <- exp(seq(log(interval[1]),log(interval[2]),length=200))
       tt <- searchInt(method,interval=bb,n=n,c0=c0,Uty=Uty,UtX=UtX,d=d,
-             maxIter=maxIter,tol=tol,lower=interval[1],upper=interval[2],varP=varP)
+             maxiter=maxiter,tol=tol,lower=interval[1],upper=interval[2],varP=varP)
 
       if(is.na(tt$convergence)){
         # Search in the lower bound
         bb <- exp(seq(log(interval[1]^2),log(interval[1]^0.5),length=200))
         tt <- searchInt(method,interval=bb,n=n,c0=c0,Uty=Uty,UtX=UtX,d=d,
-               maxIter=maxIter,tol=tol,lower=interval[1],upper=interval[2],varP=varP)
+               maxiter=maxiter,tol=tol,lower=interval[1],upper=interval[2],varP=varP)
 
         if(is.na(tt$convergence)){
           # Search in the upper bound
           bb <- exp(seq(log(interval[2]^0.5),log(interval[2]^2),length=200))
           tt <- searchInt(method,interval=bb,n=n,c0=c0,Uty=Uty,UtX=UtX,d=d,
-                 maxIter=maxIter,tol=tol,lower=interval[1],upper=interval[2],varP=varP)
+                 maxiter=maxiter,tol=tol,lower=interval[1],upper=interval[2],varP=varP)
         }
       }
     }
@@ -170,7 +170,7 @@ fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, U = NULL, d = NULL,
     if(!is.na(msg)) warning(msg,immediate.=TRUE)
   }
 
-  theta <- varE/varU
+  theta <- 1/ratio
   h2 <- varU/(varU + varE)
 
   out <- list(varE = varE, varU = varU, theta=theta, h2 = h2, b = bHat, u = uHat,

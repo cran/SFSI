@@ -1,11 +1,11 @@
 Package: SFSI
 Title: Sparse Family and Selection Index
-Version: 1.0.1
+Version: 1.1.0
 Authors@R: c(
     person("Marco", "Lopez-Cruz", role = c("aut","cre"), email = "maraloc@gmail.com"),
     person("Gustavo", "de los Campos", role = c("aut"), email = "gustavoc@msu.edu"),
     person("Paulino", "Perez-Rodriguez", role = c("ctb"), email = "perpdgo@gmail.com"))
-Date: 2022-01-26
+Date: 2022-03-10
 Description: Here we provide tools for the estimation of coefficients in 
      penalized regressions when the (co)variance matrix of predictors 
      and the covariance vector between predictors and response, are 
@@ -17,18 +17,18 @@ Description: Here we provide tools for the estimation of coefficients in
      ('Lopez-Cruz & de los Campos, 2021') <doi:10.1093/genetics/iyab030>.
 LazyLoad: true
 Depends: R (>= 3.5)
-Imports: stats, grDevices
+Imports: stats
 Suggests: BGLR, float, knitr, rmarkdown, ggplot2, parallel, reshape2,
-        viridis
+        viridis, igraph
 LinkingTo: float
 VignetteBuilder: knitr
 Encoding: UTF-8
 License: GPL-3
 NeedsCompilation: yes
-Packaged: 2022-01-26 22:58:14 UTC; marco
+Packaged: 2022-03-10 21:03:01 UTC; marco
 Author: Marco Lopez-Cruz [aut, cre],
   Gustavo de los Campos [aut],
   Paulino Perez-Rodriguez [ctb]
 Maintainer: Marco Lopez-Cruz <maraloc@gmail.com>
 Repository: CRAN
-Date/Publication: 2022-01-26 23:30:02 UTC
+Date/Publication: 2022-03-10 21:30:02 UTC

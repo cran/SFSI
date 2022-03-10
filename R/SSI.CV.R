@@ -1,17 +1,19 @@
-# y=y; X = NULL; Z = NULL; K=G2; b=NULL; h2 = NULL; trn = trn; alpha = 1;
-# lambda = NULL; nLambda = 100; minLambda = .Machine$double.eps^0.5; nCV = 1; nFolds = 5;
-# seed = NULL; method = c("CD1","CD2")[1];
-# mc.cores = 1; tol = 1E-4; maxIter = 500; name = NULL; verbose = TRUE
+ #y=y; X = NULL; Z = D= NULL; K=G; b=NULL; h2 = NULL; trn = trn; alpha = 1;
+ #lambda = NULL; nlambda = 100; lambda.min = .Machine$double.eps^0.5; nCV = 1; nfolds = 5;
+ #seed = NULL; common.lambda = TRUE; method = c("REML","ML")[1]
+ #mc.cores = 1; tol = 1E-4; maxiter = 500; name = NULL; verbose = TRUE
 
-SSI_CV <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
+SSI.CV <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
               theta = NULL, h2 = NULL, trn = seq_along(y), alpha = 1,
-              lambda = NULL, nLambda = 100, minLambda = .Machine$double.eps^0.5,
-              nCV = 1, nFolds = 5, seed = NULL, commonLambda = TRUE,
-              tol = 1E-4, maxIter = 500, method = c("REML","ML"),
+              lambda = NULL, nlambda = 100, lambda.min = .Machine$double.eps^0.5,
+              nCV = 1, nfolds = 5, seed = NULL, common.lambda = TRUE,
+              tol = 1E-4, maxiter = 500, method = c("REML","ML"),
               name = NULL, mc.cores = 1, verbose = TRUE)
 {
-    nFolds <- match.arg(as.character(nFolds),choices=c(2,3,4,5,10,'n'))
     method <- match.arg(method)
+
+    tmp <- c(2,3,4,5,10)
+    if(!as.character(nfolds) %in% c(tmp,'n')) stop("'nfolds' should be one of ",paste(tmp,collapse=","),",'n'")
 
     if(is.logical(trn)){
        if(length(y) != length(trn)) stop("Object 'trn' must be of the same length of 'y'")
@@ -28,10 +30,10 @@ SSI_CV <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
       K <- float::tcrossprod(Z,float::tcrossprod(Z,K))   # Z%*%K%*%t(Z)
     }
 
-    name <- ifelse(is.null(name),"SSI_CV",name)
+    name <- ifelse(is.null(name),"SSI.CV",name)
     nTRN <- length(trn)
-    isLOOCV <- nFolds=='n'
-    nFolds <- ifelse(isLOOCV,nTRN,as.numeric(nFolds))
+    isLOOCV <- nfolds=='n'
+    nfolds <- ifelse(isLOOCV,nTRN,as.numeric(nfolds))
     mc.cores2 <- ifelse(isLOOCV,1,mc.cores)
 
     compApply <- function(ind)
@@ -40,9 +42,9 @@ SSI_CV <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
       tst0 <- trn[folds == ind]
 
       fm <- SSI(y, X=X, b=b, K=K, D=D, theta=theta, h2=h2, trn=trn0, tst=tst0,
-              alpha=alpha, method=method, lambda=lambda, nLambda=nLambda,
-              minLambda=minLambda, tol=tol, maxIter=maxIter,
-              commonLambda=commonLambda, mc.cores=mc.cores2, verbose=FALSE)
+              alpha=alpha, method=method, lambda=lambda, nlambda=nlambda,
+              lambda.min=lambda.min, tol=tol, maxiter=maxiter,
+              common.lambda=common.lambda, mc.cores=mc.cores2, verbose=FALSE)
 
       if(isLOOCV){
           rr <- list(u=as.vector(fitted.SSI(fm)), varU=fm$varU, varE=fm$varE,
@@ -54,13 +56,13 @@ SSI_CV <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
       }
 
       if(verbose){
-        message("Cross-validation: ",ifelse(isLOOCV,"LOO",k),". Fold ",ind," of ",nFolds)
+        message("CV ",ifelse(isLOOCV,"LOO",k),": Fold ",ind,"/",nfolds," (n=",length(tst0),")")
       }
       rr
     }
 
     if(is.null(seed)){   # Seeds for randomization
-      seeds <- round(seq(1E3, .Machine$integer.max, length=nCV))
+      seeds <- round(seq(1E3, .Machine$integer.max/1000, length=nCV))
       #if(nCV >1) seeds <- sample(seeds)
     }else{
       seeds <- seed
@@ -70,20 +72,21 @@ SSI_CV <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
     nCV <- ifelse(isLOOCV & nCV > 1,1, nCV)   # No need of repeating CV when LOO
 
     res <- vector("list",nCV)
+    names(res) <- paste0("CV",1:nCV)
     for(k in 1:nCV)
     {
       # Creating folds
-      folds <- rep(seq(1:nFolds),ceiling(nTRN/nFolds))[1:nTRN]
+      folds <- rep(seq(1:nfolds),ceiling(nTRN/nfolds))[1:nTRN]
       if(!isLOOCV){
         set.seed(seeds[k])
         folds <- sample(folds)
       }
 
       if(mc.cores == 1L | !isLOOCV){
-        out = lapply(X=seq(nFolds),FUN=compApply)
+        out = lapply(X=seq(nfolds),FUN=compApply)
       }
       if(mc.cores > 1L & isLOOCV){
-        out = parallel::mclapply(X=seq(nFolds),FUN=compApply,mc.cores=mc.cores)
+        out = parallel::mclapply(X=seq(nfolds),FUN=compApply,mc.cores=mc.cores)
       }
 
       tmp <- do.call(rbind,split(data.frame(trn,folds),folds))[,1]
@@ -116,10 +119,14 @@ SSI_CV <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
         theta0 <- unlist(lapply(out,function(x)x$theta))
       }
 
-      res[[k]] <- list(name=name, folds=data.frame(trn,fold=folds),
+      res[[k]] <- list(folds=data.frame(trn,fold=folds),
                    b=b0, varU=varU0, varE=varE0, h2=h20, theta=theta0, accuracy=accuracy,
                    MSE=MSE, df=df, lambda=lambda0)
     }
-    class(res) <- "SSI_CV"
-    return(res)
+
+    out <- list(name=name, y=y, trn=trn, alpha=alpha,
+                nCV=nCV, nfolds=nfolds, seeds=seeds, CV=res)
+    class(out) <- "SSI"
+
+    return(out)
 }

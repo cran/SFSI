@@ -487,7 +487,7 @@ for(tp in timepoints){
 <p>Standard, L1-penalized and PC-based SIs will be fitted using data from a single time-point. The regression coefficients are to be obtained from training data within each partition previously created.</p>
 <div id="regression-coefficients" class="section level3">
 <h3>Regression coefficients</h3>
-<p>Following code can be used to estimate regression coefficients using training data within each partition for the standard SI and for the PC-SI (with <span class="math inline">\(1, 2,...,250\)</span> PCs). Coefficients for L1-PSI are estimated the whose solutions are found using either the functions <code>lars2</code> or <code>solveEN</code> from the <code>SFSI</code> R-package. Function <code>solveEN</code> will yield solutions for a given grid of values of <span class="math inline">\(\lambda\)</span> while function <code>lars2</code> provides solutions for the entire <span class="math inline">\(\lambda\)</span> path.</p>
+<p>Following code can be used to estimate regression coefficients using training data within each partition for the standard SI and for the PC-SI (with <span class="math inline">\(1, 2,...,250\)</span> PCs). Coefficients for L1-PSI are estimated the whose solutions are found using either the functions <code>LARS</code> or <code>solveEN</code> from the <code>SFSI</code> R-package. Function <code>solveEN</code> will yield solutions for a given grid of values of <span class="math inline">\(\lambda\)</span> while function <code>LARS</code> provides solutions for the entire <span class="math inline">\(\lambda\)</span> path.</p>
 <p>Time-point can be specified through variable <code>timepoints</code>. Regression coefficients are stored in matrices <code>bSI</code>, <code>bPCSI</code> and <code>bL1PSI</code>, and saved in the file <code>coefficients_tp_*.RData</code>. Calculations are performed using genetic covariances calculated for the partitions previously created.</p>
 <pre class="r"><code>load(&quot;prepared_data.RData&quot;); load(&quot;parameters.RData&quot;)
 
@@ -517,8 +517,8 @@ for(tp in timepoints){
     bPCSI[[k]] &lt;- data.frame(I(beta),df=1:nrow(beta),lambda=NA)
     
     # L1-PSI
-    fm &lt;- solveEN(VARx, gencov[,k],nLambda=100)
-    # fm &lt;- lars2(VARx, gencov[,k])  # Second option
+    fm &lt;- solveEN(VARx, gencov[,k],nlambda=100)
+    # fm &lt;- LARS(VARx, gencov[,k])  # Second option
     beta &lt;- t(fm$beta)[-1,]
     bL1PSI[[k]] &lt;- data.frame(I(beta),df=fm$df[-1],lambda=fm$lambda[-1])
   }
@@ -686,7 +686,7 @@ for(k in 1:nPart)
     bPCSI[[k]] &lt;- data.frame(I(beta),df=1:nrow(beta),lambda=NA)
     
     # L1-PSI
-    fm &lt;- solveEN(VARx, Gencov[,k],nLambda=100,maxIter=200,tol=1E-3)
+    fm &lt;- solveEN(VARx, Gencov[,k],nlambda=100,maxiter=200,tol=1E-3)
     beta &lt;- t(fm$beta)[-1,]
     bL1PSI[[k]] &lt;- data.frame(I(beta),df=fm$df[-1],lambda=fm$lambda[-1])
 }

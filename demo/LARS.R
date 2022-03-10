@@ -15,8 +15,8 @@ XtX = var(X[trn,])
 Xty = cov(y[trn],X[trn,])
 
 # Run the penalized regression
-fm = lars2(XtX,Xty,method="LAR")
-fm = lars2(XtX,Xty,method="LAR-LASSO",verbose=TRUE)
+fm = LARS(XtX,Xty,method="LAR")
+fm = LARS(XtX,Xty,method="LAR-LASSO",verbose=TRUE)
 
 # Predicted values
 yHat1 = fitted(fm, X=X[trn,])  # training data

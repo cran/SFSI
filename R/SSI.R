@@ -1,14 +1,14 @@
 
-# X = Z = saveAt = name = subset= NULL; lambda=b=NULL
-# alpha = 1; nLambda = 100; commonLambda = TRUE; minLambda = .Machine$double.eps^0.5
-# mc.cores = 1; tol = 1E-4; maxIter = 500; verbose = TRUE; method = c("REML","ML")[1]
+# X = Z = save.at = name = subset= NULL; lambda=b=NULL
+# alpha = 1; nlambda = 100; common.lambda = TRUE; lambda.min = .Machine$double.eps^0.5
+# mc.cores = 1; tol = 1E-4; maxiter = 500; verbose = TRUE; method = c("REML","ML")[1]
 
 SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
          theta = NULL, h2 = NULL, trn = seq_along(y), tst = seq_along(y),
-         subset = NULL, alpha = 1, lambda = NULL, nLambda = 100,
-         minLambda = .Machine$double.eps^0.5, commonLambda = TRUE,
-         tol = 1E-4, maxIter = 500, method = c("REML","ML"),
-         saveAt = NULL, name = NULL, mc.cores = 1, verbose = TRUE)
+         subset = NULL, alpha = 1, lambda = NULL, nlambda = 100,
+         lambda.min = .Machine$double.eps^0.5, common.lambda = TRUE,
+         tol = 1E-4, maxiter = 500, method = c("REML","ML"),
+         save.at = NULL, name = NULL, mc.cores = 1, verbose = TRUE)
 {
   method <- match.arg(method)
 
@@ -34,21 +34,23 @@ SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
   {
     X <- model.matrix(~1,data=data.frame(rep(1,n)))
   }else{
-    if(length(dim(X))<2){
+    if(length(dim(X)) < 2L){
       X <- stats::model.matrix(~X)
-      if(ncol(X)>2)  colnames(X)[-1] <- substr(colnames(X)[-1],2,nchar(colnames(X)[-1]))
+      if(ncol(X) > 2L)  colnames(X)[-1] <- substr(colnames(X)[-1],2,nchar(colnames(X)[-1]))
     }
   }
 
   if(!is.null(Z)){
-    if(length(dim(Z))!=2) stop("Object 'Z' must be a matrix with nrow(Z)=n and ncol(Z)=nrow(K)\n")
+    if(length(dim(Z)) != 2L) stop("Object 'Z' must be a matrix with nrow(Z)=n and ncol(Z)=nrow(K)\n")
     K <- float::tcrossprod(Z,float::tcrossprod(Z,K))   # Z%*%K%*%t(Z)
   }
 
-  if(length(dim(K))!=2 | (length(K) != n^2)){
+  if(length(dim(K)) != 2L | (length(K) != n^2)){
     stop("Product Z %*% K %*% t(Z) must be a squared matrix with number of rows",
      "\n(and columns) equal to n: number of elements in 'y'")
   }
+  id <- NULL
+  if(has_names(K)) id <- rownames(K)
   dimnames(K) <- NULL
 
   if(!is.null(D)){
@@ -75,7 +77,7 @@ SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
     }else stop("Convergence was not reached in the 'GEMMA' algorithm. \n\t",
            "Please provide a heritability estimate in 'h2' parameter")
   }else{   # Only estimate fixed effects as GLS
-    varU <- varE <- NULL
+    varU <- varE <- NA
     if(!is.null(theta) & !is.null(h2)){
       cat("Both 'theta' and 'h2' are provided. Only 'theta' will be considered\n")
       h2 <- NULL
@@ -106,9 +108,9 @@ SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
   RHS <- float::sweep(RHS,1L,sdx,FUN="/")  # Scale each row of RHS
 
   if(is.null(lambda)){
-    if(commonLambda){
+    if(common.lambda){
         Cmax <- ifelse(alpha > .Machine$double.eps,max(abs(RHS)/alpha),5)
-        lambda <- exp(seq(log(Cmax),log(minLambda),length=nLambda))
+        lambda <- exp(seq(log(Cmax),log(lambda.min),length=nlambda))
     }
   }else{
     if(length(dim(lambda))==2){
@@ -147,8 +149,8 @@ SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
       lambda0 <- lambda[ind,]
     }else lambda0 <- lambda
 
-    fm <- solveEN(K,rhs,scale=FALSE,lambda=lambda0,nLambda=nLambda,
-               minLambda=minLambda,alpha=alpha,tol=tol,maxIter=maxIter)
+    fm <- solveEN(K,rhs,scale=FALSE,lambda=lambda0,nlambda=nlambda,
+               lambda.min=lambda.min,alpha=alpha,tol=tol,maxiter=maxiter)
 
     # Return betas to the original scale by dividing by sdx
     saveBinary(sweep(fm$beta,1L,as.numeric(sdx),FUN="/"),file=paste0(tmpdir,"/",file_beta,ind,".bin"),
@@ -182,18 +184,18 @@ SSI <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
     stop("Some sub-processes failed. Something went wrong during the analysis.")
   }
 
-  out <- list(name=name, y=y, Xb=Xb, b=b, varU=varU, varE=varE,
+  out <- list(name=name, id=id, y=y, Xb=Xb, b=b, varU=varU, varE=varE,
               theta=theta, h2=h2, trn=trn, tst=tst, alpha=alpha,
               df = do.call("rbind",lapply(out,function(x)x$df)),
               lambda = do.call("rbind",lapply(out,function(x)x$lambda)),
               file_beta=paste0(tmpdir,"/",file_beta))
   class(out) <- "SSI"
 
-  # Save outputs if 'saveAt' is not NULL
-  if(!is.null(saveAt)){
+  # Save outputs if 'save.at' is not NULL
+  if(!is.null(save.at)){
     if(!is.null(subset)){
-       filenames <- paste0(saveAt,c("_B_","_"),subset[1],"_of_",subset[2],c(".bin",".RData"))
-    }else  filenames <- paste0(saveAt,c("_B.bin",".RData"))
+       filenames <- paste0(save.at,c("_B_","_"),subset[1],"_of_",subset[2],c(".bin",".RData"))
+    }else  filenames <- paste0(save.at,c("_B.bin",".RData"))
 
     if(!file.exists(dirname(filenames[1])))  dir.create(dirname(filenames[1]),recursive = TRUE)
 

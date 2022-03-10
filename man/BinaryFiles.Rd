@@ -7,7 +7,7 @@ saveBinary(X, file = paste0(tempdir(), "/file.bin"),
  type = c("float","double"), verbose = TRUE)
   
 readBinary(file = paste0(tempdir(), "/file.bin"), 
-  indexRow = NULL, indexCol = NULL, verbose = TRUE)
+  index.row = NULL, index.col = NULL, verbose = TRUE)
 }
 \arguments{
 \item{X}{(numeric matrix) Data to save}
@@ -17,9 +17,9 @@ readBinary(file = paste0(tempdir(), "/file.bin"),
 \item{type}{(character) Either 'float' or 'double' for single (4 bytes) or double precision (8 bytes), respectively,
 that matrix to save will occupy}
 
-\item{indexRow}{(integer vector) Which rows are to be read from the file. Default \code{indexRow=NULL} will read all the rows}
+\item{index.row}{(integer vector) Which rows are to be read from the file. Default \code{index.row=NULL} will read all the rows}
 
-\item{indexCol}{(integer vector) Which columns are to be read from the file. Default \code{indexCol=NULL} will read all the columns}
+\item{index.col}{(integer vector) Which columns are to be read from the file. Default \code{index.col=NULL} will read all the columns}
 
 \item{verbose}{\code{TRUE} or \code{FALSE} to whether printing file information}
 }
@@ -55,12 +55,12 @@ Save/read a numeric data as a fortran-formatted binary file at a defined precisi
   object.size(X3)    # But smaller-size object
 
   # Read specific rows and columns
-  indexRow = c(2,4,5,8,10)
-  indexCol = c(1,2,5)
-  X2 = readBinary(paste0(tempdir(),"/Matrix1.bin"),indexRow=indexRow,indexCol=indexCol)
+  index.row = c(2,4,5,8,10)
+  index.col = c(1,2,5)
+  X2 = readBinary(paste0(tempdir(),"/Matrix1.bin"),index.row=index.row,index.col=index.col)
   X2
   # Equal to: 
-  X[indexRow,indexCol]
+  X[index.row,index.col]
 
 }
 \author{

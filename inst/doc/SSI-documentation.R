@@ -56,7 +56,7 @@
 #    h2[k] <- fm1$h2       # Retrieve h2 estimate
 #  
 #    # Sparse SI
-#    fm2 <- SSI(y,K=G,b=mu[k],h2=h2[k],trn=trn,tst=tst,mc.cores=1,nLambda=100)
+#    fm2 <- SSI(y,K=G,b=mu[k],h2=h2[k],trn=trn,tst=tst,mc.cores=1,nlambda=100)
 #    fm3 <- summary(fm2)   # Useful function to get results
 #  
 #    accuracy <- c(GBLUP=cor(fm1$u[tst],y[tst]), fm3$accuracy)/sqrt(fm0$h2)
@@ -94,8 +94,8 @@
 #      tst <- which(partitions[,k] == 2)
 #  
 #      # Cross-validating the training set
-#      fm1 <- SSI_CV(y,K=G,trn=trn,nLambda=100,mc.cores=1,nFolds=5,nCV=1)
-#      lambdaCV[k] <- summary(fm1)$optCOR["mean","lambda"]
+#      fm1 <- SSI.CV(y,K=G,trn=trn,nlambda=100,mc.cores=1,nfolds=5,nCV=1)
+#      lambdaCV[k] <- summary(fm1)$optCOR["lambda"]
 #  
 #      # Fit a SSI with the estimated lambda
 #      fm2 <- SSI(y,K=G,b=mu[k],h2=h2[k],trn=trn,tst=tst,lambda=lambdaCV[k])
@@ -144,6 +144,6 @@
 #  # Fit SSI with lambda previously estimated using CV
 #  fm <- SSI(y,K=G,trn=trn,tst=tst,lambda=lambdaCV[part])
 #  
-#  plotNet(fm,K=G,tst=fm$tst[1:16],unified=FALSE,title=NULL,bg.col="white",
+#  net.plot(fm,K=G,tst=fm$tst[1:16],unified=FALSE,main=NULL,bg.col="white",
 #          set.size=c(3,1.5,0.2),point.color="gray40",axis.labels=FALSE)
 

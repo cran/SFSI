@@ -1,5 +1,5 @@
-lars2           Least Angle Regression
+LARS            Least Angle Regression
 solveEN         Coordinate Descent for Elastic-Net Regression
 fitBLUP         Best Linear Unbiased Prediction
 SSI             Sparse Selection Index
-SSI_CV          Cross-Validation for Sparse Selection Index
+SSI.CV          Cross-Validation for Sparse Selection Index

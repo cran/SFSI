@@ -1,21 +1,21 @@
 
 \name{SSI}
 \alias{SSI}
-\alias{SSI_CV}
+\alias{SSI.CV}
 \title{Sparse Selection Index}
 \usage{
 SSI(y, X = NULL, b = NULL, Z = NULL, K, D = NULL, 
     theta = NULL, h2 = NULL, trn = seq_along(y), tst = seq_along(y), 
-    subset = NULL, alpha = 1, lambda = NULL, nLambda = 100,
-    minLambda = .Machine$double.eps^0.5, commonLambda = TRUE,
-    tol = 1E-4, maxIter = 500, method = c("REML","ML"),
-    saveAt = NULL, name = NULL, mc.cores = 1, verbose = TRUE)
+    subset = NULL, alpha = 1, lambda = NULL, nlambda = 100,
+    lambda.min = .Machine$double.eps^0.5, common.lambda = TRUE,
+    tol = 1E-4, maxiter = 500, method = c("REML","ML"),
+    save.at = NULL, name = NULL, mc.cores = 1, verbose = TRUE)
     
-SSI_CV(y, X = NULL, b = NULL, Z = NULL, K, D = NULL, 
+SSI.CV(y, X = NULL, b = NULL, Z = NULL, K, D = NULL, 
       theta = NULL, h2 = NULL, trn = seq_along(y), alpha = 1, 
-      lambda = NULL, nLambda = 100, minLambda = .Machine$double.eps^0.5,
-      nCV = 1, nFolds = 5, seed = NULL, commonLambda = TRUE,
-      tol = 1E-4, maxIter = 500, method = c("REML","ML"), 
+      lambda = NULL, nlambda = 100, lambda.min = .Machine$double.eps^0.5,
+      nCV = 1, nfolds = 5, seed = NULL, common.lambda = TRUE,
+      tol = 1E-4, maxiter = 500, method = c("REML","ML"), 
       name = NULL, mc.cores = 1, verbose = TRUE)
 }
 \arguments{
@@ -45,32 +45,34 @@ is provided and can be retrieved later using function 'collect' (see \code{help(
 
 \item{alpha}{(numeric) Value between 0 and 1 for the weights given to the L1 and L2-penalties}
 
-\item{lambda}{(numeric vector) Penalization parameter sequence. Default is \code{lambda=NULL}, in this case a decreasing grid of \code{nLambda} lambdas will be generated
+\item{lambda}{(numeric vector) Penalization parameter sequence. Default is \code{lambda=NULL}, in this case a decreasing grid of \code{nlambda} lambdas will be generated
 starting from a maximum equal to
-\ifelse{html}{\out{<center><font face="Courier">max(abs(G[trn,tst])/alpha)</font></center>}}{\deqn{\code{max(abs(G[trn,tst])/alpha)}}{max(abs(G[trn,tst])/alpha)}}
+
+\ifelse{html}{\out{<p style='text-align:center;font-family:courier'>max(abs(G[trn,tst])/alpha)</p>}}{\deqn{\code{max(abs(G[trn,tst])/alpha)}}{max(abs(G[trn,tst])/alpha)}}
+
 to a minimum equal to zero. If \code{alpha=0} the grid is generated starting from a maximum equal to 5}
 
-\item{nLambda}{(integer) Number of lambdas generated when \code{lambda=NULL}}
+\item{nlambda}{(integer) Number of lambdas generated when \code{lambda=NULL}}
 
-\item{minLambda}{(numeric) Minimum value of lambda that are generated when \code{lambda=NULL}}
+\item{lambda.min}{(numeric) Minimum value of lambda in the generated grid when \code{lambda=NULL}}
 
-\item{nFolds}{(integer/character) Either 2,3,5,10 or 'n' indicating the number of non-overlaping folds in which the data is split into to do cross-validation. When \code{nFolds='n'} leave-one-out CV is performed}
+\item{nfolds}{(integer/character) Either 2,3,5,10 or 'n' indicating the number of non-overlaping folds in which the data is split into to do cross-validation. When \code{nfolds='n'} leave-one-out CV is performed}
 
 \item{seed}{(numeric vector) Seed to fix randomization when creating folds for cross-validation. If it is a vector, a number equal to its length of CV repetitions are performed}
 
 \item{nCV}{(integer) Number of CV repetitions to be performed. Default is \code{nCV=1}}
 
-\item{commonLambda}{\code{TRUE} or \code{FALSE} to whether computing the coefficients for a grid of lambdas common to all individuals in testing set
- or for a grid of lambdas specific to each individual in testing set. Default is \code{commonLambda=TRUE}}
+\item{common.lambda}{\code{TRUE} or \code{FALSE} to whether computing the coefficients for a grid of lambdas common to all individuals in testing set
+ or for a grid of lambdas specific to each individual in testing set. Default is \code{common.lambda=TRUE}}
 
 \item{mc.cores}{(integer) Number of cores used. The analysis is run in parallel when \code{mc.cores} is greater than 1. Default is \code{mc.cores=1}}
 
 \item{tol}{(numeric) Maximum error between two consecutive solutions of the CD algorithm to declare convergence}
 
-\item{maxIter}{(integer) Maximum number of iterations to run the CD algorithm at each lambda step before convergence is reached}
+\item{maxiter}{(integer) Maximum number of iterations to run the CD algorithm at each lambda step before convergence is reached}
 
-\item{saveAt}{(character) Prefix name that will be added to the output files name to be saved, this may include a path. Regression coefficients
-are saved as a binary file (single-precision: 32 bits, 7 significant digits). Default \code{saveAt=NULL} will no save any output}
+\item{save.at}{(character) Prefix name that will be added to the output files name to be saved, this may include a path. Regression coefficients
+are saved as a binary file (single-precision: 32 bits, 7 significant digits). Default \code{save.at=NULL} will no save any output}
 
 \item{method}{(character) Either 'REML' (Restricted Maximum Likelihood) or 'ML' (Maximum Likelihood) to calculate variance components as per the function 'fitBLUP'}
 
@@ -79,7 +81,7 @@ are saved as a binary file (single-precision: 32 bits, 7 significant digits). De
 \item{verbose}{\code{TRUE} or \code{FALSE} to whether printing each step}
 }
 \value{
-Function 'SSI' returns a list object of the class 'SSI' for which methods \code{coef}, \code{fitted}, \code{plot}, and \code{summary} exist. Functions 'plotNet' and 'plotPath' can be also used. It contains the elements:
+Function 'SSI' returns a list object of the class 'SSI' for which methods \code{coef}, \code{fitted}, \code{plot}, and \code{summary} exist. Functions 'net.plot' and 'path.plot' can be also used. It contains the elements:
 \itemize{
   \item \code{b}: (vector) fixed effects solutions (including the intercept).
   \item \code{Xb}: (vector) product of the design matrix 'X' times the fixed effects solutions.
@@ -90,7 +92,7 @@ Function 'SSI' returns a list object of the class 'SSI' for which methods \code{
   \item \code{file_beta}: path where regression coefficients are saved.
 }
 
-Function 'SSI_CV' returns a list object of length \code{nCV} of the class 'SSI_CV' for which methods \code{plot} and \code{summary} exist. Each element is also a list containing the elements:
+Function 'SSI.CV' returns a list object of length \code{nCV} of the class 'SSI.CV' for which methods \code{plot} and \code{summary} exist. Each element is also a list containing the elements:
 \itemize{
   \item \code{b}: (vector) solutions for the fixed effects (including the intercept) for each fold.
   \item \code{varU}, \code{varE}, \code{h2}: variance components estimated within each fold.
@@ -109,7 +111,7 @@ An optimal penalization can be chosen using cross-validation (CV) within a speci
 \details{
 The basic linear mixed model that relates phenotypes with genetic values is of the form
 
-\ifelse{html}{\out{<center><b>y</b> = <b>X b</b> + <b>Z g</b> + <b>e</b></center>}}{\deqn{\textbf{y}=\textbf{X}\textbf{b}+\textbf{Z}\textbf{g}+\textbf{e}}{y = X b + Z g + e}}
+\ifelse{html}{\out{<p style='text-align:center'><b>y</b> = <b>X b</b> + <b>Z g</b> + <b>e</b></p>}}{\deqn{\textbf{y}=\textbf{X}\textbf{b}+\textbf{Z}\textbf{g}+\textbf{e}}{y = X b + Z g + e}}
 
 where
 \ifelse{html}{\out{<b>y</b>}}{\eqn{\textbf{y}}{y}} is a vector with the response,
@@ -131,12 +133,12 @@ In the un-replicated case, \ifelse{html}{\out{<b>Z</b> = <b>I</b>}}{\eqn{\textbf
 The values \ifelse{html}{\out{<b>u</b><sub>tst</sub> = (u<sub>i</sub>)}}{\eqn{\textbf{u}_{tst}=(u_i)}{u_tst = (u_i)}},
 \ifelse{html}{\out{i = 1,2,...,n<sub>tst</sub>}}{\eqn{i=1,2,...,n_{tst}}{i = 1,2,...,n_tst}}, for a testing set are estimated individual-wise using (as predictors) all available observations in a training set as
 
-\ifelse{html}{\out{<center>u<sub>i</sub> = <b>&beta;</b>'<sub>i</sub> (<b>y</b><sub>trn</sub> - <b>X</b><sub>trn</sub><b>b</b>)</center>}}{\deqn{u_i=\boldsymbol{\beta}'_i(\textbf{y}_{trn}-\textbf{X}_{trn}\textbf{b})}{u_i = beta'_i (y_trn - X_trn*b)}}
+\ifelse{html}{\out{<p style='text-align:center'>u<sub>i</sub> = <b>&beta;</b>'<sub>i</sub> (<b>y</b><sub>trn</sub> - <b>X</b><sub>trn</sub><b>b</b>)</p>}}{\deqn{u_i=\boldsymbol{\beta}'_i(\textbf{y}_{trn}-\textbf{X}_{trn}\textbf{b})}{u_i = beta'_i (y_trn - X_trn*b)}}
 
 where \ifelse{html}{\out{<b>&beta;</b><sub>i</sub>}}{\eqn{\boldsymbol{\beta}_i}{beta_i}}
 is a vector of weights that are found separately for each individual in the testing set, by minimizing the penalized mean squared error function
 
-\ifelse{html}{\out{<center>-<b>G</b>'<sub>trn,tst(i)</sub> <b>&beta;</b><sub>i</sub> + 1/2 <b>&beta;</b>'<sub>i</sub>(<b>G</b><sub>trn</sub> + &theta;<b>D</b>)<b>&beta;</b><sub>i</sub> + &lambda; J(<b>&beta;</b><sub>i</sub>)</center>}}{\deqn{-\textbf{G}_{trn,tst(i)}' \boldsymbol{\beta}_i + 1/2 \boldsymbol{\beta}_i'(\textbf{G}_{trn} + \theta\textbf{D}) \boldsymbol{\beta}_i + \lambda J(\boldsymbol{\beta}_i)}{-G'[trn,tst(i)] beta_i + 1/2 beta_i'(G[trn] + theta D)beta_i + lambda J(beta_i)}}
+\ifelse{html}{\out{<p style='text-align:center'>-<b>G</b>'<sub>trn,tst(i)</sub> <b>&beta;</b><sub>i</sub> + 1/2 <b>&beta;</b>'<sub>i</sub>(<b>G</b><sub>trn</sub> + &theta;<b>D</b>)<b>&beta;</b><sub>i</sub> + &lambda; J(<b>&beta;</b><sub>i</sub>)</p>}}{\deqn{-\textbf{G}_{trn,tst(i)}' \boldsymbol{\beta}_i + 1/2 \boldsymbol{\beta}_i'(\textbf{G}_{trn} + \theta\textbf{D}) \boldsymbol{\beta}_i + \lambda J(\boldsymbol{\beta}_i)}{-G'[trn,tst(i)] beta_i + 1/2 beta_i'(G[trn] + theta D)beta_i + lambda J(beta_i)}}
 
 where
 \ifelse{html}{\out{<b>G</b><sub>trn,tst(i)</sub>}}{\eqn{\textbf{G}_{trn,tst(i)}}{G[trn,tst(i)}}
@@ -146,7 +148,8 @@ sub-matrix of \ifelse{html}{\out{<b>G</b>}}{\eqn{\textbf{G}}{G}} whose rows corr
 is the sub-matrix corresponding to the training set; \ifelse{html}{\out{&theta; = &sigma;<sup>2</sup><sub>e</sub>/&sigma;<sup>2</sup><sub>u</sub>}}{\eqn{\theta=\sigma^2_e/\sigma^2_u}{theta = sigma^e/sigma^2_u}} is the residual to genetic variance ratio that can be expressed in terms of the heritability, \ifelse{html}{\out{h<sup>2</sup> = &sigma;<sup>2</sup><sub>u</sub>/(&sigma;<sup>2</sup><sub>u</sub> + &sigma;<sup>2</sup><sub>e</sub>)}}{\eqn{h^2=\sigma^2_u/(\sigma^2_u+\sigma^2_e)}{h^2 = sigma^2_u/(sigma^2_u + sigma^2_e)}}, as \ifelse{html}{\out{&theta; = (1 - h<sup>2</sup>)/h<sup>2</sup>}}{\eqn{\theta=(1-h^2)/h^2}{theta = (1 - h^2)/h^2}}; \ifelse{html}{\out{&lambda;}}{\eqn{\lambda}{lambda}} is the penalization parameter; and
 \ifelse{html}{\out{J(<b>&beta;</b><sub>i</sub>)}}{\eqn{J(\boldsymbol{\beta}_i)}{J(beta_i)}}
 is a penalty function given by
-\ifelse{html}{\out{<center>1/2(1-&alpha;)||<b>&beta;</b><sub>i</sub>||<sub>2</sub><sup>2</sup> + &alpha;||<b>&beta;</b><sub>i</sub>||<sub>1</sub></center>}}{\deqn{1/2(1-\alpha)||\boldsymbol{\beta}_i||_2^2 + \alpha||\boldsymbol{\beta}_i||_1}{1/2(1-alpha)||beta_i||_2^2 + alpha||beta_i||_1}}
+
+\ifelse{html}{\out{<p style='text-align:center'>1/2(1-&alpha;)||<b>&beta;</b><sub>i</sub>||<sub>2</sub><sup>2</sup> + &alpha;||<b>&beta;</b><sub>i</sub>||<sub>1</sub></p>}}{\deqn{1/2(1-\alpha)||\boldsymbol{\beta}_i||_2^2 + \alpha||\boldsymbol{\beta}_i||_1}{1/2(1-alpha)||beta_i||_2^2 + alpha||beta_i||_1}}
 
 where \ifelse{html}{\out{0 &le; &alpha; &le; 1}}{\eqn{0\leq\alpha\leq 1}{0 <= alpha <= 1}}, and
 \ifelse{html}{\out{||<b>&beta;</b><sub>i</sub>||<sub>1</sub> = &sum;<sub>j=1</sub>|&beta;<sub>ij</sub>|}}{\eqn{||\boldsymbol{\beta}_i||_1=\sum_{j=1}^{n_{trn}}|\beta_{ij}|}{||beta_i||_1 = sum(|beta_ij|)}} and
@@ -157,7 +160,7 @@ Function 'SSI' calculates each individual solution using the function 'solveEN' 
 and \code{Gamma} equal to
 \ifelse{html}{\out{<b>G</b><sub>trn,tst(i)</sub>}}{\eqn{\textbf{G}_{trn,tst(i)}}{G[trn,tst(i)]}}.
 
-Function 'SSI_CV' performs cross-validation within the training data specified in argument \code{trn}. Training data is divided into \eqn{k}{k} folds and the SSI is sequentially calculated for (all individuals in) one fold (testing set) using information from the remaining folds (training set).
+Function 'SSI.CV' performs cross-validation within the training data specified in argument \code{trn}. Training data is divided into \eqn{k}{k} folds and the SSI is sequentially calculated for (all individuals in) one fold (as testing set) using information from the remaining folds (as training set).
 }
 \examples{
   require(SFSI)
@@ -197,8 +200,8 @@ Function 'SSI_CV' performs cross-validation within the training data specified i
   # obtained from cross-validation in a traning set
   #---------------------------------------------------
   # Run a cross validation in training set
-  fm2 = SSI_CV(y,K=G,theta=theta,trn=trn,nFolds=5,name="1 5CV")
-  lambda = summary(fm2)$optCOR["mean","lambda"]
+  fm2 = SSI.CV(y,K=G,theta=theta,trn=trn,nfolds=5,name="1 5CV")
+  lambda = summary(fm2)$optCOR["lambda"]
   
   # Fit the index with the obtained lambda
   fm3 = SSI(y,K=G,theta=theta,trn=trn,tst=tst,lambda=lambda)
@@ -209,7 +212,7 @@ Function 'SSI_CV' performs cross-validation within the training data specified i
   
   \donttest{
   # Obtain an 'optimal' lambda by repeating the CV several times
-  fm22 = SSI_CV(y,K=G,theta=theta,trn=trn,nCV=5,name="5 5CV")
+  fm22 = SSI.CV(y,K=G,theta=theta,trn=trn,nCV=5,name="5 5CV")
   plot(fm22,fm2)
   }
 }

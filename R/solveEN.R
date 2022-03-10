@@ -1,10 +1,10 @@
 
-# Sigma=XtX; Gamma=Xty; alpha = 1; lambda = NULL; nLambda = 100; scale = TRUE
-# tol = 1E-5; maxIter = 1000; verbose = FALSE
+# Sigma=XtX; Gamma=Xty; alpha = 1; lambda = NULL; nlambda = 100; scale = TRUE
+# tol = 1E-5; maxiter = 1000; verbose = FALSE
 
-solveEN <- function(Sigma, Gamma, alpha = 1, lambda = NULL, nLambda = 100,
-    minLambda = .Machine$double.eps^0.5, maxDF = NULL, scale = TRUE,
-    tol = 1E-5, maxIter = 1000, verbose = FALSE)
+solveEN <- function(Sigma, Gamma, alpha = 1, lambda = NULL, nlambda = 100,
+    lambda.min = .Machine$double.eps^0.5, dfmax = NULL, scale = TRUE,
+    tol = 1E-5, maxiter = 1000, verbose = FALSE)
 {
     Gamma <- as.vector(Gamma)
     dimnames(Sigma) <- NULL
@@ -32,38 +32,38 @@ solveEN <- function(Sigma, Gamma, alpha = 1, lambda = NULL, nLambda = 100,
       sdx <- rep(1,p)
     }
 
-    if(is.null(maxDF)) maxDF <- p
+    if(is.null(dfmax)) dfmax <- p
 
     if(is.null(lambda)){
       Cmax <- ifelse(alpha > .Machine$double.eps, max(abs(Gamma)/alpha), 5)
-      lambda <- exp(seq(log(Cmax),log(minLambda),length=nLambda))
+      lambda <- exp(seq(log(Cmax),log(lambda.min),length=nlambda))
     }else{
       if(length(dim(lambda))==2 | mode(lambda)!="numeric" | any(diff(lambda)>.Machine$double.eps^0.5))
         stop("Object 'lambda' must be a vector of decreasing numbers")
-      maxDF <- p
+      dfmax <- p
     }
-    nLambda <- length(lambda)
+    nlambda <- length(lambda)
 
     #dyn.load("c_utils.so")
     if(isFloat)
     {
       beta <- .Call('updatebeta',as.integer(p),Sigma@Data,Gamma@Data,
-               as.integer(nLambda),as.numeric(lambda),
-               as.numeric(alpha), as.numeric(tol),as.integer(maxIter),
-               as.integer(maxDF),verbose,isFloat)
+               as.integer(nlambda),as.numeric(lambda),
+               as.numeric(alpha), as.numeric(tol),as.integer(maxiter),
+               as.integer(dfmax),verbose,isFloat)
 
     }else{
       beta <- .Call('updatebeta',as.integer(p),Sigma,as.vector(Gamma),
-               as.integer(nLambda),as.numeric(lambda),
-               as.numeric(alpha),as.numeric(tol),as.integer(maxIter),
-               as.integer(maxDF),verbose,isFloat)
+               as.integer(nlambda),as.numeric(lambda),
+               as.numeric(alpha),as.numeric(tol),as.integer(maxiter),
+               as.integer(dfmax),verbose,isFloat)
     }
     #dyn.unload("c_utils.so")
 
     df <- beta[[2]]
     beta <- beta[[1]]
 
-    index <- which(df <= maxDF)
+    index <- which(df <= dfmax)
     lambda <- lambda[index]
     df <- df[index]
     beta <- beta[, index, drop=FALSE]

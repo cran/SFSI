@@ -14,8 +14,8 @@ tst = seq(1,length(y),by=3)
 trn = (seq_along(y))[-tst]
 
 # Obtain lambda from cross-validation (in traning set)
-fm1 = SSI_CV(y,K=G,trn=trn,nFolds=5,nCV=2)
-lambda = summary(fm1)$optCOR["mean","lambda"]
+fm1 = SSI.CV(y,K=G,trn=trn,nfolds=5,nCV=2)
+lambda = summary(fm1)$optCOR["lambda"]
 
 # Fit the index with the obtained lambda
 fm2 = SSI(y,K=G,theta=NULL,trn=trn,tst=tst,lambda=lambda)

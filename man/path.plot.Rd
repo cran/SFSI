@@ -1,12 +1,12 @@
-\name{plotPath}
-\alias{plotPath}
+\name{path.plot}
+\alias{path.plot}
 \title{Coefficients path plot}
 \usage{
-plotPath(fm, Z = NULL, K = NULL, tst = NULL, 
-         title = NULL, maxCor = 0.85)
+path.plot(object, Z = NULL, K = NULL, tst = NULL, 
+          cor.max = 0.85, nbreaks.x=6, ...)
 }
 \arguments{
-\item{fm}{An object of the 'LASSO' or 'SSI' class}
+\item{object}{An object of the 'LASSO' or 'SSI' class}
 
 \item{Z}{(numeric matrix) Design matrix for random effects. When \code{Z=NULL} an identity matrix is considered (default) thus \ifelse{html}{\out{<b>G</b> = <b>K</b>}}{\eqn{\textbf{G = K}}{G = K}}; otherwise \ifelse{html}{\out{<b>G</b> = <b>Z K Z'</b>}}{\eqn{\textbf{G} = \textbf{Z K Z'}}{G = Z K Z'}} is used. Only needed for a \code{fm} object of the class 'SSI'}
 
@@ -14,9 +14,13 @@ plotPath(fm, Z = NULL, K = NULL, tst = NULL,
 
 \item{tst}{(integer vector) Which elements from vector \code{y} (stored in \code{fm$y}) are in testing set and to plot. They must be contained in \code{fm$tst}. Default \code{tst=NULL} will consider the whole vector \code{fm$tst} to plot}
 
-\item{title}{(character/expression) Title of the plot}
+\item{cor.max}{(numeric) Maximum correlation allowed for two different coefficients. A group of coeffcients with a correlation greater than \code{cor.max} are likely to overlap in the plot thus only one is kept}
 
-\item{maxCor}{(numeric) Maximum correlation allowed for two different coefficients. A group of coeffcients with a correlation greater than \code{maxCor} are likely to overlap in the plot thus only one is kept}
+\item{nbreaks.x}{(integer) Number of breaks in the x-axis}
+
+\item{...}{Other arguments for method \code{plot}: 'xlab', 'ylab', 'main', 'lwd'
+
+}
 }
 \value{
 Returns the plot of the coefficients' evolution path along the regularization parameter
@@ -35,19 +39,19 @@ Coefficients evolution path plot from an object of the class 'LASSO' or 'SSI'
   X = scale(X_E1[index,])               # Reflectance data
   
   # Sparse phenotypic regression
-  fm1 = lars2(var(X),cov(y,X))
+  fm1 = LARS(var(X),cov(y,X))
   
   # Sparse family index
   fm2 = SSI(y,K=G,tst=1:10,trn=11:50)
   
   \donttest{
-  plotPath(fm1)
-  plotPath(fm2,maxCor=0.6)
-  plotPath(fm2,K=G,maxCor=0.6)
+  path.plot(fm1)
+  path.plot(fm2, cor.max=0.6)
+  path.plot(fm2, K=G, cor.max=0.6)
   }
   
   # Path plot for the first individual in testing set for the SSI
-  plotPath(fm2,K=G,tst=fm2$tst[1])
+  path.plot(fm2, K=G, tst=fm2$tst[1])
 }
 \author{
 Marco Lopez-Cruz (\email{maraloc@gmail.com}) and Gustavo de los Campos

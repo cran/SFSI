@@ -304,7 +304,7 @@ Standard, L1-penalized and PC-based SIs will be fitted using data from a single 
 
 ### Regression coefficients
 
-Following code can be used to estimate regression coefficients using training data within each partition for the standard SI and for the PC-SI (with $1, 2,...,250$ PCs). Coefficients for L1-PSI are estimated the whose solutions are found using either the functions `lars2` or `solveEN` from the `SFSI` R-package. Function `solveEN` will yield solutions for a given grid of values of $\lambda$ while function `lars2` provides solutions for the entire $\lambda$ path.
+Following code can be used to estimate regression coefficients using training data within each partition for the standard SI and for the PC-SI (with $1, 2,...,250$ PCs). Coefficients for L1-PSI are estimated the whose solutions are found using either the functions `LARS` or `solveEN` from the `SFSI` R-package. Function `solveEN` will yield solutions for a given grid of values of $\lambda$ while function `LARS` provides solutions for the entire $\lambda$ path.
 
 Time-point can be specified through variable `timepoints`. Regression coefficients are stored in matrices `bSI`, `bPCSI` and `bL1PSI`, and saved in the file `coefficients_tp_*.RData`. Calculations are performed using genetic covariances calculated for the partitions previously created.
 
@@ -338,8 +338,8 @@ for(tp in timepoints){
     bPCSI[[k]] <- data.frame(I(beta),df=1:nrow(beta),lambda=NA)
     
     # L1-PSI
-    fm <- solveEN(VARx, gencov[,k],nLambda=100)
-    # fm <- lars2(VARx, gencov[,k])  # Second option
+    fm <- solveEN(VARx, gencov[,k],nlambda=100)
+    # fm <- LARS(VARx, gencov[,k])  # Second option
     beta <- t(fm$beta)[-1,]
     bL1PSI[[k]] <- data.frame(I(beta),df=fm$df[-1],lambda=fm$lambda[-1])
   }
@@ -533,7 +533,7 @@ for(k in 1:nPart)
     bPCSI[[k]] <- data.frame(I(beta),df=1:nrow(beta),lambda=NA)
     
     # L1-PSI
-    fm <- solveEN(VARx, Gencov[,k],nLambda=100,maxIter=200,tol=1E-3)
+    fm <- solveEN(VARx, Gencov[,k],nlambda=100,maxiter=200,tol=1E-3)
     beta <- t(fm$beta)[-1,]
     bL1PSI[[k]] <- data.frame(I(beta),df=fm$df[-1],lambda=fm$lambda[-1])
 }

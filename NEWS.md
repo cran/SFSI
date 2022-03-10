@@ -1,4 +1,14 @@
-### Version 1.0.1 (mmm-dd-yyyy)
+### Version 1.1.0 (Mar-10-2022)
+
+**New features**
+
+  - Some problems were fixed in the documentation structure as required by CRAN.
+  - Functions 'lars2', 'SSI_CV', 'plotNet', 'plotPath' changed their names to 'LARS', 'SSI.CV', 'net.plot', and 'path.plot', respectively.
+  - Some arguments' functions changed their names to a more informative name (e.g., 'minLambda' => 'lambda.min')
+  - More functionalities added to 'net.plot' function
+
+
+### Version 1.0.1 (Jan-26-2022)
 
 **New features**
 
@@ -15,7 +25,7 @@
 
   - Function 'solveEN' allows early stop when a user-provided number of non-zero predictors (at a given value of lambda) is reached (argument 'maxDF')
   - Functions 'solveEN' and 'lars2' return object 'beta' as matrix with predictors in rows (rather than in columns)
-  - Function 'cov2cor2' allows multiply the resulting correlation matrix times a constant 'a' (default is 'a=1')
+  - Function 'cov2cor2' allows multiplying the resulting correlation matrix times a constant 'a' (default is 'a=1')
   - Provided 'wheatHTP' dataset includes now an array of 4-folds partitions ('CV' column in object 'Y') and calculations of genetic and residual covariances between YLD and each of the wavelengths ('genCOV_xy' and 'resCOV_xy' objects), and among YLD from each environment ('genCOV_yy' object). Residuals covariances among YLD from each environment ('resCOV_yy' object) is also included
 
 **Bug fixes**

@@ -16,10 +16,10 @@ theta = fm1$varE/fm1$varU
 h2 = fm1$varU/(fm1$varU + fm1$varE)
 
 # Sparse selection index
-fm2 = SSI(y,K=G,theta=theta,nLambda=50)
+fm2 = SSI(y,K=G,theta=theta,nlambda=50)
 
 # The same but passing the heritability instead of theta
-fm2 = SSI(y,K=G,h2=h2,nLambda=50)
+fm2 = SSI(y,K=G,h2=h2,nlambda=50)
 yHat = fitted(fm2)
 
 plot(fm2)  # Penalization vs accuracy

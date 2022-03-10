@@ -48,9 +48,9 @@ Pairwise genetic covariances for variables with the same experimental design and
 Assumes that both \ifelse{html}{\out{<b>y</b><sub>1</sub>}}{\eqn{\textbf{y}_1}{y_1}} and
 \ifelse{html}{\out{<b>y</b><sub>2</sub>}}{\eqn{\textbf{y}_2}{y_2}} follow the basic linear mixed model that relates phenotypes with genetic values of the form
 
-\ifelse{html}{\out{<center><b>y</b><sub>1</sub> = <b>X b</b><sub>1</sub> + <b>Z u</b><sub>1</sub> + <b>e</b><sub>1</sub></center>}}{\deqn{\textbf{y}_1=\textbf{X}\textbf{b}_1+\textbf{Z}\textbf{u}_1+\textbf{e}_1}{y = X b_1 + Z u_1 + e_1}}
+\ifelse{html}{\out{<div style='text-align:center'><b>y</b><sub>1</sub> = <b>X b</b><sub>1</sub> + <b>Z u</b><sub>1</sub> + <b>e</b><sub>1</sub></div>}}{\deqn{\textbf{y}_1=\textbf{X}\textbf{b}_1+\textbf{Z}\textbf{u}_1+\textbf{e}_1}{y = X b_1 + Z u_1 + e_1}}
 
-\ifelse{html}{\out{<center><b>y</b><sub>2</sub> = <b>X b</b><sub>2</sub> + <b>Z u</b><sub>2</sub> + <b>e</b><sub>2</sub></center>}}{\deqn{\textbf{y}_2=\textbf{X}\textbf{b}_2+\textbf{Z}\textbf{u}_2+\textbf{e}_2}{y = X b_2 + Z u_2 + e_2}}
+\ifelse{html}{\out{<div style='text-align:center'><b>y</b><sub>2</sub> = <b>X b</b><sub>2</sub> + <b>Z u</b><sub>2</sub> + <b>e</b><sub>2</sub></div>}}{\deqn{\textbf{y}_2=\textbf{X}\textbf{b}_2+\textbf{Z}\textbf{u}_2+\textbf{e}_2}{y = X b_2 + Z u_2 + e_2}}
 
 where
 \ifelse{html}{\out{<b>b</b><sub>1</sub>}}{\eqn{\textbf{b}_1}{b_1}} and 
@@ -69,7 +69,7 @@ The genetic covariance
 \ifelse{html}{\out{&sigma;<sup>2</sup><sub>u1,u2</sub>}}{\eqn{\sigma^2_{u_1 u_2}}{sigma^2_u1u2)}}
 is estimated from the formula for the variance for the sum of two variables as 
 
-\ifelse{html}{\out{<center>&sigma;<sup>2</sup><sub>u1,u2</sub> = 1/2(&sigma;<sup>2</sup><sub>u3</sub> - &sigma;<sup>2</sup><sub>u1</sub> - &sigma;<sup>2</sup><sub>u2</sub>)</center>}}{\deqn{\sigma^2_{u_1 u_2}=\frac{1}{2}(\sigma^2_{u_3}-\sigma^2_{u_1}-\sigma^2_{u_2})}{sigma^2_u1u2 = 1/2 (sigma^2_u3 - sigma^2_u1 - sigma^2_u2)}}
+\ifelse{html}{\out{<div style='text-align:center'>&sigma;<sup>2</sup><sub>u1,u2</sub> = 1/2(&sigma;<sup>2</sup><sub>u3</sub> - &sigma;<sup>2</sup><sub>u1</sub> - &sigma;<sup>2</sup><sub>u2</sub>)</div>}}{\deqn{\sigma^2_{u_1 u_2}=\frac{1}{2}(\sigma^2_{u_3}-\sigma^2_{u_1}-\sigma^2_{u_2})}{sigma^2_u1u2 = 1/2 (sigma^2_u3 - sigma^2_u1 - sigma^2_u2)}}
 
 where \ifelse{html}{\out{&sigma;<sup>2</sup><sub>u3</sub>}}{\eqn{\sigma^2_{u_3}}{sigma^2_u3)}}
 is the genetic variance of the variable 
@@ -81,7 +81,7 @@ Likewise, the environmental covariance
 \ifelse{html}{\out{&sigma;<sup>2</sup><sub>e1,e2</sub>}}{\eqn{\sigma^2_{e_1 e_2}}{sigma^2_e1e2)}}
 is estimated as 
 
-\ifelse{html}{\out{<center>&sigma;<sup>2</sup><sub>e1,e2</sub> = 1/2(&sigma;<sup>2</sup><sub>e3</sub> - &sigma;<sup>2</sup><sub>e1</sub> - &sigma;<sup>2</sup><sub>e2</sub>)</center>}}{\deqn{\sigma^2_{e_1 e_2}=\frac{1}{2}(\sigma^2_{e_3}-\sigma^2_{e_1}-\sigma^2_{e_2})}{sigma^2_e1e2 = 1/2 (sigma^2_e3 - sigma^2_e1 - sigma^2_e2)}}
+\ifelse{html}{\out{<div style='text-align:center'>&sigma;<sup>2</sup><sub>e1,e2</sub> = 1/2(&sigma;<sup>2</sup><sub>e3</sub> - &sigma;<sup>2</sup><sub>e1</sub> - &sigma;<sup>2</sup><sub>e2</sub>)</div>}}{\deqn{\sigma^2_{e_1 e_2}=\frac{1}{2}(\sigma^2_{e_3}-\sigma^2_{e_1}-\sigma^2_{e_2})}{sigma^2_e1e2 = 1/2 (sigma^2_e3 - sigma^2_e1 - sigma^2_e2)}}
 
 where \ifelse{html}{\out{&sigma;<sup>2</sup><sub>e3</sub>}}{\eqn{\sigma^2_{e_3}}{sigma^2_e3)}}
 is the error variance of the variable 

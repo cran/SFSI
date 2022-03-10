@@ -6,7 +6,7 @@
 \method{fitted}{LASSO}(object, ...)
 }
 \arguments{
-\item{object}{An object of the class 'LASSO' returned either by the function 'lars2' or 'solveEN'}
+\item{object}{An object of the class 'LASSO' returned either by the function 'LARS' or 'solveEN'}
 
 \item{...}{Other arguments: \code{X} (numeric matrix) scores for as many predictors there are in \code{ncol(object$beta)}  (in columns) for a desired number \code{n} of observations (in rows)}
 }

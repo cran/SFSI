@@ -1,9 +1,9 @@
 
-\name{lars2}
-\alias{lars2}
+\name{LARS}
+\alias{LARS}
 \title{Least Angle Regression to solve LASSO-type problems}
 \usage{
-lars2(Sigma, Gamma, method = c("LAR", "LAR-LASSO"), maxDF = NULL,
+LARS(Sigma, Gamma, method = c("LAR", "LAR-LASSO"), dfmax = NULL,
   eps = .Machine$double.eps, scale = TRUE, verbose = FALSE)
 }
 \arguments{
@@ -18,8 +18,8 @@ lars2(Sigma, Gamma, method = c("LAR", "LAR-LASSO"), maxDF = NULL,
 }
 Default is \code{method='LAR'}}
 
-\item{maxDF}{(integer) Maximum number of non-zero coefficients in the last LARS solution.
-Default \code{maxDF=NULL} will calculate solutions for the entire lambda sequence}
+\item{dfmax}{(integer) Maximum number of non-zero coefficients in the last LARS solution.
+Default \code{dfmax=NULL} will calculate solutions for the entire lambda sequence}
 
 \item{eps}{(numeric) An effective zero. Default is the machine precision}
 
@@ -35,7 +35,7 @@ Returns a list object with the following elements:
   \item \code{beta}: (matrix) regression coefficients for each predictor (in rows) associated to each value of the penalization parameter lambda (in columns).
   \item \code{df}: (vector) degrees of freedom, number of non-zero predictors associated to each value of lambda.
 }
-The returned object is of the class 'LASSO' for which methods \code{fitted} exist. Function \code{plotPath} can be also used
+The returned object is of the class 'LASSO' for which methods \code{fitted} exist. Function \code{path.plot} can be also used
 }
 \description{
 Computes the entire LASSO solution for the regression coefficients, starting from zero, to the
@@ -44,7 +44,8 @@ a variance matrix among predictors and a covariance vector between response and 
 }
 \details{
 Finds solutions for the regression coefficients in a linear model
-\ifelse{html}{\out{<center>y<sub>i</sub> = <b>x</b>'<sub>i</sub> <b>&beta;</b> + e<sub>i</sub></center>}}{\deqn{y_i=\textbf{x}_i'\boldsymbol{\beta}+e_i}{y_i = x'_i beta + e_i}}
+
+\ifelse{html}{\out{<p style='text-align:center'>y<sub>i</sub> = <b>x</b>'<sub>i</sub> <b>&beta;</b> + e<sub>i</sub></p>}}{\deqn{y_i=\textbf{x}_i'\boldsymbol{\beta}+e_i}{y_i = x'_i beta + e_i}}
 
 where
 \ifelse{html}{\out{y<sub>i</sub>}}{\eqn{y_i}{y_i}} is the response for the \ifelse{html}{\out{i<sup>th</sup>}}{\eqn{i^{th}}{i^th}} observation,
@@ -60,7 +61,7 @@ The regression coefficients
 are estimated as function of the variance matrix among
 predictors (\ifelse{html}{\out{<b>&Sigma;</b>}}{\eqn{\boldsymbol{\Sigma}}{Sigma}}) and the covariance vector between response and predictors (\ifelse{html}{\out{<b>&Gamma;</b>}}{\eqn{\boldsymbol{\Gamma}}{Gamma}}) by minimizing the penalized mean squared error function
 
-\ifelse{html}{\out{<center>-<b>&Gamma;</b>' <b>&beta;</b> + 1/2 <b>&beta;</b>'<b>&Sigma;</b><b>&beta;</b> + 1/2 &lambda; ||<b>&beta;</b>||<sub>1</sub></center>}}{\deqn{-\boldsymbol{\Gamma}' \boldsymbol{\beta} + 1/2 \boldsymbol{\beta}'\boldsymbol{\Sigma} \boldsymbol{\beta} + 1/2\lambda||\boldsymbol{\beta}||_1}{-Gamma' beta + 1/2 beta' Sigma beta + 1/2 lambda ||beta||_1}}
+\ifelse{html}{\out{<p style='text-align:center'>-<b>&Gamma;</b>' <b>&beta;</b> + 1/2 <b>&beta;</b>'<b>&Sigma;</b><b>&beta;</b> + 1/2 &lambda; ||<b>&beta;</b>||<sub>1</sub></p>}}{\deqn{-\boldsymbol{\Gamma}' \boldsymbol{\beta} + 1/2 \boldsymbol{\beta}'\boldsymbol{\Sigma} \boldsymbol{\beta} + 1/2\lambda||\boldsymbol{\beta}||_1}{-Gamma' beta + 1/2 beta' Sigma beta + 1/2 lambda ||beta||_1}}
 
 where \ifelse{html}{\out{&lambda;}}{\eqn{\lambda}{lambda}}
 is the penalization parameter and
@@ -73,7 +74,7 @@ and the residual
 \ifelse{html}{\out{e<sub>i</sub> = y<sub>i</sub> - <b>x</b>'<sub>i</sub> <b>&beta;</b>}}{\eqn{e_i=y_i-\textbf{x}_i'\boldsymbol{\beta}}{e_i = y_i - x'_i beta}}
 is expressed (up-to a constant) as
 
-\ifelse{html}{\out{<center>r<sub>j</sub> = &Gamma;<sub>j</sub> - <b>&Sigma;</b>'<sub>j</sub> <b>&beta;</b></center>}}{\deqn{r_j=\Gamma_j-\boldsymbol{\Sigma}_j'\boldsymbol{\beta}}{r_j = Gamma_j - Sigma'_j beta}}
+\ifelse{html}{\out{<p style='text-align:center'>r<sub>j</sub> = &Gamma;<sub>j</sub> - <b>&Sigma;</b>'<sub>j</sub> <b>&beta;</b></p>}}{\deqn{r_j=\Gamma_j-\boldsymbol{\Sigma}_j'\boldsymbol{\beta}}{r_j = Gamma_j - Sigma'_j beta}}
 
 where
 \ifelse{html}{\out{&Gamma;<sub>j</sub>}}{\eqn{\Gamma_j}{Gamma_j}}
@@ -99,7 +100,7 @@ is the \ifelse{html}{\out{j<sup>th</sup>}}{\eqn{j^{th}}{j^th}} column of the mat
   Xty = cov(y[trn],X[trn,])
   
   # Run the penalized regression
-  fm1 = lars2(XtX,Xty,method="LAR-LASSO")  
+  fm1 = LARS(XtX,Xty,method="LAR-LASSO")  
   
   # Predicted values
   yHat1 = fitted(fm1, X=X[trn,])  # training data
@@ -113,7 +114,7 @@ is the \ifelse{html}{\out{j<sup>th</sup>}}{\eqn{j^{th}}{j^th}} column of the mat
   if(requireNamespace("float")){
    # Using a 'float' type variable
    XtX2 = float::fl(XtX)
-   fm2 = lars2(XtX2,Xty,method="LAR-LASSO")  
+   fm2 = LARS(XtX2,Xty,method="LAR-LASSO")  
    max(abs(fm1$beta-fm2$beta))      # Check for discrepances in beta
    max(abs(fm1$lambda-fm2$lambda))  # Check for discrepances in lambda
   }
@@ -131,4 +132,4 @@ Tibshirani R (1996). Regression shrinkage and selection via the LASSO. \emph{Jou
 \author{
 Marco Lopez-Cruz (\email{maraloc@gmail.com}) and Gustavo de los Campos. Adapted from the 'lars' function in package 'lars' (Hastie & Efron, 2013)
 }
-\keyword{lars2}
+\keyword{LARS}

@@ -112,8 +112,8 @@
 #      bPCSI[[k]] <- data.frame(I(beta),df=1:nrow(beta),lambda=NA)
 #  
 #      # L1-PSI
-#      fm <- solveEN(VARx, gencov[,k],nLambda=100)
-#      # fm <- lars2(VARx, gencov[,k])  # Second option
+#      fm <- solveEN(VARx, gencov[,k],nlambda=100)
+#      # fm <- LARS(VARx, gencov[,k])  # Second option
 #      beta <- t(fm$beta)[-1,]
 #      bL1PSI[[k]] <- data.frame(I(beta),df=fm$df[-1],lambda=fm$lambda[-1])
 #    }
@@ -255,7 +255,7 @@
 #      bPCSI[[k]] <- data.frame(I(beta),df=1:nrow(beta),lambda=NA)
 #  
 #      # L1-PSI
-#      fm <- solveEN(VARx, Gencov[,k],nLambda=100,maxIter=200,tol=1E-3)
+#      fm <- solveEN(VARx, Gencov[,k],nlambda=100,maxiter=200,tol=1E-3)
 #      beta <- t(fm$beta)[-1,]
 #      bL1PSI[[k]] <- data.frame(I(beta),df=fm$df[-1],lambda=fm$lambda[-1])
 #  }

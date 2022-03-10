@@ -158,7 +158,7 @@ for(k in 1:ncol(partitions))
   h2[k] <- fm1$h2       # Retrieve h2 estimate
 
   # Sparse SI
-  fm2 <- SSI(y,K=G,b=mu[k],h2=h2[k],trn=trn,tst=tst,mc.cores=1,nLambda=100)
+  fm2 <- SSI(y,K=G,b=mu[k],h2=h2[k],trn=trn,tst=tst,mc.cores=1,nlambda=100)
   fm3 <- summary(fm2)   # Useful function to get results
         
   accuracy <- c(GBLUP=cor(fm1$u[tst],y[tst]), fm3$accuracy)/sqrt(fm0$h2)
@@ -196,7 +196,7 @@ if(requireNamespace("ggplot2")){
 
 ## Cross-validating to obtain an optimal penalization
 
-The snippet below can be used to perform, within each trn-tst partition, $k$-folds CV to get an 'optimal' value of $\lambda$ within the training data, and then used to fit an SSI for the testing set. The CV is implemented using the function `SSI_CV` from the SFSI R-package for one 5-folds CV, this can be set by changing the `nCV` and `nFolds` arguments. 
+The snippet below can be used to perform, within each trn-tst partition, $k$-folds CV to get an 'optimal' value of $\lambda$ within the training data, and then used to fit an SSI for the testing set. The CV is implemented using the function `SSI.CV` from the SFSI R-package for one 5-folds CV, this can be set by changing the `nCV` and `nfolds` arguments. 
 
 ```{r eval=FALSE}
 load("geno_pheno.RData");   load("varComps.RData")
@@ -210,8 +210,8 @@ for(k in 1:ncol(partitions))
     tst <- which(partitions[,k] == 2)
     
     # Cross-validating the training set  
-    fm1 <- SSI_CV(y,K=G,trn=trn,nLambda=100,mc.cores=1,nFolds=5,nCV=1)
-    lambdaCV[k] <- summary(fm1)$optCOR["mean","lambda"]
+    fm1 <- SSI.CV(y,K=G,trn=trn,nlambda=100,mc.cores=1,nfolds=5,nCV=1)
+    lambdaCV[k] <- summary(fm1)$optCOR["lambda"]
       
     # Fit a SSI with the estimated lambda
     fm2 <- SSI(y,K=G,b=mu[k],h2=h2[k],trn=trn,tst=tst,lambda=lambdaCV[k])     
@@ -266,7 +266,7 @@ if(requireNamespace("ggplot2")){
 
 ## Subject-specific training sets
 
-The next script can be used to create a plot showing (for a single trn-tst partition) the subset of points in the support set, for each individual being predicted. This plot can be made through the function `plotNet` from the SFSI package.
+The next script can be used to create a plot showing (for a single trn-tst partition) the subset of points in the support set, for each individual being predicted. This plot can be made through the function `net.plot` from the SFSI package.
 
 ```{r eval=FALSE}
 # Load data
@@ -279,7 +279,7 @@ tst <- partitions[,part] == 2
 # Fit SSI with lambda previously estimated using CV
 fm <- SSI(y,K=G,trn=trn,tst=tst,lambda=lambdaCV[part])
 
-plotNet(fm,K=G,tst=fm$tst[1:16],unified=FALSE,title=NULL,bg.col="white",
+net.plot(fm,K=G,tst=fm$tst[1:16],unified=FALSE,main=NULL,bg.col="white",
         set.size=c(3,1.5,0.2),point.color="gray40",axis.labels=FALSE)  
 ```
 <center>

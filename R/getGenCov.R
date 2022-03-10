@@ -1,3 +1,4 @@
+
 # y1=y; y2=x; X=Z=U=d=NULL; K=G; mc.cores=5; scale=TRUE
 getGenCov <- function(y1, y2, X = NULL, Z = NULL, K = NULL, U = NULL,
            d = NULL, scale = TRUE, mc.cores = 1, warn = FALSE, ...)

@@ -11,25 +11,27 @@
 
 \method{summary}{SSI}(object, ...)
   
-\method{plot}{SSI}(..., title=NULL, py=c("accuracy","MSE"))
+\method{plot}{SSI}(..., py=c("accuracy","MSE"), nbreaks.x=6)
 }
 \arguments{
-\item{object}{An object of the class 'SSI'. One or more objects must be passed as \code{...} in the method \code{plot}}
+\item{object}{An object of the class 'SSI'}
+
+\item{...}{Arguments to be passed: 
+\itemize{
+ \item One or more objects of the class 'SSI' (for method \code{plot})
+ \item Other arguments for method \code{plot}: 'xlab', 'ylab', 'main', 'lwd', 'xlim', 'ylim'
+ \item Not needed for methods \code{summary}, \code{coef} and \code{fitted}
+}
+}
 
 \item{df}{(numeric) Average (across testing individuals) number of non-zero regression coefficients}
 
 \item{tst}{(integer vector) Which elements from vector \code{y} (stored in \code{object$y}) are in testing set. Default \code{tst=NULL} will consider all individuals in \code{object$tst}}
 
-\item{py}{(character) Either 'accuracy' or 'MSE' to plot the correlation between observed and predicted values or the mean squared error, respectively, in the y-axis}
+\item{py}{(character) Either 'accuracy' (correlation between observed and predicted values) or 'MSE' (mean squared error) to plot in the y-axis}
 
-\item{title}{(character or expression) Title of the plot}
+\item{nbreaks.x}{(integer) Number of breaks in the x-axis}
 
-\item{...}{Arguments to be passed: 
-\itemize{
- \item \code{object}: One or more objects of the class 'SSI' (for method \code{plot})
- \item Not needed for methods \code{summary} and \code{fitted}
-}
-}
 }
 \value{
 Method \code{fitted} returns a matrix with the predicted values for each individual in the testing set (in rows) for each value of lambda (in columns).
@@ -38,7 +40,7 @@ Method \code{coef} (list of matrices) returns the regression coefficients for ea
 
 Method \code{summary} returns a list object containing:
 \itemize{
-  \item \code{lambda}: (vector) sequence of (across testing individuals) values of lambda used in the coefficients' estimation.
+  \item \code{lambda}: (vector) sequence of values of lambda used in the coefficients' estimation.
   \item \code{df}: (vector) degrees of freedom (across testing individuals) at each solution associated to each value of lambda.
   \item \code{accuracy}: (vector) correlation between observed and predicted values associated to each value of lambda.
   \item \code{MSE}: (vector) mean squared error associated to each value of lambda.
@@ -66,15 +68,15 @@ Useful methods for retrieving, summarizing and visualizing important results fro
   
   fm1 = SSI(y,K=G,tst=tst,trn=trn)
   
-  yHat = fitted(fm1)              # Predicted values for each SSI
-  out = summary(fm1)              # Useful function to get results
-  corTST = out$accuracy           # Testing set accuracy (correlation cor(y,yHat))
-  out$optCOR                      # SSI with maximum accuracy
-  out$optMSE                      # SSI with minimum MSE
-  B = coef(fm1)                   # Regression coefficients
-  B = coef(fm1,df=out$optCOR$df)  # Regression coefficients associated with one 'df'
-  plot(fm1,title=expression('corr('*y[obs]*','*y[pred]*') vs sparsity'))   
-  plot(fm1,py="MSE",title='Mean Square Error vs sparsity')     
+  yHat = fitted(fm1)                # Predicted values for each SSI
+  out = summary(fm1)                # Useful function to get results
+  corTST = out$accuracy             # Testing set accuracy (correlation cor(y,yHat))
+  out$optCOR                        # SSI with maximum accuracy
+  out$optMSE                        # SSI with minimum MSE
+  B = coef(fm1)                     # Regression coefficients
+  B = coef(fm1,df=out$optCOR['df']) # Regression coefficients associated with one 'df'
+  plot(fm1,main=expression('corr('*y[obs]*','*y[pred]*') vs sparsity'))   
+  plot(fm1,py="MSE",ylab='Mean Square Error', xlab='Sparsity')     
   
 }
 \author{

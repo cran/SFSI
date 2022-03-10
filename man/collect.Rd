@@ -26,10 +26,10 @@ according to argument \code{subset}.
   prefix <- paste0(tempdir(),"/testSSI")
   
   # Run the analysis into 4 subsets and save them at a given prefix
-  fm <- SSI(y,K=G,tst=1:80,trn=81:length(y),subset=c(1,4),saveAt=prefix)
-  fm <- SSI(y,K=G,tst=1:80,trn=81:length(y),subset=c(2,4),saveAt=prefix)
-  fm <- SSI(y,K=G,tst=1:80,trn=81:length(y),subset=c(3,4),saveAt=prefix)
-  fm <- SSI(y,K=G,tst=1:80,trn=81:length(y),subset=c(4,4),saveAt=prefix)
+  fm <- SSI(y,K=G,tst=1:80,trn=81:length(y),subset=c(1,4),save.at=prefix)
+  fm <- SSI(y,K=G,tst=1:80,trn=81:length(y),subset=c(2,4),save.at=prefix)
+  fm <- SSI(y,K=G,tst=1:80,trn=81:length(y),subset=c(3,4),save.at=prefix)
+  fm <- SSI(y,K=G,tst=1:80,trn=81:length(y),subset=c(4,4),save.at=prefix)
 
   # Collect all results after completion
   fm <- collect(prefix)
