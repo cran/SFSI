@@ -1,7 +1,7 @@
- #y=y; X = NULL; Z = D= NULL; K=G; b=NULL; h2 = NULL; trn = trn; alpha = 1;
- #lambda = NULL; nlambda = 100; lambda.min = .Machine$double.eps^0.5; nCV = 1; nfolds = 5;
- #seed = NULL; common.lambda = TRUE; method = c("REML","ML")[1]
- #mc.cores = 1; tol = 1E-4; maxiter = 500; name = NULL; verbose = TRUE
+# X = NULL; Z = D= NULL; K=G; b=NULL; h2 = NULL; alpha = 1;
+# lambda = NULL; nlambda = 100; lambda.min = .Machine$double.eps^0.5; nCV = 1; nfolds = 5;
+# seed = NULL; common.lambda = TRUE; method = c("REML","ML")[1]
+# mc.cores = 1; tol = 1E-4; maxiter = 500; name = NULL; verbose = TRUE
 
 SSI.CV <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
               theta = NULL, h2 = NULL, trn = seq_along(y), alpha = 1,
@@ -26,7 +26,7 @@ SSI.CV <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
     if(!float::storage.mode(K) %in% c("float32","double")) storage.mode(K) <- "double"
 
     if(!is.null(Z)){
-      if(length(dim(Z)) != 2) stop("Object 'Z' must be a matrix with nrow(Z)=n and ncol(Z)=nrow(K)")
+      if(length(dim(Z)) != 2L) stop("Object 'Z' must be a matrix with nrow(Z)=n and ncol(Z)=nrow(K)")
       K <- float::tcrossprod(Z,float::tcrossprod(Z,K))   # Z%*%K%*%t(Z)
     }
 
@@ -36,23 +36,29 @@ SSI.CV <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
     nfolds <- ifelse(isLOOCV,nTRN,as.numeric(nfolds))
     mc.cores2 <- ifelse(isLOOCV,1,mc.cores)
 
+    if(any(is.na(y[trn]))){
+      stop("All entries in y[trn] must be non-NA")
+    }
+
     compApply <- function(ind)
     {
       trn0 <- trn[folds != ind]
       tst0 <- trn[folds == ind]
 
-      fm <- SSI(y, X=X, b=b, K=K, D=D, theta=theta, h2=h2, trn=trn0, tst=tst0,
-              alpha=alpha, method=method, lambda=lambda, nlambda=nlambda,
-              lambda.min=lambda.min, tol=tol, maxiter=maxiter,
-              common.lambda=common.lambda, mc.cores=mc.cores2, verbose=FALSE)
+      fm <- SSI(y, X=X, b=b, K=K, D=D, theta=theta, h2=h2,
+                trn=trn0, tst=tst0,alpha=alpha, method=method,
+                lambda=lambda, nlambda=nlambda,lambda.min=lambda.min,
+                tol=tol, maxiter=maxiter,common.lambda=common.lambda,
+                mc.cores=mc.cores2, return.beta=FALSE, save.beta=FALSE,
+                verbose=FALSE)
 
       if(isLOOCV){
           rr <- list(u=as.vector(fitted.SSI(fm)), varU=fm$varU, varE=fm$varE,
                      h2=fm$h2, theta=fm$theta, b=fm$b, tst=tst0, df=fm$df, lambda=fm$lambda)
       }else{
-          fv <- summary.SSI(fm)
+          ss <- summary.SSI(fm)
           rr <- list(varU=fm$varU, varE=fm$varE, h2=fm$h2, theta=fm$theta, b=fm$b, tst=tst0,
-                     df=fv$df, lambda=fv$lambda, accuracy=fv$accuracy, MSE=fv$MSE)
+                     df=ss$df, lambda=ss$lambda, accuracy=ss$accuracy, MSE=ss$MSE)
       }
 
       if(verbose){
@@ -63,7 +69,6 @@ SSI.CV <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
 
     if(is.null(seed)){   # Seeds for randomization
       seeds <- round(seq(1E3, .Machine$integer.max/1000, length=nCV))
-      #if(nCV >1) seeds <- sample(seeds)
     }else{
       seeds <- seed
       nCV <- length(seeds)
@@ -82,11 +87,10 @@ SSI.CV <- function(y, X = NULL, b = NULL, Z = NULL, K, D = NULL,
         folds <- sample(folds)
       }
 
-      if(mc.cores == 1L | !isLOOCV){
-        out = lapply(X=seq(nfolds),FUN=compApply)
-      }
       if(mc.cores > 1L & isLOOCV){
         out = parallel::mclapply(X=seq(nfolds),FUN=compApply,mc.cores=mc.cores)
+      }else{
+        out = lapply(X=seq(nfolds),FUN=compApply)
       }
 
       tmp <- do.call(rbind,split(data.frame(trn,folds),folds))[,1]

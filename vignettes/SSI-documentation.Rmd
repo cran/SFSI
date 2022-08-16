@@ -190,7 +190,7 @@ if(requireNamespace("ggplot2")){
 }
 ```
 <center>
-![alt text here](Figure_SSI1.png){ width=45% }
+![Figure. Effect of the penalization on the accuracy](Figure_SSI1.png){ width=45% }
 </center>
 
 
@@ -241,7 +241,7 @@ if(requireNamespace("ggplot2")){
 }
 ```
 <center>
-![alt text here](Figure_SSI2.png){ width=40% }
+![Figure. Accuracy of the G-BLUP vs. that of the SSI](Figure_SSI2.png){ width=40% }
 </center>
 
 
@@ -261,7 +261,7 @@ if(requireNamespace("ggplot2")){
 }
 ```
 <center>
-![alt text here](Figure_SSI3.png){ width=45% }
+![Figure. Distribution of the number of support points](Figure_SSI3.png){ width=45% }
 </center>
 
 ## Subject-specific training sets
@@ -279,11 +279,11 @@ tst <- partitions[,part] == 2
 # Fit SSI with lambda previously estimated using CV
 fm <- SSI(y,K=G,trn=trn,tst=tst,lambda=lambdaCV[part])
 
-net.plot(fm,K=G,tst=fm$tst[1:16],unified=FALSE,main=NULL,bg.col="white",
-        set.size=c(3,1.5,0.2),point.color="gray40",axis.labels=FALSE)  
+net.plot(fm, K=G, i=1:16, unified=FALSE, main=NULL, bg.col="white",
+        set.size=c(3,1.5,0.2), point.color="gray40", axis.labels=FALSE)  
 ```
 <center>
-![alt text here](Figure_SSI4.png){ width=55% }
+![Figure. Subject specific trainig sets for the first 16 testing elements](Figure_SSI4.png){ width=55% }
 </center>
 
 # References

@@ -4,42 +4,37 @@
 #====================================================================
 add2diag <- function(V, a, void = FALSE)
 {
+  if(missing(a)){
+    stop("Argument 'a' is missing, with no default")
+  }
+
   if((sum(dim(V))/2)^2 != length(V)) stop("Object 'V' must be a squared matrix")
   if(!float::storage.mode(V) %in% c("float32","double")) storage.mode(V) <- "double"
 
   p <- ncol(V)
-  isFloat <- float::storage.mode(V)=="float32"
+  isfloat <- float::storage.mode(V)=="float32"
 
   #dyn.load("c_utils.so")
   if(void)
   {
-    if(isFloat){
-      out <- .Call('addvalue2diag',as.integer(p),V@Data,as.numeric(a),isFloat)
+    if(isfloat){
+      out <- .Call('addvalue2diag',as.integer(p),V@Data,as.numeric(a),isfloat)
     }else{
-      out <- .Call('addvalue2diag',as.integer(p),V,as.numeric(a),isFloat)
+      out <- .Call('addvalue2diag',as.integer(p),V,as.numeric(a),isfloat)
     }
   }else{
-    if(isFloat){
+    if(isfloat){
       out <- V@Data[]
-    }else out <- V[]
+    }else{
+       out <- V[]
+    }
 
-    tmp <- .Call('addvalue2diag',as.integer(p),out,as.numeric(a),isFloat)
-    if(isFloat) out <- float::float32(out)
+    tmp <- .Call('addvalue2diag',as.integer(p),out,as.numeric(a),isfloat)
+    if(isfloat){
+      out <- float::float32(out)
+    }
   }
   #dyn.unload("c_utils.so")
-  out
-}
-
-#====================================================================
-# Used by the 'plotPath' function
-#====================================================================
-getIndexCorrelated <- function(X, maxCor = 0.8)
-{
-  COV <- stats::cov(X)
-  p <- ncol(COV)
-  index <- .Call("getCorrelated",as.integer(p),COV,as.numeric(maxCor))
-  out <- NULL
-  if(index[[2]] > 0L) out <- index[[1]][1:index[[2]]]
   out
 }
 
@@ -54,7 +49,6 @@ backsolvet <- function(r, x, k=ncol(r))
 #====================================================================
 # Update the lower triangular CHOLESKY decomposition when adding a new column
 #====================================================================
-# xtx=P[inew,inew]; Xtx=as.vector(P[inew,active])
 upDateR <- function(xtx, R = NULL, Xtx, eps = .Machine$double.eps)
 {
   norm.xnew <- sqrt(xtx)
@@ -79,7 +73,6 @@ upDateR <- function(xtx, R = NULL, Xtx, eps = .Machine$double.eps)
     R
   }
 }
-
 
 #====================================================================
 # Update the lower triangular CHOLESKY decomposition when deleting one column
@@ -106,18 +99,18 @@ deleteCol <- function(R, z, k = p)
 	z <- as.matrix(z)
 	pz <- dim(z)[2]
   if(!float::storage.mode(R) %in% c("double","float32")) storage.mode(R) <- "double"
-  isFloat <- float::storage.mode(R) == "float32"
+  isfloat <- float::storage.mode(R) == "float32"
 
-  if(isFloat){
+  if(isfloat){
     z <- float::fl(z)
   }else storage.mode(z) <- "double"
 
   #dyn.load("c_utils.so")
-	if(isFloat){
-  	tmp = .Call("delete_col",R@Data,as.integer(p),as.integer(k),z@Data,as.integer(pz),isFloat)
+	if(isfloat){
+  	tmp = .Call("delete_col",R@Data,as.integer(p),as.integer(k),z@Data,as.integer(pz),isfloat)
 		return(lapply(tmp,function(x)float::float32(x)))
 	}else{
-		return(.Call("delete_col",R,as.integer(p),as.integer(k),z,as.integer(pz),isFloat))
+		return(.Call("delete_col",R,as.integer(p),as.integer(k),z,as.integer(pz),isfloat))
 	}
   #dyn.unload("c_utils.so")
 }
@@ -209,7 +202,6 @@ dlogLik <- function(ratio, n, c0, Uty, UtX, d)
 #====================================================================
 # Derivative of the Log-restricted Likelihood (REML)
 #====================================================================
-# tt=dlogResLik(ratio,n=n,c0=c0,Uty=Uty,UtX=UtX,d=d)
 dlogResLik <- function(ratio, n, c0, Uty, UtX, d)
 {
   dbar <- 1/(ratio*d+1)
@@ -284,7 +276,6 @@ searchInt <- function(method, interval, n, c0, Uty, UtX, d, maxiter, tol, lower,
 #====================================================================
 # Labels and breaks for the DF axis
 #====================================================================
-# x = dat$lambda; y = dat$df
 get_breaks <- function(x, y, nbreaks = 6, ymin = 1)
 {
   p <- max(round(y))
@@ -302,16 +293,14 @@ get_breaks <- function(x, y, nbreaks = 6, ymin = 1)
   tt <- stats::predict(fm,tmp)
   xxmin <- tt$x[min(which(tt$y >= ymin))]
 
-  #xx <- stats::predict(stats::smooth.spline(y, neglogx),yy)$y
-  #tmp <- data.frame(x=exp(-xx),neglogx=xx,y=yy)
-  #breaks.x <- seq(tmp[1,2], -log(min(x)), length=nbreaks)
   breaks.x <- seq(xxmin, -log(min(x)), length=nbreaks)
   breaks.y <- stats::predict(fm, breaks.x)$y
 
   return(list(breaks.x=breaks.x,breaks.y=breaks.y))
 }
 
-
+#====================================================================
+#====================================================================
 has_names <- function(X){
   if(length(dim(X)) == 2L){
     out <- length(unlist(dimnames(X))) == sum(dim(X))
@@ -342,8 +331,8 @@ get_net <- function(X, K = NULL, xxx = NULL, yyy = NULL, eps = .Machine$double.e
           }else{
             yyy <- match(rownames(X),uniqueNames)
             xxx <- match(colnames(X),uniqueNames)
-            cat("Some row/column names of 'object' were not found in row names of 'K'.",
-                "\nInput 'K' will be ignored\n")
+            message("Some row/column names of 'object' were not found in row names of 'K'.",
+                "\nInput 'K' will be ignored")
             K <- NULL
           }
         }else{
@@ -368,15 +357,15 @@ get_net <- function(X, K = NULL, xxx = NULL, yyy = NULL, eps = .Machine$double.e
 
     }else{
       if((has_names(X) + has_names(K)) <= 1){
-        cat("Input 'object' couldn't be linked to 'K' through row/column names.",
-            "\nInput 'K' will be ignored\n")
+        message("Input 'object' couldn't be linked to 'K' through row/column names.",
+            "\nInput 'K' will be ignored")
         K <- NULL
       }
     }
     if(has_names(X) & has_names(K)){
       if(any(!uniqueNames %in% rownames(K))){
-        cat("Some row/column names of 'object' were not found in row names of 'K'.",
-          "\nInput 'K' will be ignored\n")
+        message("Some row/column names of 'object' were not found in row names of 'K'.",
+          "\nInput 'K' will be ignored")
           K <- NULL
       }
     }
@@ -478,7 +467,7 @@ get_net <- function(X, K = NULL, xxx = NULL, yyy = NULL, eps = .Machine$double.e
   |    ._____| | | |       ._____| | .__| |__.     Marco Lopez-Cruz       |
   |    |_______| |_|       |_______| |_______|     Gustavo de los Campos  |
   |                                                                       |
-  |    Sparse Family and Selection Index. Version 1.1.0 (Mar 10, 2022)    |
+  |    Sparse Family and Selection Index. Version 1.2.0 (Aug 16, 2022)    |
   |    Type 'citation('SFSI')' to know how to cite SFSI                   |
   |    Type 'help(package='SFSI',help_type='html')' to see help           |
   |    Type 'browseVignettes('SFSI')' to see documentation                |

@@ -5,10 +5,11 @@ setwd(tempdir())
 library(SFSI)
 data(wheatHTP)
 
-index = which(Y$CV %in% 1:2)
+index = which(Y$trial %in% 1:6)      # Use only a subset of data
+Y = Y[index,]
 M = scale(M[index,])/sqrt(ncol(M))   # Subset and scale markers
 G = tcrossprod(M)                    # Genomic relationship matrix
-y = as.vector(scale(Y[index,"E1"])) # Subset response variable
+y = as.vector(scale(Y[,'E1']))       # Subset response variable
 
 # Calculate variance components ratio using all data
 fm1 = fitBLUP(y,K=G)
@@ -20,18 +21,19 @@ fm2 = SSI(y,K=G,theta=theta,nlambda=50)
 
 # The same but passing the heritability instead of theta
 fm2 = SSI(y,K=G,h2=h2,nlambda=50)
-yHat = fitted(fm2)
+u2 = fitted(fm2)
 
 plot(fm2)  # Penalization vs accuracy
 
 # Equivalence of the SSI with lambda=0 with G-BLUP
 fm3 = SSI(y,K=G,theta=theta,lambda=0,tol=1E-5)
 
-cor(y,fm1$u)        # G-BLUP accuracy
-cor(y,fitted(fm3))  # SSI accuracy
+cor(y, fm1$u)        # G-BLUP accuracy
+cor(y, fitted(fm3))  # SSI accuracy
+cor(fm1$u, fitted(fm3))
 
 # Predicting a testing set using training set
-tst = seq(1,length(y),by=3)
+tst = which(Y$trial %in% 2)
 trn = (seq_along(y))[-tst]
 
 # Calculate variance components in training data

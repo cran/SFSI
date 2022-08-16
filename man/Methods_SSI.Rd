@@ -5,7 +5,7 @@
 \alias{fitted.SSI}
 \title{SSI methods}
 \usage{
-\method{coef}{SSI}(object, ..., df=NULL, tst=NULL)
+\method{coef}{SSI}(object, ..., df=NULL, i=NULL)
 
 \method{fitted}{SSI}(object, ...)
 
@@ -20,13 +20,13 @@
 \itemize{
  \item One or more objects of the class 'SSI' (for method \code{plot})
  \item Other arguments for method \code{plot}: 'xlab', 'ylab', 'main', 'lwd', 'xlim', 'ylim'
- \item Not needed for methods \code{summary}, \code{coef} and \code{fitted}
+ \item An optional vector of observations \code{y} (with a similar heritability as the one declared in 'SSI' function) for methods \code{summary}, \code{plot}, and \code{fitted}
 }
 }
 
 \item{df}{(numeric) Average (across testing individuals) number of non-zero regression coefficients}
 
-\item{tst}{(integer vector) Which elements from vector \code{y} (stored in \code{object$y}) are in testing set. Default \code{tst=NULL} will consider all individuals in \code{object$tst}}
+\item{i}{(integer vector) Index testing elements (stored in \code{object$tst}) to be considered. Default \code{i=NULL} will consider all elements in \code{object$tst}}
 
 \item{py}{(character) Either 'accuracy' (correlation between observed and predicted values) or 'MSE' (mean squared error) to plot in the y-axis}
 
@@ -57,24 +57,26 @@ Useful methods for retrieving, summarizing and visualizing important results fro
   require(SFSI)
   data(wheatHTP)
   
-  index = which(Y$CV \%in\% 1:2)        # Use only a subset of data
-  M = scale(M[index,])/sqrt(ncol(M))    # Subset and scale markers
-  G = tcrossprod(M)                     # Genomic relationship matrix
-  y = as.vector(scale(Y[index,"E1"]))   # Subset ans scale response variable
+  index = which(Y$trial \%in\% 1:6)   # Use only a subset of data
+  Y = Y[index,]
+  M = scale(M[index,])/sqrt(ncol(M))  # Subset and scale markers
+  G = tcrossprod(M)                   # Genomic relationship matrix
+  y = as.vector(scale(Y[,"E1"]))      # Scale response variable
   
   # Training and testing sets
-  tst = seq(1,length(y),by=5)
-  trn = seq_along(y)[-tst][1:200]
+  tst = which(Y$trial == 2)
+  trn = which(Y$trial != 2)
   
-  fm1 = SSI(y,K=G,tst=tst,trn=trn)
+  fm1 = SSI(y,K=G,theta=1,b=0,tst=tst,trn=trn)
   
-  yHat = fitted(fm1)                # Predicted values for each SSI
+  uHat = fitted(fm1)                # Predicted values for each testing element
   out = summary(fm1)                # Useful function to get results
   corTST = out$accuracy             # Testing set accuracy (correlation cor(y,yHat))
   out$optCOR                        # SSI with maximum accuracy
   out$optMSE                        # SSI with minimum MSE
-  B = coef(fm1)                     # Regression coefficients
-  B = coef(fm1,df=out$optCOR['df']) # Regression coefficients associated with one 'df'
+  B = coef(fm1)                     # Regression coefficients for all tst
+  B = coef(fm1, i=1)                # Regression coefficients for first tst (tst[1])
+  B = coef(fm1, df=10)              # Regression coefficients for which df=10
   plot(fm1,main=expression('corr('*y[obs]*','*y[pred]*') vs sparsity'))   
   plot(fm1,py="MSE",ylab='Mean Square Error', xlab='Sparsity')     
   

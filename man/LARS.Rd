@@ -3,13 +3,18 @@
 \alias{LARS}
 \title{Least Angle Regression to solve LASSO-type problems}
 \usage{
-LARS(Sigma, Gamma, method = c("LAR", "LAR-LASSO"), dfmax = NULL,
-  eps = .Machine$double.eps, scale = TRUE, verbose = FALSE)
+LARS(Sigma, Gamma, X =NULL, method=c("LAR","LAR-LASSO"),
+      dfmax = NULL, eps = .Machine$double.eps, 
+      scale = TRUE, mc.cores = 1L, return.beta = TRUE, 
+      save.beta = FALSE, verbose = FALSE)
+
 }
 \arguments{
 \item{Sigma}{(numeric matrix) Variance-covariance matrix of predictors. It can be of the "float32" type as per the 'float' R-package}
 
-\item{Gamma}{(numeric vector) Covariance between response variable and predictors}
+\item{Gamma}{(numeric matrix) Covariance between response variable and predictors. If it contains more than one column, the algorithm is applied to each column separately as different response variables}
+
+\item{X}{(numeric matrix) Optional matrix of predictors to obtain fitted values}
 
 \item{method}{(character) Either:
 \itemize{
@@ -26,6 +31,12 @@ Default \code{dfmax=NULL} will calculate solutions for the entire lambda sequenc
 \item{scale}{\code{TRUE} or \code{FALSE} to scale matrix \code{Sigma} for variables with unit variance and scale \code{Gamma} by the standard deviation of the corresponding predictor
 taken from the diagonal of \code{Sigma}}
 
+\item{mc.cores}{(integer) Number of cores used. The analysis is run in parallel when \code{mc.cores} is greater than 1. Default is \code{mc.cores=1}}
+
+\item{return.beta}{\code{TRUE} or \code{FALSE} to whether return regression coefficients in the output object}
+
+\item{save.beta}{\code{TRUE} or \code{FALSE} to whether save regression coefficients (in a temporary folder). When \code{TRUE} coefficients are not returned in the output object and instead the path where coefficients were saved is returned. They can be retrieved using \code{coef} method if at least one \code{return.beta} or \code{save.beta} is TRUE}
+
 \item{verbose}{\code{TRUE} or \code{FALSE} to whether printing each LARS step}
 }
 \value{
@@ -34,6 +45,7 @@ Returns a list object with the following elements:
   \item \code{lambda}: (vector) all the sequence of values of the LASSO penalty.
   \item \code{beta}: (matrix) regression coefficients for each predictor (in rows) associated to each value of the penalization parameter lambda (in columns).
   \item \code{df}: (vector) degrees of freedom, number of non-zero predictors associated to each value of lambda.
+  \item \code{yHat}: (matrix) fitted values calculated using a matrix of predictors (when argument X is not NULL), associated to each value of lambda (in columns).
 }
 The returned object is of the class 'LASSO' for which methods \code{fitted} exist. Function \code{path.plot} can be also used
 }
@@ -88,16 +100,16 @@ is the \ifelse{html}{\out{j<sup>th</sup>}}{\eqn{j^{th}}{j^th}} column of the mat
   require(SFSI)
   data(wheatHTP)
   
-  y = as.vector(Y[,"E1"])  # Response variable
+  y = as.vector(Y[,"E1"])   # Response variable
   X = scale(X_E1)           # Predictors
 
   # Training and testing sets
-  tst = 1:ceiling(0.3*length(y))
+  tst = which(Y$trial \%in\% 1:10)
   trn = seq_along(y)[-tst]
 
   # Calculate covariances in training set
   XtX = var(X[trn,])
-  Xty = cov(y[trn],X[trn,])
+  Xty = cov(X[trn,],y[trn])
   
   # Run the penalized regression
   fm1 = LARS(XtX,Xty,method="LAR-LASSO")  
@@ -109,7 +121,6 @@ is the \ifelse{html}{\out{j<sup>th</sup>}}{\eqn{j^{th}}{j^th}} column of the mat
   # Penalization vs correlation
   plot(-log(fm1$lambda[-1]),cor(y[trn],yHat1[,-1]), main="training")
   plot(-log(fm1$lambda[-1]),cor(y[tst],yHat2[,-1]), main="testing")
-  
   \donttest{
   if(requireNamespace("float")){
    # Using a 'float' type variable

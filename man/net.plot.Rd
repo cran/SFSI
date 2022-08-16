@@ -2,7 +2,7 @@
 \alias{net.plot}
 \title{Network plot}
 \usage{
-net.plot(object, Z = NULL, K = NULL, tst = NULL,
+net.plot(object, Z = NULL, K = NULL, i = NULL,
         show.names = FALSE, group = NULL, group.shape = NULL,
         set.color = NULL, set.size = NULL, df = NULL, main,
         axis.labels = TRUE, curve = FALSE, bg.color = "white",
@@ -18,7 +18,7 @@ net.plot(object, Z = NULL, K = NULL, tst = NULL,
 
 \item{K}{(numeric matrix) Kinship relationships. This can be a (character) name of a binary file where the matrix is stored}
 
-\item{tst}{(integer vector) Which elements from vector \code{y} (stored in \code{fm$y}) are in testing set and to plot. They must be contained in \code{fm$tst}. Default \code{tst=NULL} will consider the whole vector \code{fm$tst} to plot}
+\item{i}{(integer vector) Index testing elements (stored in \code{object$tst}). Default \code{i=NULL} will consider all elements in \code{object$tst}}
 
 \item{group}{(data.frame) Column grouping for the individuals. The rows must match with the rows in \code{G} matrix}
 
@@ -69,24 +69,25 @@ Plot edges in the plane xy given by a numerical matrix. When the object is a 'SS
   require(SFSI)
   data(wheatHTP)
   
-  index = which(Y$CV == 1)              # Use only a subset of data
-  M = scale(M[index,])/sqrt(ncol(M))    # Subset and scale markers
-  G = tcrossprod(M)                     # Genomic relationship matrix
-  y = as.vector(scale(Y[index,"E1"]))   # Subset ans scale response variable
+  index = which(Y$trial \%in\% 1:6)     # Use only a subset of data
+  Y = Y[index,]
+  M = scale(M[index,])/sqrt(ncol(M))  # Subset and scale markers
+  G = tcrossprod(M)                   # Genomic relationship matrix
+  y = as.vector(scale(Y[,"E1"]))      # Scale response variable
   
   # Training and testing sets
-  tst = seq(20,length(y),by=10)
-  trn = seq_along(y)[-tst]
+  tst = which(Y$trial == 2)
+  trn = which(Y$trial != 2)
 
   fm = SSI(y,K=G,tst=tst,trn=trn)
   
   # Basic setting
   net.plot(fm)
+  net.plot(fm, i=c(1,2))  # Show the first 2 tst elements
   net.plot(fm, show.names=c(TRUE,TRUE,FALSE), set.size=c(4,2,1), df=10)
-  
   \donttest{
   # Passing a matrix of coefficients
-  B = as.matrix(coef(fm,df=15))
+  B = as.matrix(coef(fm, df=15))
   net.plot(B, curve=TRUE, set.size=c(3.5,1.5,1))
   }
 }

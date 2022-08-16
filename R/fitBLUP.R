@@ -1,5 +1,3 @@
-# Z=U=d=indexK = NULL; BLUP=TRUE; method=c("REML","ML")[1]; theta=NULL
-# return.Hinv = FALSE; tol=1E-5; maxiter=1000; interval=c(1E-9,1E9); warn=TRUE
 
 fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, U = NULL, d = NULL,
                     theta = NULL, BLUP = TRUE, method = c("REML","ML"),
@@ -33,7 +31,9 @@ fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, U = NULL, d = NULL,
     {
       if(is.null(K)){
         G <- diag(length(y))
-      }else  G <- K
+      }else{
+        G <- K
+      }
 
     }else{
       if(length(dim(Z)) != 2) stop("Object 'Z' must be a matrix")
@@ -61,9 +61,9 @@ fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, U = NULL, d = NULL,
   tol <- .Machine$double.eps^(3/4)
   if(any(d < tol)){
     if(warn){
-      warning("Some eigenvalues are negative or very small:\n  ",sum(d<tol),
-      " eigenvalue(s) lie between ",float::dbl(min(d))," and <",tol,".\n",
-      "  The corresponding eigenvector(s) will be ignored.",immediate.=TRUE)
+      warning("Some eigenvalues are negative or very small:\n\t",
+      " ",sum(d<tol)," eigenvalue(s) lie between ",float::dbl(min(d))," and <",tol,".\n\t",
+      " The corresponding eigenvector(s) will be ignored",immediate.=TRUE)
     }
     d[d<tol] <- 0
   }
@@ -167,7 +167,9 @@ fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, U = NULL, d = NULL,
     if(ifelse(is.na(convergence),is.na(ratio),!convergence)){
       warning("Convergence was not reached in the 'GEMMA' algorithm.",immediate.=TRUE)
     }
-    if(!is.na(msg)) warning(msg,immediate.=TRUE)
+    if(!is.na(msg)){
+      warning(msg, immediate.=TRUE)
+    }
   }
 
   theta <- 1/ratio

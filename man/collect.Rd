@@ -18,18 +18,23 @@ according to argument \code{subset}.
   require(SFSI)
   data(wheatHTP)
   
-  index = which(Y$CV == 1)             # Use only a subset of data
+  index = which(Y$trial \%in\% 1:6)      # Use only a subset of data
+  Y = Y[index,]
   M = scale(M[index,])/sqrt(ncol(M))   # Subset and scale markers
   G = tcrossprod(M)                    # Genomic relationship matrix
-  y = as.vector(scale(Y[index,"E1"]))  # Subset response variable
+  y = as.vector(scale(Y[,"E1"]))       # Response variable
 
+  # Training and testing sets
+  tst = which(Y$trial == 2)
+  trn = which(Y$trial != 2)
+  
   prefix <- paste0(tempdir(),"/testSSI")
   
   # Run the analysis into 4 subsets and save them at a given prefix
-  fm <- SSI(y,K=G,tst=1:80,trn=81:length(y),subset=c(1,4),save.at=prefix)
-  fm <- SSI(y,K=G,tst=1:80,trn=81:length(y),subset=c(2,4),save.at=prefix)
-  fm <- SSI(y,K=G,tst=1:80,trn=81:length(y),subset=c(3,4),save.at=prefix)
-  fm <- SSI(y,K=G,tst=1:80,trn=81:length(y),subset=c(4,4),save.at=prefix)
+  fm <- SSI(y,K=G,tst=tst,trn=trn,subset=c(1,4),save.at=prefix)
+  fm <- SSI(y,K=G,tst=tst,trn=trn,subset=c(2,4),save.at=prefix)
+  fm <- SSI(y,K=G,tst=tst,trn=trn,subset=c(3,4),save.at=prefix)
+  fm <- SSI(y,K=G,tst=tst,trn=trn,subset=c(4,4),save.at=prefix)
 
   # Collect all results after completion
   fm <- collect(prefix)

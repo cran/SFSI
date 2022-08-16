@@ -1,11 +1,11 @@
 ## ---- Box1, eval=FALSE--------------------------------------------------------
 #  rm(list = ls())
 #  
-#  site <-  "https://github.com/MarcooLopez/SFSI/blob/master/data"
+#  site <- "https://github.com/MarcooLopez/Data_for_Lopez-Cruz_et_al_2020/raw/main"
 #  filename <- "wheatHTP.E3.RData"
 #  
 #  # Download file
-#  download.file(paste0(site,"/",filename,"?raw=true"),filename,mode="wb")
+#  download.file(paste0(site,"/",filename), filename, mode="wb")
 #  load(filename)
 #  
 #  trials <- as.numeric(as.character(Y$trial))
@@ -114,7 +114,7 @@
 #      # L1-PSI
 #      fm <- solveEN(VARx, gencov[,k],nlambda=100)
 #      # fm <- LARS(VARx, gencov[,k])  # Second option
-#      beta <- t(fm$beta)[-1,]
+#      beta <- t(as.matrix(fm$beta)[,-1])
 #      bL1PSI[[k]] <- data.frame(I(beta),df=fm$df[-1],lambda=fm$lambda[-1])
 #    }
 #    save(bSI,bPCSI,bL1PSI,file=paste0("coefficients_tp_",tp,".RData"))
@@ -256,7 +256,7 @@
 #  
 #      # L1-PSI
 #      fm <- solveEN(VARx, Gencov[,k],nlambda=100,maxiter=200,tol=1E-3)
-#      beta <- t(fm$beta)[-1,]
+#      beta <- t(as.matrix(fm$beta)[,-1])
 #      bL1PSI[[k]] <- data.frame(I(beta),df=fm$df[-1],lambda=fm$lambda[-1])
 #  }
 #  save(bPCSI,bL1PSI,nPart,file="multi_timepoint_coefficients.RData")

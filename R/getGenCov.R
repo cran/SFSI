@@ -1,5 +1,4 @@
 
-# y1=y; y2=x; X=Z=U=d=NULL; K=G; mc.cores=5; scale=TRUE
 getGenCov <- function(y1, y2, X = NULL, Z = NULL, K = NULL, U = NULL,
            d = NULL, scale = TRUE, mc.cores = 1, warn = FALSE, ...)
 {
@@ -18,8 +17,9 @@ getGenCov <- function(y1, y2, X = NULL, Z = NULL, K = NULL, U = NULL,
       warning("Variances of y1 and y2 are not equal",immediate.=TRUE)
   }
 
-  if(length(y1) != nrow(y2))
+  if(length(y1) != nrow(y2)){
     stop("The number of elements in 'y1' must be equal to the number of rows in 'y2'")
+  }
 
   if(is.null(U) & is.null(d))
   {

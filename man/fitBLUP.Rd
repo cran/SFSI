@@ -101,14 +101,15 @@ Solutions are found using the GEMMA (Genome-wide Efficient Mixed Model Analysis)
   require(SFSI)
   data(wheatHTP)
   
-  index = which(Y$CV \%in\% 1:2)       # Use only a subset of data
-  M = scale(M[index,])/sqrt(ncol(M))   # Subset and scale markers
-  G = tcrossprod(M)                    # Genomic relationship matrix
-  y = as.vector(scale(Y[index,"E1"]))  # Subset response variable
-
+  index = which(Y$trial \%in\% 1:6)     # Use only a subset of data
+  Y = Y[index,]
+  M = scale(M[index,])/sqrt(ncol(M))  # Subset and scale markers
+  G = tcrossprod(M)                   # Genomic relationship matrix
+  y = as.vector(scale(Y[,"E1"]))      # Scale response variable
+  
   # Training and testing sets
-  tst = seq(1,length(y),by=3)
-  trn = seq_along(y)[-tst]
+  tst = which(Y$trial == 2)
+  trn = which(Y$trial != 2)
 
   yNA <- y
   yNA[tst] <- NA
@@ -118,7 +119,6 @@ Solutions are found using the GEMMA (Genome-wide Efficient Mixed Model Analysis)
   cor(y[trn],fm1$u[trn])       # Prediction accuracy in training set
   fm1$theta                    # Residual/Genetic variances ratio
   fm1$h2                       # Heritability
-  
   \donttest{
   if(requireNamespace("float")){
    # Using a 'float' type variable
@@ -127,7 +127,6 @@ Solutions are found using the GEMMA (Genome-wide Efficient Mixed Model Analysis)
    max(abs(fm1$u-fm2$u))  # Check for discrepances
   }
   }
-
 }
 \references{
 VanRaden PM (2008). Efficient methods to compute genomic predictions. \emph{Journal of Dairy Science}, \bold{91}(11), 4414–4423.

@@ -4,17 +4,19 @@
 \title{Binary files}
 \usage{
 saveBinary(X, file = paste0(tempdir(), "/file.bin"), 
- type = c("float","double"), verbose = TRUE)
+           precision.format = c("double","single"), 
+           verbose = TRUE)
   
 readBinary(file = paste0(tempdir(), "/file.bin"), 
-  index.row = NULL, index.col = NULL, verbose = TRUE)
+           index.row = NULL, index.col = NULL, 
+           verbose = TRUE)
 }
 \arguments{
 \item{X}{(numeric matrix) Data to save}
 
 \item{file}{(character) Name of the binary file to save/read}
 
-\item{type}{(character) Either 'float' or 'double' for single (4 bytes) or double precision (8 bytes), respectively,
+\item{precision.format}{(character) Either 'single' or 'double' for single (4 bytes) or double precision (8 bytes), respectively,
 that matrix to save will occupy}
 
 \item{index.row}{(integer vector) Which rows are to be read from the file. Default \code{index.row=NULL} will read all the rows}
@@ -38,9 +40,11 @@ Save/read a numeric data as a fortran-formatted binary file at a defined precisi
   X = matrix(rnorm(5000),ncol=5)
   head(X)
   
-  # Save matrix
-  saveBinary(X,paste0(tempdir(),"/Matrix1.bin"),type="double") # as double-precision
-  saveBinary(X,paste0(tempdir(),"/Matrix2.bin"),type="float")  # as single-precision
+  # Save matrix as double-precision
+  saveBinary(X,paste0(tempdir(),"/Matrix1.bin"),precision.format="double")
+  
+  # Save matrix as single-precision
+  saveBinary(X,paste0(tempdir(),"/Matrix2.bin"),precision.format="single")
 
   # Read the double-precision matrix
   X2 = readBinary(paste0(tempdir(),"/Matrix1.bin"))

@@ -1,19 +1,18 @@
 
-# Plot the coefficients path in a penalized regression (user-level)
-
-# Z=NULL; K=NULL; tst=NULL; main=NULL; cor.max=0.85
-
-path.plot <- function(object, Z = NULL, K = NULL, tst = NULL,
-  cor.max = 0.85, nbreaks.x = 6, ...)
+path.plot <- function(object, Z = NULL, K = NULL, i = NULL,
+                      prune = FALSE, cor.max = 0.97,
+                      lambda.min = .Machine$double.eps^0.5,
+                      nbreaks.x = 6, ...)
 {
-  k <- NULL
   flagKinship <- FALSE
+  eps <- .Machine$double.eps
   args0 <- list(...)
 
   if(!inherits(object, c("LASSO","SSI"))) stop("The input object is not of the class 'LASSO' or 'SSI'")
 
-  if(inherits(object, "SSI") & "CV" %in% names(object))
+  if(inherits(object, "SSI") & "CV" %in% names(object)){
     stop("'path.plot' cannot be applied after cross-validation")
+  }
 
   xlab <- "Number of active predictors"
   ylab <- "beta"
@@ -50,69 +49,137 @@ path.plot <- function(object, Z = NULL, K = NULL, tst = NULL,
     }
 
     beta <- coef.SSI(object)
-    if(!is.null(tst)){
-      if(any(!tst %in% object$tst)) stop("Some elements in 'tst' are not contained in 'object$tst'")
-      indexTST <- which(object$tst %in% tst)
-    }else indexTST <- seq_along(object$tst)
-    beta <- beta[indexTST]
-    lambda <- apply(object$lambda, 2, mean)
-    df <- apply(object$df, 2, mean)
+    object$lambda <- lapply(1:nrow(object$lambda),function(k)object$lambda[k,])
+    object$df <- lapply(1:nrow(object$df),function(k)object$df[k,])
 
-  }else{
-    beta <- object$beta
-    lambda <- object$lambda
-    df <- object$df
-  }
-
-  ndf <- length(df)
-  if(min(lambda) < .Machine$double.eps*1000)  lambda[which.min(lambda)] <- min(lambda[lambda>0])/2
-  if(ndf == 1) stop("Coefficients path plot can not be generated for 'nlambda=1'")
-
-  if(inherits(object, "SSI"))
-  {
-    dat <- c()
-    trim <- length(object$trn)*length(beta) > 20000
-    for(i in seq_along(beta))
-    {
-      b0 <- as.matrix(beta[[i]])
-      if(trim){
-        indexOK <- getIndexCorrelated(t(b0), cor.max)
-      }else indexOK <- seq_along(object$trn)
-
-      tmp <- matrix(NA,nrow=1,ncol=length(indexOK))
-      if(!is.null(K)){
-        tmp <- K[object$tst[indexTST[i]],object$trn[indexOK],drop=FALSE]
-        if(float::storage.mode(tmp)=='float32') tmp <- float::dbl(tmp)
-      }
-      dimnames(tmp) <- list(object$tst[indexTST[i]], object$trn[indexOK])
-      tmp <- reshape2::melt(tmp)
-      colnames(tmp) <- c("tst_i","trn_i","value")
-      tmp <- tmp[rep(1:nrow(tmp), ndf),]
-
-      df0 <- rep(df,each=length(indexOK))
-      lambda0 <- rep(lambda,each=length(indexOK))
-      b0 <- as.vector(b0[indexOK,])
-      id <- factor(tmp$tst_i):factor(tmp$trn_i)
-      dat <- rbind(dat,data.frame(df=df0,lambda=lambda0,beta=float::dbl(b0),k=tmp$value,id=id))
+    if(length(object$tst) == 1L){
+      beta <- list(beta)
     }
 
+    if(!is.null(i)){
+      if( max(i) > length(object$tst) ){
+        stop("All elements in 'i' must be between 0 < i <= length(object$tst)")
+      }
+      indexTST <- i
+
+    }else indexTST <- seq_along(object$tst)
+
   }else{
-    id <- factor(rep(seq(nrow(beta)),ncol(beta)))
-    dat <- data.frame(df=rep(df,each=nrow(beta)),lambda=rep(lambda,each=nrow(beta)),beta=as.vector(beta),id=id)
+    beta <- coef.LASSO(object)
+    object$trn <- seq(object$p)
+    object$tst <- seq(object$q)
+
+    if(object$q == 1L){
+      beta <- list(beta)
+      object$lambda <- list(object$lambda)
+      object$df <- list(object$df)
+    }
+    if(!is.null(i)){
+      if( max(i) > object$q ){
+        stop("All elements in 'i' must be between 0 < i <= q, where q=ncol(Gamma)")
+      }
+      indexTST <- i
+    }else{
+      indexTST <- seq_along(object$tst)
+    }
   }
 
+  beta <- beta[indexTST]
+  object$lambda <- object$lambda[indexTST]
+  object$df <- object$df[indexTST]
+
+  nLambda <- unlist(lapply(object$lambda,length))
+  if(all(nLambda < 5L)){
+    stop("Coefficients path plot can be generated for at least 5 lambda values")
+  }
+
+  if(any(unlist(lapply(object$lambda,min)) < lambda.min)){
+    min0 <- min(unlist(lapply(object$lambda, function(x)min(x[x>lambda.min+eps]))))
+    for(k in 1:length(object$lambda)){
+      tmp <- object$lambda[[k]]
+      object$lambda[[k]] <- ifelse(tmp < lambda.min, min0/10, tmp)
+    }
+  }
+
+  if(length(unique(nLambda)) > 1L){
+    INDEX1 <- matrix(seq_along(indexTST),ncol=1)
+    if(prune){
+      message("'pruning' is applied for each response variable") }
+  }else{
+    if(length(object$trn)*length(beta) > 10000){
+      nTST0 <- ceiling(10000/length(object$trn))
+      message("The number of paths is very large. Only ",nTST0*length(object$trn),
+              " paths corresponding to the first ",nTST0,
+              ifelse(inherits(object, "SSI")," testing elements"," response variables"),
+              " are considered.")
+      message("You can select specific paths through 'i' argument")
+
+      beta <- beta[seq(nTST0)]
+      object$lambda <- object$lambda[seq(nTST0)]
+      object$df <- object$df[seq(nTST0)]
+      indexTST <- indexTST[seq(nTST0)]
+    }
+    nTSTi <- ceiling(5000/length(object$trn))
+    INDEX1 <- matrix(seq(nTSTi*ceiling(length(indexTST)/nTSTi)),ncol=nTSTi, byrow=TRUE)
+    if(prune & nrow(INDEX1)>1L){
+      message("'pruning' is applied in groups of ",nTSTi*length(object$trn)," paths")
+    }
+  }
+
+  id <- Kij <- lambda <- NULL
+  dat <- c()
+  for(k in 1:nrow(INDEX1))
+  {
+    tst0 <- INDEX1[k,][INDEX1[k,] <= length(indexTST)]
+    b0 <- as.matrix(do.call(rbind,beta[tst0]))
+    INDEX2 <- cbind(rep(tst0, each=length(object$trn)),
+                    rep(seq_along(object$trn),length(tst0)))
+
+    indexOK <- 1:nrow(b0)
+    indexdrop <- which(apply(b0, 1, function(x)all(abs(x) <= eps)))
+    if(length(indexdrop) > 1){  # leave one that has all bij==0
+      b0 <- b0[-indexdrop[-1], ,drop=FALSE]
+      indexOK <- indexOK[-indexdrop[-1]]
+    }
+
+    if(prune & nrow(b0)>1){
+      tmp <- Prune(R=cor(t(b0))^2, threshold=cor.max^2)$prune.in
+      indexOK <- indexOK[tmp]
+      b0 <- b0[tmp, ,drop=FALSE]
+    }
+
+    dat0 <- do.call(rbind,lapply(1:length(indexOK), function(j){
+          tmp <- INDEX2[indexOK[j],]
+          id <- paste0(object$tst[indexTST[tmp[1]]],":",object$trn[tmp[2]])
+
+          if(flagKinship){
+            Kij <- float::dbl(K[object$tst[indexTST[tmp[1]]],object$trn[tmp[2]]])
+          }else{
+            Kij <- NA
+          }
+          data.frame(df=object$df[[tmp[1]]],lambda=object$lambda[[tmp[1]]],
+                     beta=b0[j,], Kij=Kij, id=id)
+    }))
+
+    dat <- rbind(dat, dat0)
+  }
+  dat$id <- factor(as.character(dat$id))
+
   # Labels and breaks for the DF axis
-  tmp <- get_breaks(lambda, df, nbreaks=nbreaks.x, ymin=0)
+  tmp <- get_breaks(unlist(object$lambda), unlist(object$df),
+                    nbreaks=nbreaks.x, ymin=0)
   breaks0 <- tmp$breaks.x
   labels0 <- round(tmp$breaks.y)
   labels2 <- sprintf('%.2f', breaks0)
 
-  if(flagKinship)
-  {
-    pt <- ggplot2::ggplot(dat,ggplot2::aes(-log(lambda),beta,color=k,group=id)) +
-      viridis::scale_color_viridis() + ggplot2::geom_line(size=lwd) + ggplot2::theme_bw() + theme0
+  if(flagKinship){
+    pt <- ggplot2::ggplot(dat,ggplot2::aes(-log(lambda),beta,color=Kij,group=id)) +
+          ggplot2::labs(color=expression(k[ij])) +
+          viridis::scale_color_viridis() + ggplot2::geom_line(size=lwd) +
+          ggplot2::theme_bw() + theme0
+
   }else{
-    pt <- ggplot2::ggplot(dat,ggplot2::aes(-log(lambda),beta,color=id,group=id))+
+    pt <- ggplot2::ggplot(dat,ggplot2::aes(-log(lambda),beta,color=id,group=id)) +
       ggplot2::geom_line(size=lwd) + ggplot2::theme_bw() + theme0 +
       ggplot2::theme(legend.position = "none")
   }
@@ -122,4 +189,5 @@ path.plot <- function(object, Z = NULL, K = NULL, tst = NULL,
                       sec.axis=ggplot2::sec_axis(~.+0,expression(paste("-log(",lambda,")")),
                       breaks=breaks0, labels=labels2))
   pt
+
 }

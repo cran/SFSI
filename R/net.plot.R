@@ -1,12 +1,8 @@
 #====================================================================
 # Plot the top 2 PCs of the K matrix showing tst and trn points
 #====================================================================
-# Z = NULL; K=R0; group = group.shape = set.color = set.size = tst= df=NULL; eps=.Machine$double.eps
-# axis.labels = TRUE; curve = FALSE; bg.color = "white"; unified = TRUE; ntst = 36;
-# line.color = "gray90"; line.tick = 0.3; legend.pos="right"; show.names = TRUE
-# point.color = "gray20"; sets = c("Testing","Supporting","Non-active")
 
-net.plot <- function(object, Z = NULL, K = NULL, tst = NULL,
+net.plot <- function(object, Z = NULL, K = NULL, i = NULL,
            show.names = FALSE, group = NULL, group.shape = NULL,
            set.color = NULL, set.size = NULL, df = NULL, main,
            axis.labels = TRUE, curve = FALSE, bg.color = "white",
@@ -47,12 +43,13 @@ net.plot <- function(object, Z = NULL, K = NULL, tst = NULL,
       stop("Parameter 'df' must be greater than zero and no greater than 'trn' size")
     X <- as.matrix(coef.SSI(object, df=df))
 
-    if(is.null(tst)){
+    if(is.null(i)){
       yyy <- object$tst
     }else{
-      yyy <- tst
-      if(any(!tst %in% object$tst))
-        stop("Some elements in 'tst' are not contained in 'object$tst'")
+      if( max(i) > length(object$tst) ){
+        stop("All elements in 'i' must be between 0 < i <= length(object$tst)")
+      }
+      yyy <- object$tst[i]
     }
 
     X <- X[object$tst %in% yyy, ,drop=FALSE]
@@ -71,7 +68,7 @@ net.plot <- function(object, Z = NULL, K = NULL, tst = NULL,
         if(!is.null(object$id) & all(unlist(dimnames(X)) %in% rownames(K))){
           xxx <- yyy <- NULL
         }else{
-          cat("Input 'object' couldn't be linked to 'K'. Input 'K' will be ignored\n")
+          message("Input 'object' couldn't be linked to 'K'. Input 'K' will be ignored")
           K <- xxx <- yyy <- NULL
         }
       }else{
@@ -96,13 +93,13 @@ net.plot <- function(object, Z = NULL, K = NULL, tst = NULL,
   if(!isSSI & isSymmetric){
       legend.pos <- "none"
       if(!unified){
-        cat("Only an 'unified' plot can be produced with the input object data\n")
+        message("Only an 'unified' plot can be produced with the input object data")
         unified <- TRUE
       }
   }
 
   if(!unified & length(yyy) >= ntst){
-    cat("Large number of testing individuals. Only the first",ntst,"are shown\n")
+    message("Large number of testing individuals. Only the first",ntst,"are shown")
     yyy <- yyy[1:ntst]
   }
 
@@ -114,12 +111,15 @@ net.plot <- function(object, Z = NULL, K = NULL, tst = NULL,
   if(is.null(group)) group <- data.frame(group=rep(1,nrow(net$xy)))
   gpName <- colnames(group)
 
-  if(!(class(sets) == "character" & length(sets) == 3))
+  if(!(inherits(sets, "character") & length(sets) == 3)){
    stop("Parameter 'sets' must be a triplet of 'character' type")
+  }
 
   dat <- data.frame(id=1:nrow(net$xy),label=net$labels,set=net$set,
                     set_name=sets[net$set],group=group,float::dbl(net$xy))
-  if(any(net$set==4)) dat$set_name[net$set==4] <- sets[1]
+  if(any(net$set==4)){
+     dat$set_name[net$set==4] <- sets[1]
+  }
 
   dat$group <- factor(as.character(dat$group))
   dat$set_name <- factor(as.factor(dat$set_name),levels=c(sets))
@@ -129,8 +129,9 @@ net.plot <- function(object, Z = NULL, K = NULL, tst = NULL,
   # Shape and color for the levels of group
   if(!flagGp) dat$group <- dat$set_name
   levelsGp <- levels(dat$group)
-  if(length(levelsGp) > 5)
+  if(length(levelsGp) > 5){
    stop("Number of levels of 'group' must be at most 5")
+  }
 
   if(is.null(group.shape)){
     if(flagGp){
@@ -150,11 +151,13 @@ net.plot <- function(object, Z = NULL, K = NULL, tst = NULL,
   }else if(length(set.size)==1L) set.size <- rep(set.size,length(sets))
   set.size <- set.size[1:length(sets)]
 
-  if(any(is.na(group.shape)))
+  if(any(is.na(group.shape))){
     stop("The number of elements in 'group.shape' must be of length ",length(levelsGp))
+  }
 
-  if(any(is.na(set.size)) | any(is.na(set.color)))
+  if(any(is.na(set.size)) | any(is.na(set.color))){
     stop("The number of elements in 'set.size' and 'set.color' must be of length ",length(sets))
+  }
 
   theme0 <- ggplot2::theme(
     plot.title = ggplot2::element_text(hjust = 0.5),
@@ -210,13 +213,13 @@ net.plot <- function(object, Z = NULL, K = NULL, tst = NULL,
                     color=point.color,size=set.size[3])
     }
 
-    for(i in 1:length(yyy))
+    for(k in 1:length(yyy))
     {
-      xxx0 <- net$edges[[i]]
+      xxx0 <- net$edges[[k]]
       if(length(xxx0)>0)
       {
         dat1 <- dat[xxx0, c("x","y")]
-        dat2 <- dat[yyy[i], c("x","y")]
+        dat2 <- dat[yyy[k], c("x","y")]
         colnames(dat1) <- paste0(colnames(dat1),"_TRN")
         colnames(dat2) <- paste0(colnames(dat2),"_TST")
         dat1 <- data.frame(dat2[rep(1,nrow(dat1)),],dat1)
@@ -267,15 +270,15 @@ net.plot <- function(object, Z = NULL, K = NULL, tst = NULL,
   }else{
       set.size <- 0.7*set.size
       dat2 <- c()
-      for(i in 1:length(yyy)){
-        xxx0 <- net$edges[[i]]
+      for(k in 1:length(yyy)){
+        xxx0 <- net$edges[[k]]
         if(length(xxx0) > 0){
           tmp <- dat[-xxx0,]
           tmp$set <- 3; tmp$set_name <- sets[3]
           tmp2 <- dat[xxx0, ]
           tmp2$set <- 2; tmp2$set_name <- sets[2]
-          tmp <- rbind(tmp, tmp2, dat[yyy[i], ])
-          dat2 <- rbind(dat2,data.frame(tmp, ind = i))
+          tmp <- rbind(tmp, tmp2, dat[yyy[k], ])
+          dat2 <- rbind(dat2,data.frame(tmp, ind = k))
         }
       }
 
@@ -293,7 +296,9 @@ net.plot <- function(object, Z = NULL, K = NULL, tst = NULL,
     ggplot2::scale_fill_manual(values = set.color,
               guide=ggplot2::guide_legend(override.aes=list(shape=21,size=2)))
 
-  if(!flagGp) pt <- pt + ggplot2::guides(shape="none")
+  if(!flagGp){
+     pt <- pt + ggplot2::guides(shape="none")
+  }
 
   pt
 }

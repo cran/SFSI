@@ -144,6 +144,6 @@
 #  # Fit SSI with lambda previously estimated using CV
 #  fm <- SSI(y,K=G,trn=trn,tst=tst,lambda=lambdaCV[part])
 #  
-#  net.plot(fm,K=G,tst=fm$tst[1:16],unified=FALSE,main=NULL,bg.col="white",
-#          set.size=c(3,1.5,0.2),point.color="gray40",axis.labels=FALSE)
+#  net.plot(fm, K=G, i=1:16, unified=FALSE, main=NULL, bg.col="white",
+#          set.size=c(3,1.5,0.2), point.color="gray40", axis.labels=FALSE)
 

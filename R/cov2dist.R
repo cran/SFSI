@@ -7,23 +7,26 @@ cov2dist <- function(V, void = FALSE)
     if(!float::storage.mode(V) %in% c("double","float32")) storage.mode(V) <- "double"
 
     p <- ncol(V)
-    isFloat <- float::storage.mode(V)=="float32"
+    isfloat <- as.logical(float::storage.mode(V)=="float32")
 
     #dyn.load("c_utils.so")
-    if(void)
-    {
-     if(isFloat){
-      out <- .Call('cov2distance',as.integer(p),V@Data,isFloat)
-     }else{
-      out <- .Call('cov2distance',as.integer(p),V,isFloat)
-     }
+    if(void){
+      if(isfloat){
+       out <- .Call('cov2distance', p, V@Data, isfloat)
+      }else{
+       out <- .Call('cov2distance', p, V, isfloat)
+      }
     }else{
-      if(isFloat){
+      if(isfloat){
        out <- V@Data[]
-     }else out <- V[]
+     }else{
+       out <- V[]
+     }
 
-     tmp <- .Call('cov2distance',as.integer(p),out,isFloat)
-     if(isFloat) out <- float::float32(out)
+     tmp <- .Call('cov2distance', p, out, isfloat)
+     if(isfloat){
+        out <- float::float32(out)
+     }
    }
    #dyn.unload("c_utils.so")
    out

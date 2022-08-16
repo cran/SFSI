@@ -1,3 +1,13 @@
+### Version 1.2.0 (Aug-16-2022)
+
+**New features**
+
+  - Functions 'solveEN' and 'LARS' allow solving several regressions by iterating over columns of argument 'Gamma'
+  - Function 'SSI' allows either saving or returning the coefficients through 'save.beta' and 'return.beta' arguments
+  - Function 'SSI' returns also genetic values 'u' of testing subjects
+  - Methods 'summary', 'fitted', and 'plot' can be implemented for a desired response variable 'y' different from the specified in object$y, e.g., fitted(object, y)
+
+
 ### Version 1.1.0 (Mar-10-2022)
 
 **New features**

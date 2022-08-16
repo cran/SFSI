@@ -191,11 +191,11 @@ red NDVI. Following code shows how to prepare data for a single environment whic
 ```{r, Box1, eval=FALSE}
 rm(list = ls())
 
-site <-  "https://github.com/MarcooLopez/SFSI/blob/master/data" 
+site <- "https://github.com/MarcooLopez/Data_for_Lopez-Cruz_et_al_2020/raw/main"
 filename <- "wheatHTP.E3.RData"
 
 # Download file
-download.file(paste0(site,"/",filename,"?raw=true"),filename,mode="wb")
+download.file(paste0(site,"/",filename), filename, mode="wb")
 load(filename)
 
 trials <- as.numeric(as.character(Y$trial))
@@ -340,7 +340,7 @@ for(tp in timepoints){
     # L1-PSI
     fm <- solveEN(VARx, gencov[,k],nlambda=100)
     # fm <- LARS(VARx, gencov[,k])  # Second option
-    beta <- t(fm$beta)[-1,]
+    beta <- t(as.matrix(fm$beta)[,-1])
     bL1PSI[[k]] <- data.frame(I(beta),df=fm$df[-1],lambda=fm$lambda[-1])
   }
   save(bSI,bPCSI,bL1PSI,file=paste0("coefficients_tp_",tp,".RData"))
@@ -427,7 +427,7 @@ if(requireNamespace("reshape") & requireNamespace("ggplot2")){
 ```
 
 <center>
-![alt text here](Figure_PSI1.png){ width=80% }
+![Figure. Accuracy (and its components) of the PCSI and L1PSI against regularization](Figure_PSI1.png){ width=80% }
 </center>
 
 
@@ -457,7 +457,7 @@ if(requireNamespace("ggplot2")){
 ```
 
 <center>
-![alt text here](Figure_PSI2.png){ width=50% }
+![Figure. Accuracy of the single-timepoints L1PSI, PCSI, and SI](Figure_PSI2.png){ width=50% }
 </center>
 
 
@@ -492,7 +492,7 @@ if(requireNamespace("ggplot2")){
 ```
 
 <center>
-![alt text here](Figure_PSI3.png){ width=65% }
+![Figure. Accuracy of the L1PSI, PCSI, ans SI across timepoints](Figure_PSI3.png){ width=65% }
 </center>
 
 
@@ -534,7 +534,7 @@ for(k in 1:nPart)
     
     # L1-PSI
     fm <- solveEN(VARx, Gencov[,k],nlambda=100,maxiter=200,tol=1E-3)
-    beta <- t(fm$beta)[-1,]
+    beta <- t(as.matrix(fm$beta)[,-1])
     bL1PSI[[k]] <- data.frame(I(beta),df=fm$df[-1],lambda=fm$lambda[-1])
 }
 save(bPCSI,bL1PSI,nPart,file="multi_timepoint_coefficients.RData")
@@ -612,7 +612,7 @@ if(requireNamespace("ggplot2")){
 ```
 
 <center>
-![alt text here](Figure_PSI4.png){ width=60% }
+![Figure. Accuracy of the single and multi-timepoints L1PSI, PCSI, and SI](Figure_PSI4.png){ width=60% }
 </center>
 
 
@@ -655,7 +655,7 @@ if(requireNamespace("ggplot2")){
 ```
 
 <center>
-![alt text here](Figure_PSI5.png){ width=70% }
+![Figure. Heatmap of the regression coefficients](Figure_PSI5.png){ width=70% }
 </center>
 
 

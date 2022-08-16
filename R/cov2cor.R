@@ -7,26 +7,31 @@ cov2cor2 <- function(V, a = 1, void = FALSE)
     if(!float::storage.mode(V) %in% c("double","float32")) storage.mode(V) <- "double"
 
     p <- ncol(V)
-    isFloat <- float::storage.mode(V)=="float32"
+    isfloat <- as.logical(float::storage.mode(V)=="float32")
 
     #dyn.load("c_utils.so")
-    if(void)
-    {
-      if(isFloat){
-       nOK <- .Call('cov2correlation',as.integer(p),V@Data,isFloat,as.numeric(a))[[1]]
+    if(void){
+      if(isfloat){
+       nOK <- .Call('cov2correlation', p, V@Data, isfloat, as.numeric(a))[[1]]
       }else{
-       nOK <- .Call('cov2correlation',as.integer(p),V,isFloat,as.numeric(a))[[1]]
+       nOK <- .Call('cov2correlation', p, V, isfloat, as.numeric(a))[[1]]
       }
       out <- NULL
     }else{
-      if(isFloat){
+      if(isfloat){
        out <- V@Data[]
-      }else out <- V[]
+      }else{
+        out <- V[]
+      }
 
-     nOK <- .Call('cov2correlation',as.integer(p),out,isFloat,as.numeric(a))[[1]]
-     if(isFloat) out <- float::float32(out)
+     nOK <- .Call('cov2correlation', p, out, isfloat, as.numeric(a))[[1]]
+     if(isfloat){
+        out <- float::float32(out)
+     }
    }
    #dyn.unload("c_utils.so")
-   if(nOK != p) warning("Some diagonal values of 'V' are 0 or NA. Results are dobubtful",immediate.=TRUE)
+   if(nOK != p){
+      warning("Some diagonal values of 'V' are 0 or NA. Results are dobubtful",immediate.=TRUE)
+   }
    out
 }

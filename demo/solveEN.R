@@ -7,12 +7,12 @@ y = as.vector(Y[,"E1"])    # Response variable
 X = scale(X_E1)            # Predictors
 
 # Training and testing sets
-tst = seq(1,length(y),by=3)
+tst = which(Y$trial %in% 1:10)
 trn = seq_along(y)[-tst]
 
 # Calculate covariances in training set
 XtX = var(X[trn,])
-Xty = cov(y[trn],X[trn,])
+Xty = cov(X[trn,],y[trn])
 
 # Run the penalized regression
 fm = solveEN(XtX,Xty)

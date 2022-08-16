@@ -3,15 +3,19 @@
 \alias{solveEN}
 \title{Coordinate Descent algorithm to solve Elastic-Net-type problems}
 \usage{
-solveEN(Sigma, Gamma, alpha = 1, lambda = NULL, 
-        nlambda = 100, lambda.min = .Machine$double.eps^0.5,
-        dfmax = NULL, scale = TRUE, tol = 1e-05, 
-        maxiter = 1000, verbose = FALSE)
+solveEN(Sigma, Gamma, X = NULL, alpha = 1, lambda = NULL,
+        nlambda = 100, common.lambda = TRUE, 
+        lambda.min = .Machine$double.eps^0.5, dfmax = NULL, 
+        scale = TRUE, tol = 1E-5, maxiter = 1000, mc.cores = 1L,
+        return.beta = TRUE, save.beta = FALSE, verbose = FALSE)
+        
 }
 \arguments{
 \item{Sigma}{(numeric matrix) Variance-covariance matrix of predictors. It can be of the "float32" type as per the 'float' R-package}
 
-\item{Gamma}{(numeric vector) Covariance between response variable and predictors}
+\item{Gamma}{(numeric matrix) Covariance between response variable and predictors. If it contains more than one column, the algorithm is applied to each column separately as different response variables}
+
+\item{X}{(numeric matrix) Optional matrix of predictors to obtain fitted values}
 
 \item{lambda}{(numeric vector) Penalization parameter sequence. Default is \code{lambda=NULL}, in this case a decreasing grid of
 \code{'nlambda'} lambdas will be generated starting from a maximum equal to
@@ -23,6 +27,9 @@ to a minimum equal to zero. If \code{alpha=0} the grid is generated starting fro
 \item{nlambda}{(integer) Number of lambdas generated when \code{lambda=NULL}}
 
 \item{lambda.min}{(numeric) Minimum value of lambda that are generated when \code{lambda=NULL}}
+
+\item{common.lambda}{\code{TRUE} or \code{FALSE} to whether computing the coefficients for a grid of lambdas common to all columns of \code{Gamma}
+ or for a grid of lambdas specific to each column of \code{Gamma}. Default is \code{common.lambda=TRUE}}
 
 \item{alpha}{(numeric) Value between 0 and 1 for the weights given to the L1 and L2-penalties}
 
@@ -36,7 +43,13 @@ taken from the diagonal of \code{Sigma}}
 \item{dfmax}{(integer) Maximum number of non-zero coefficients in the last solution.
 Default \code{dfmax=NULL} will calculate solutions for the entire lambda grid}
 
-\item{verbose}{\code{TRUE} or \code{FALSE} to whether printing each CD step}
+\item{mc.cores}{(integer) Number of cores used. The analysis is run in parallel when \code{mc.cores} is greater than 1. Default is \code{mc.cores=1}}
+
+\item{return.beta}{\code{TRUE} or \code{FALSE} to whether return regression coefficients in the output object}
+
+\item{save.beta}{\code{TRUE} or \code{FALSE} to whether save regression coefficients (in a temporary folder). When \code{TRUE} coefficients are not returned in the output object and instead the path where coefficients were saved is returned. They can be retrieved using \code{coef} method if at least one \code{return.beta} or \code{save.beta} is TRUE}
+
+\item{verbose}{\code{TRUE} or \code{FALSE} to whether printing progress}
 }
 \value{
 Returns a list object containing the elements:
@@ -44,8 +57,9 @@ Returns a list object containing the elements:
   \item \code{lambda}: (vector) all the sequence of values of the penalty.
   \item \code{beta}: (matrix) regression coefficients for each predictor (in rows) associated to each value of the penalization parameter lambda (in columns).
   \item \code{df}: (vector) degrees of freedom, number of non-zero predictors associated to each value of lambda.
+  \item \code{yHat}: (matrix) fitted values calculated using a matrix of predictors (when argument X is not NULL), associated to each value of lambda (in columns).
 }
-The returned object is of the class 'LASSO' for which methods \code{fitted} exist. Function 'path.plot' can be also used
+The returned object is of the class 'LASSO' for which methods \code{coef} and \code{fitted} exist. Function 'path.plot' can be also used
 }
 \description{
 Computes the entire Elastic-Net solution for the regression coefficients for all
@@ -118,15 +132,15 @@ by "soft-thresholding" their OLS estimate until convergence as fully described i
   X = scale(X_E1)          # Predictors
 
   # Training and testing sets
-  tst = seq(1,length(y),by=3)
+  tst = which(Y$trial \%in\% 1:10)
   trn = seq_along(y)[-tst]
 
   # Calculate covariances in training set
   XtX = var(X[trn,])
-  Xty = cov(y[trn],X[trn,])
+  Xty = cov(X[trn,],y[trn])
   
   # Run the penalized regression
-  fm1 = solveEN(XtX,Xty,alpha=0.5) 
+  fm1 = solveEN(XtX,Xty,alpha=0.5,nlambda=100) 
   
   # Predicted values
   yHat1 = fitted(fm1, X=X[trn,])  # training data
@@ -135,13 +149,12 @@ by "soft-thresholding" their OLS estimate until convergence as fully described i
   # Penalization vs correlation
   plot(-log(fm1$lambda[-1]),cor(y[trn],yHat1[,-1]), main="training")
   plot(-log(fm1$lambda[-1]),cor(y[tst],yHat2[,-1]), main="testing")
-  
   \donttest{
   if(requireNamespace("float")){
    # Using a 'float' type variable
    XtX2 = float::fl(XtX)
    fm2 = solveEN(XtX2,Xty,alpha=0.5)  
-   max(abs(fm1$beta-fm2$beta))  # Check for discrepances
+   max(abs(fm1$beta-fm2$beta))   # Check for discrepances in beta
   }
   }
 }

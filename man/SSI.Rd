@@ -5,10 +5,11 @@
 \title{Sparse Selection Index}
 \usage{
 SSI(y, X = NULL, b = NULL, Z = NULL, K, D = NULL, 
-    theta = NULL, h2 = NULL, trn = seq_along(y), tst = seq_along(y), 
-    subset = NULL, alpha = 1, lambda = NULL, nlambda = 100,
-    lambda.min = .Machine$double.eps^0.5, common.lambda = TRUE,
-    tol = 1E-4, maxiter = 500, method = c("REML","ML"),
+    theta = NULL, h2 = NULL, trn = seq_along(y), 
+    tst = seq_along(y), subset = NULL, alpha = 1, lambda = NULL,
+    nlambda = 100, lambda.min = .Machine$double.eps^0.5,
+    common.lambda = TRUE, tol = 1E-4, maxiter = 500,
+    method = c("REML","ML"), return.beta = FALSE, save.beta = TRUE, 
     save.at = NULL, name = NULL, mc.cores = 1, verbose = TRUE)
     
 SSI.CV(y, X = NULL, b = NULL, Z = NULL, K, D = NULL, 
@@ -71,7 +72,11 @@ to a minimum equal to zero. If \code{alpha=0} the grid is generated starting fro
 
 \item{maxiter}{(integer) Maximum number of iterations to run the CD algorithm at each lambda step before convergence is reached}
 
-\item{save.at}{(character) Prefix name that will be added to the output files name to be saved, this may include a path. Regression coefficients
+\item{return.beta}{\code{TRUE} or \code{FALSE} to whether return regression coefficients in the output object}
+
+\item{save.beta}{\code{TRUE} or \code{FALSE} to whether save regression coefficients. When \code{TRUE} coefficients are not returned in the output object and instead the path where coefficients were saved is returned. They can be retrieved using \code{coef} method if at least one \code{return.beta} or \code{save.beta} is TRUE}
+
+\item{save.at}{(character) Prefix name that will be added to the files (coefficients and output object) name to be saved, this may include a path. Regression coefficients
 are saved as a binary file (single-precision: 32 bits, 7 significant digits). Default \code{save.at=NULL} will no save any output}
 
 \item{method}{(character) Either 'REML' (Restricted Maximum Likelihood) or 'ML' (Maximum Likelihood) to calculate variance components as per the function 'fitBLUP'}
@@ -85,6 +90,7 @@ Function 'SSI' returns a list object of the class 'SSI' for which methods \code{
 \itemize{
   \item \code{b}: (vector) fixed effects solutions (including the intercept).
   \item \code{Xb}: (vector) product of the design matrix 'X' times the fixed effects solutions.
+  \item \code{u}: (matrix) genetic values for testing individuals (in rows) associated to each value of lambda (in columns).
   \item \code{varU}, \code{varE}, \code{h2}: variance components solutions.
   \item \code{alpha}: value for the elastic-net weights used.
   \item \code{lambda}: (matrix) sequence of values of lambda used (in columns) for each testing individual (in rows).
@@ -166,53 +172,53 @@ Function 'SSI.CV' performs cross-validation within the training data specified i
   require(SFSI)
   data(wheatHTP)
   
-  index = which(Y$CV == 1)              # Use only a subset of data
-  M = scale(M[index,])/sqrt(ncol(M))    # Subset and scale markers
-  G = tcrossprod(M)                     # Genomic relationship matrix
-  y = as.vector(scale(Y[index,"E1"]))   # Subset ans scale response variable
+  index = which(Y$trial \%in\% 1:6)     # Use only a subset of data
+  Y = Y[index,]
+  M = scale(M[index,])/sqrt(ncol(M))  # Subset and scale markers
+  G = tcrossprod(M)                   # Genomic relationship matrix
+  y = as.vector(scale(Y[,"E1"]))      # Scale response variable
   
   # Training and testing sets
-  tst = seq(1,length(y),by=3)
-  trn = (seq_along(y))[-tst]
+  tst = which(Y$trial == 2)
+  trn = which(Y$trial != 2)
 
   # Calculate variance components ratio using training data
-  yNA <- y
-  yNA[tst] <- NA
+  yNA = y
+  yNA[tst] = NA
   fm0 = fitBLUP(yNA,K=G)
   theta = fm0$varE/fm0$varU
   h2 = fm0$varU/(fm0$varU + fm0$varE)
+  b = fm0$b       # intercept
   
   # Sparse selection index
-  fm1 = SSI(y,K=G,theta=theta,trn=trn,tst=tst)
+  fm1 = SSI(y,K=G,theta=theta,b=b,trn=trn,tst=tst)
   summary(fm1)$optCOR
-  
   \donttest{
   if(requireNamespace("float")){
   # Using a 'float' type variable for K
   G2 = float::fl(G)
-  fm2 = SSI(y,K=G2,theta=theta,trn=trn,tst=tst)
+  fm2 = SSI(y,K=G2,theta=theta,b=b,trn=trn,tst=tst)
   summary(fm2)$optCOR  # compare with above results
   }
   }
-  
   #---------------------------------------------------
   # Predicting a testing set using a value of lambda
   # obtained from cross-validation in a traning set
   #---------------------------------------------------
+  \donttest{
   # Run a cross validation in training set
-  fm2 = SSI.CV(y,K=G,theta=theta,trn=trn,nfolds=5,name="1 5CV")
+  fm2 = SSI.CV(y,K=G,theta=theta,b=b,trn=trn,nfolds=5,name="1 5CV")
   lambda = summary(fm2)$optCOR["lambda"]
-  
+
   # Fit the index with the obtained lambda
-  fm3 = SSI(y,K=G,theta=theta,trn=trn,tst=tst,lambda=lambda)
+  fm3 = SSI(y,K=G,theta=theta,b=b,trn=trn,tst=tst,lambda=lambda)
   summary(fm3)$accuracy        # Testing set accuracy
 
   # Compare the accuracy with that of the non-sparse index (G-BLUP)
   cor(fm0$u[tst],y[tst])
   
-  \donttest{
   # Obtain an 'optimal' lambda by repeating the CV several times
-  fm22 = SSI.CV(y,K=G,theta=theta,trn=trn,nCV=5,name="5 5CV")
+  fm22 = SSI.CV(y,K=G,theta=theta,b=b,trn=trn,nCV=5,name="5 5CV")
   plot(fm22,fm2)
   }
 }

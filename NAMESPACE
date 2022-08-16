@@ -17,6 +17,7 @@ export(fitBLUP)
 
 exportMethods(SFSI)
 S3method(coef,SSI)
+S3method(coef,LASSO)
 S3method(fitted,SSI)
 S3method(fitted,LASSO)
 S3method(plot,SSI)
