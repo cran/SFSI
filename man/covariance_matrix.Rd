@@ -1,26 +1,28 @@
 
-\name{covariance_matrix}
+\name{3. Covariance matrix transformations}
 \alias{cov2dist}
 \alias{cov2cor2}
-\title{Conversion of a covariance matrix to a distance or correlation matrix}
+\title{Conversion of a covariance matrix to a distance/correlation matrix}
 \usage{
-cov2dist(V, void = FALSE)
+cov2dist(A, a = 1, inplace = FALSE)
 
-cov2cor2(V, a = 1, void = FALSE)
+cov2cor2(A, a = 1, inplace = FALSE)
+
 }
 \arguments{
-\item{V}{(numeric matrix) Symmetric variance-covariance matrix among \eqn{p}{p} variables. It can be of the "float32" type as per the 'float' R-package}
+\item{A}{(numeric matrix) Variance-covariance matrix}
 
-\item{void}{\code{TRUE} or \code{FALSE} to whether return or not return the output.
-When \code{FALSE} no result is displayed but the input \code{V} is modified. Default \code{void=FALSE}}
+\item{inplace}{\code{TRUE} or \code{FALSE} to whether operate directly on the input matrix.
+When \code{TRUE} no result is produced but the input \code{A} is modified. Default \code{inplace=FALSE}}
 
-\item{a}{(numeric) A number to multiply the whole resulting matrix by. Default \code{a=1}}
+\item{a}{(numeric) A number to multiply the whole resulting matrix by. Default \code{a = 1}}
+
 }
 \value{
-Function 'cov2dist' returns a matrix containing the (square) Euclidean distances. Function 'cov2cor2' returns a correlation matrix
+Function 'cov2dist' returns a matrix containing the Euclidean distances. Function 'cov2cor2' returns a correlation matrix
 }
 \description{
-Computes a correlation matrix or a Euclidean distance matrix from a covariance matrix
+Transformation into correlation matrix or distance matrix from a covariance matrix
 }
 \details{
 For any variables
@@ -35,18 +37,18 @@ Likewise, the covariance is
 \ifelse{html}{\out{cov(X<sub>i</sub>,X<sub>j</sub>) = <b>x</b>'<sub>i</sub><b>x</b><sub>j</sub>}}{\eqn{cov(X_i,X_j)=\textbf{x}_i'\textbf{x}_j}{cov(X_i,X_j) = x'_i x_j}}.
 
 \ifelse{html}{\out{<b>Distance.</b>}}{\eqn{\textbf{Distance.}}{Distance.}}
-The square of the distance
+The Euclidean distance
 \ifelse{html}{\out{d(X<sub>i</sub>,X<sub>j</sub>)}}{\eqn{d(X_i,X_j)}{d(X_i,X_j)}}
 between the variables expressed in terms of cross-products is
 
-\ifelse{html}{\out{<p style='text-align:center'>d<sup>2</sup>(X<sub>i</sub>,X<sub>j</sub>) = <b>x</b>'<sub>i</sub><b>x</b><sub>i</sub> + <b>x</b>'<sub>j</sub><b>x</b><sub>j</sub> - 2<b>x</b>'<sub>i</sub><b>x</b><sub>j</sub></p>}}{\deqn{d^2(X_i,X_j) = \textbf{x}_i'\textbf{x}_i + \textbf{x}_j'\textbf{x}_j - 2\textbf{x}_i'\textbf{x}_j}{d^2(X_i,X_j) = x'_i x_i + x'_j x_j - 2x'_i x_j}}
+\ifelse{html}{\out{<p style='text-align:center'>d(X<sub>i</sub>,X<sub>j</sub>) = (<b>x</b>'<sub>i</sub><b>x</b><sub>i</sub> + <b>x</b>'<sub>j</sub><b>x</b><sub>j</sub> - 2<b>x</b>'<sub>i</sub><b>x</b><sub>j</sub>)<sup>1/2</sup></p>}}{\deqn{d(X_i,X_j) = \sqrt{\textbf{x}_i'\textbf{x}_i + \textbf{x}_j'\textbf{x}_j - 2\textbf{x}_i'\textbf{x}_j}}{d(X_i,X_j) = sqrt(x'_i x_i + x'_j x_j - 2x'_i x_j)}}
 
-Therefore, the output (square) distance matrix will contain as off-diagonal entries
+Therefore, the output distance matrix will contain as off-diagonal entries
 
-\ifelse{html}{\out{<p style='text-align:center'>d<sup>2</sup>(X<sub>i</sub>,X<sub>j</sub>) = var(X<sub>i</sub>) + var(X<sub>j</sub>) - 2cov(X<sub>i</sub>,X<sub>j</sub>)</p>}}{\deqn{d^2(X_i,X_j) = var(X_i)+var(X_j)- 2cov(X_i,X_j)}{d^2(X_i,X_j) = var(X_i) + var(X_j) - 2cov(X_i,X_j)}}
+\ifelse{html}{\out{<p style='text-align:center'>d(X<sub>i</sub>,X<sub>j</sub>) = (var(X<sub>i</sub>) + var(X<sub>j</sub>) - 2cov(X<sub>i</sub>,X<sub>j</sub>))<sup>1/2</sup></p>}}{\deqn{d(X_i,X_j) = \sqrt{var(X_i)+var(X_j)- 2cov(X_i,X_j)}}{d(X_i,X_j) = sqrt(var(X_i) + var(X_j) - 2cov(X_i,X_j))}}
 
 while in the diagonal, the distance between one variable with itself is
-\ifelse{html}{\out{d<sup>2</sup>(X<sub>i</sub>,X<sub>i</sub>) = 0}}{\eqn{d^2(X_i,X_i)=0}{d^2(X_i,X_i) = 0}}
+\ifelse{html}{\out{d(X<sub>i</sub>,X<sub>i</sub>) = 0}}{\eqn{d(X_i,X_i)=0}{d(X_i,X_i) = 0}}
 
 \ifelse{html}{\out{<b>Correlation.</b>}}{\eqn{\textbf{Correlation.}}{Correlation.}}
 The correlation between the variables is obtained from variances and covariances as
@@ -57,42 +59,32 @@ where \ifelse{html}{\out{sd(X<sub>i</sub>)=sqrt(var(X<sub>i</sub>))}}{\eqn{sd(X_
 \ifelse{html}{\out{cor(X<sub>i</sub>,X<sub>i</sub>) = 1}}{\eqn{cor(X_i,X_i)=1}{cor(X_i,X_i) = 1}}
 
 Variances are obtained from the diagonal values while covariances are obtained from the out-diagonal.
+
 }
 \examples{
   require(SFSI)
   data(wheatHTP)
   
-  X = scale(Y[,4:7])
-  (V = crossprod(X))             # Covariance matrix 
+  X = scale(M)[1:100,]/sqrt(ncol(M))
+  A = tcrossprod(X)        # A 100x100 covariance matrix 
   
   # Covariance matrix to distance matrix
-  (D1 = cov2dist(V))
-  # it must equal (but faster) to:
-  D0 = as.matrix(dist(t(X)))^2
-  max(abs(D0-D1))
+  D = cov2dist(A)
+  D[1:5,1:5]
+  # (it must equal (but faster) to:)
+  D0 = as.matrix(dist(X))
+  max(D-D0)
   
   # Covariance to a correlation matrix
-  (R1 = cov2cor2(V))
-  # it must equal (but faster) to:
-  R0 = cov2cor(V)
-  max(abs(R0-R1))
-  
-  if(requireNamespace("float")){
-   # Using a 'float' type variable
-   V2 = float::fl(V)
-   D2 = cov2dist(V2)
-   max(abs(D1-D2))   # discrepancy with previous matrix
-   R2 = cov2cor2(V2)
-   max(abs(R1-R2))   # discrepancy with previous matrix
-  }
+  R = cov2cor2(A)
+  R[1:5,1:5]
+  # (it must equal (but faster) to:)
+  R0 = cov2cor(A)
+  max(R-R0)
   
   # Using void=TRUE
-  cov2dist(V,void=TRUE)
-  V       # notice that V was modified
-  cov2dist(V2,void=TRUE)
-  V2       # notice that V2 was modified
+  A[1:5,1:5]
+  cov2dist(A, inplace=TRUE)
+  A[1:5,1:5]  # notice that A was modified
   
-}
-\author{
-Marco Lopez-Cruz (\email{maraloc@gmail.com}) and Gustavo de los Campos
 }

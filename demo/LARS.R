@@ -1,3 +1,4 @@
+
 oldwd <- getwd()
 setwd(tempdir())
 
@@ -16,7 +17,7 @@ Xty = cov(X[trn,],y[trn])
 
 # Run the penalized regression
 fm = LARS(XtX,Xty,method="LAR")
-fm = LARS(XtX,Xty,method="LAR-LASSO",verbose=TRUE)
+fm = LARS(XtX,Xty,method="LASSO",verbose=TRUE)
 
 # Predicted values
 yHat1 = fitted(fm, X=X[trn,])  # training data

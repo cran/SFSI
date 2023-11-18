@@ -1,37 +1,30 @@
 
 # Covariance matrix to correlation matrix
 
-cov2cor2 <- function(V, a = 1, void = FALSE)
+cov2cor2 <- function(A, a = 1, inplace = FALSE)
 {
-    if((sum(dim(V))/2)^2 != length(V)) stop("Object 'V' must be a squared matrix")
-    if(!float::storage.mode(V) %in% c("double","float32")) storage.mode(V) <- "double"
+   dm <- dim(A)
+   if((sum(dm)/2)^2 != length(A)){
+      stop("Input 'A' must be a squared symmetric matrix")
+   }
+   n <- dm[1]
 
-    p <- ncol(V)
-    isfloat <- as.logical(float::storage.mode(V)=="float32")
+   #isBigMatrix <- bigmemory::is.big.matrix(A)
+   isBigMatrix <- FALSE
+   if(isBigMatrix){
+     message(" Routine 'cov2cor' is not implemented yet for 'bigmatrix'")
+     #stopifnot(bigmemory::typeof(A) == "double")
 
-    #dyn.load("c_utils.so")
-    if(void){
-      if(isfloat){
-       nOK <- .Call('cov2correlation', p, V@Data, isfloat, as.numeric(a))[[1]]
-      }else{
-       nOK <- .Call('cov2correlation', p, V, isfloat, as.numeric(a))[[1]]
-      }
-      out <- NULL
-    }else{
-      if(isfloat){
-       out <- V@Data[]
-      }else{
-        out <- V[]
-      }
-
-     nOK <- .Call('cov2correlation', p, out, isfloat, as.numeric(a))[[1]]
-     if(isfloat){
-        out <- float::float32(out)
+   }else{
+     #dyn.load("c_cov2cor.so")
+     if(inplace){
+       tmp <- .Call('R_cov2cor', n, a, A)
+       #return(tmp)
+     }else{
+       out <- A[]
+       tmp <- .Call('R_cov2cor', n, a, out)
+       return(out)
      }
+     #dyn.unload("c_cov2cor.so")
    }
-   #dyn.unload("c_utils.so")
-   if(nOK != p){
-      warning("Some diagonal values of 'V' are 0 or NA. Results are dobubtful",immediate.=TRUE)
-   }
-   out
 }

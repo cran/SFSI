@@ -1,4 +1,4 @@
-\name{path.plot}
+\name{Regression coefficients path}
 \alias{path.plot}
 \title{Coefficients path plot}
 \usage{
@@ -46,18 +46,19 @@ Coefficients evolution path plot from an object of the class 'LASSO' or 'SSI'
   y = as.vector(scale(Y[,'E1']))        # Subset response variable
   
   # Sparse phenotypic regression
-  fm1 = LARS(var(X),cov(X,y))
+  fm = LARS(var(X),cov(X,y))
+  \donttest{
+  path.plot(fm)
+  }
   
   # Sparse family index
-  fm2 = SSI(y,K=G,tst=1:10,trn=11:50)
+  trn_tst = ifelse(seq_along(y)<11,0,1)
+  fm = SSI(y,K=G,trn_tst=trn_tst)
   \donttest{
-  path.plot(fm1)
-  path.plot(fm2, prune=TRUE)
-  path.plot(fm2, K=G, prune=TRUE, cor.max=0.9)
+  path.plot(fm, prune=TRUE)
+  path.plot(fm, K=G, prune=TRUE, cor.max=0.9)
   }
   # Path plot for the first individual in testing set for the SSI
-  path.plot(fm2, K=G, i=1)
+  path.plot(fm, K=G, i=1)
 }
-\author{
-Marco Lopez-Cruz (\email{maraloc@gmail.com}) and Gustavo de los Campos
-}
+

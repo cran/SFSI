@@ -1,3 +1,21 @@
+### Version 1.3.1 (Nov-17-2023)
+
+  - Old dependencies R-packages were removed
+  - Calls to functions 'Kronecker' and 'Kronecker_cov' from the tensorEVD R-package were added
+  - Functions to work with triangular matrices were removed
+
+
+### Version 1.3.0 (Aug-15-2023)
+
+**New features**
+
+  - Function 'fitBLUP' allows the solution of the mixed model for multiple traits when input 'y' has more than one column
+  - Function 'getGenCov' allows the calculation of all pairs of columns of input 'y' so a genetic covariance matrix can be formed
+  - Function 'SSI' is extended to the multi-trait case if input 'y' has more than one column. In this case within-trait genetic/residual covariances varU and varE are calculated using function 'getGenCov' when are not provided
+  - Arguments 'trn' and 'tst' in function 'SSI(...,trn,tst)' can be be now passed as 'SSI(...,trn_tst)', where 'trn_tst' can be a vector with 0's (for tst) and 1's (for trn)
+  - New function 'prune' added (see manual)
+  - New functions to work with triangular matrices added (see manual)
+
 ### Version 1.2.0 (Aug-16-2022)
 
 **New features**
@@ -59,7 +77,7 @@
   - All C-based routines: a 'long long' variable type, instead of an 'int' type, was used for indexing arrays (matrices). This change allows dealing with matrices whose length (number of rows x number of columns) exceed 2^31-1 = 2147483647 (e.g., a matrix of 46341 x 46341)  
 
 
-### Version 0.3.0 (April-29-2021)
+### Version 0.3.0 (Apr-29-2021)
 
 **Features**
 

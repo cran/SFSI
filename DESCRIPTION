@@ -1,11 +1,11 @@
 Package: SFSI
 Title: Sparse Family and Selection Index
-Version: 1.2.0
+Version: 1.3.1
 Authors@R: c(
     person("Marco", "Lopez-Cruz", role = c("aut","cre"), email = "maraloc@gmail.com"),
     person("Gustavo", "de los Campos", role = c("aut"), email = "gustavoc@msu.edu"),
     person("Paulino", "Perez-Rodriguez", role = c("ctb"), email = "perpdgo@gmail.com"))
-Date: 2022-08-16
+Date: 2023-11-17
 Description: Here we provide tools for the estimation of coefficients in 
      penalized regressions when the (co)variance matrix of predictors 
      and the covariance vector between predictors and response, are 
@@ -16,19 +16,17 @@ Description: Here we provide tools for the estimation of coefficients in
      and solutions for training set optimization in Genomic Prediction 
      ('Lopez-Cruz & de los Campos, 2021') <doi:10.1093/genetics/iyab030>.
 LazyLoad: true
-Depends: R (>= 3.5)
-Imports: stats
-Suggests: BGLR, Matrix, float, knitr, rmarkdown, ggplot2, parallel,
-        reshape2, viridis, igraph
-LinkingTo: float
-VignetteBuilder: knitr
+Depends: R (>= 3.6.0), ggplot2
+Imports: stats, scales, tensorEVD, parallel, reshape2, viridis, igraph
+Suggests: BGLR, knitr, rmarkdown
+VignetteBuilder: rmarkdown
 Encoding: UTF-8
 License: GPL-3
 NeedsCompilation: yes
-Packaged: 2022-08-16 14:46:34 UTC; marco
+Packaged: 2023-11-17 22:48:13 UTC; marco
 Author: Marco Lopez-Cruz [aut, cre],
   Gustavo de los Campos [aut],
   Paulino Perez-Rodriguez [ctb]
 Maintainer: Marco Lopez-Cruz <maraloc@gmail.com>
 Repository: CRAN
-Date/Publication: 2022-08-16 15:40:09 UTC
+Date/Publication: 2023-11-18 07:00:03 UTC

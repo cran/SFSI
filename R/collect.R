@@ -1,42 +1,71 @@
 
 # Collect all outputs when divided acording to 'subset' parameter
 
-collect <- function(prefix = "")
+collect <- function(path = ".")
 {
-  filenames <- Sys.glob(paste0(prefix,"subset_*_of_*_output.RData"))
+
+  pattern <- "subset_[0-9]+_of_[0-9]+_output.RData$"
+  isFolder <- FALSE
+  if(dir.exists(path)){   # If is a folder
+    infolder <- normalizePath(path)
+    prefix <- NULL
+    isFolder <- TRUE
+  }else{
+    infolder <- dirname(path)
+    prefix <- basename(path)
+    pattern <- paste0(prefix,pattern)
+  }
+  pattern <- paste0("^",pattern)
+  listfiles <- list.files(infolder)
+  filenames <- grep(pattern, listfiles, value=TRUE)
+  #filenames <- normalizePath(paste0(infolder,"/",filenames))
+
   out <- NULL
   if(length(filenames) > 0){
-      tmp <- strsplit(basename(filenames),"_")
-      nFiles <- as.numeric(unlist(lapply(tmp,function(x) x[length(x)-1])))
-      if(length(unique(nFiles))>1){
-        stop(" Different subset output files were found for the given prefix='",prefix,
-            "'. Remove old files. No output was collected")
+      tmp <- strsplit(basename(filenames),"subset_|_of_|_output.RData")
+      indexFile <- as.numeric(unlist(lapply(tmp,function(x) x[2])))
+      nFiles <- as.numeric(unlist(lapply(tmp,function(x) x[length(x)])))
+
+      if(length(unique(nFiles)) == 1L){
+        if(length(nFiles) != nFiles[1]){
+          stop("Found ",length(nFiles)," output file(s), ",nFiles[1]," are needed ",
+               "\n  Remove old files. No output was collected")
+        }
+      }else{
+        stop("Different output files were found for the path='",path,"'",
+            "\n  Remove old files. No output was collected")
       }
 
-      filenames <- paste0(prefix,"subset_",1:nFiles[1],"_of_",nFiles[1],"_output.RData")
-      if(!all(file.exists(filenames))) stop("Some files are missing for the given prefix='",prefix,"'\n")
+      filenames <- normalizePath(paste0(infolder,"/",filenames[order(indexFile)]))
+      if(!all(file.exists(filenames))){
+        stop("Some files are missing for the path='",path,"'")
+      }
 
       for(i in seq_along(filenames))
       {
         load(filenames[i])
         if(i==1){
           fm <- out
-          fm$name_beta <- vector('list',nFiles[1])
-          fm$name_beta[[1]] <- out$name_beta
 
         }else{
+          fm$q <- fm$q + out$q
           fm$file_beta <- c(fm$file_beta, out$file_beta)
-          fm$name_beta[[i]] <- out$name_beta
           fm$tst <- c(fm$tst, out$tst)
           fm$u <- rbind(fm$u, out$u)
-          fm$df <- rbind(fm$df, out$df)
+          fm$yHat <- rbind(fm$yHat, out$yHat)
+          fm$nsup <- rbind(fm$nsup, out$nsup)
           fm$lambda <- rbind(fm$lambda, out$lambda)
+          fm$fileID <- c(fm$fileID, out$fileID)
         }
-        cat(" Loaded file: '",filenames[i],"'\n",sep="")
+        message(" Loaded file: '",basename(filenames[i]),"'")
       }
-      fm$subset$subset[1] <- NA
+      if(length(fm$file_beta)>0){
+        stopifnot(length(unique(fm$file_beta))==1L)
+        fm$file_beta <- fm$file_beta[1]
+      }
 
-  }else stop(" No output files were found for the given prefix='",prefix,"'")
-
+  }else{
+     stop("No output files were found for the path='",path,"'")
+  }
   fm
 }

@@ -1,4 +1,4 @@
-\name{wheat}
+\name{Wheat data set}
 \alias{wheatHTP}
 \alias{Y}
 \alias{X_E1}

@@ -17,9 +17,13 @@ output:
 bibliography: references.bib
 vignette: |
   %\VignetteIndexEntry{Documentation: Lopez-Cruz et. al. (2020) Sci. Rep. 10:8195)}
-  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEngine{rmarkdown::render}
   %\VignetteEncoding{UTF-8}
 ---
+
+```{r initialsetup, include=FALSE}
+knitr::opts_chunk$set(cache=FALSE)
+```
 
 # Standard Selection index
 
@@ -288,7 +292,7 @@ for(tp in timepoints){
     KTRN <- K[indexTRN,indexTRN]   # Relationship matrix (given by replicates)
   
     # Get genetic variances and covariances
-    fm <- getGenCov(y1=yTRN,y2=xTRN,K=KTRN,scale=FALSE,warn=FALSE,mc.cores=1)
+    fm <- getGenCov(y=cbind(yTRN,xTRN),K=KTRN,scale=FALSE,verbose=FALSE)
     
     gencov <- cbind(gencov,fm$covU)
     phencov <- cbind(phencov,fm$covU + fm$covE)
@@ -335,13 +339,13 @@ for(tp in timepoints){
     VARinv <- diag(1/EVDx$values)
     gamma <- as.vector(VARinv %*% t(EVDx$vectors) %*%  gencov[,k])
     beta <- apply(EVDx$vectors %*% diag(gamma),1,cumsum)
-    bPCSI[[k]] <- data.frame(I(beta),df=1:nrow(beta),lambda=NA)
+    bPCSI[[k]] <- data.frame(I(beta),nsup=1:nrow(beta),lambda=NA)
     
     # L1-PSI
     fm <- solveEN(VARx, gencov[,k],nlambda=100)
     # fm <- LARS(VARx, gencov[,k])  # Second option
     beta <- t(as.matrix(fm$beta)[,-1])
-    bL1PSI[[k]] <- data.frame(I(beta),df=fm$df[-1],lambda=fm$lambda[-1])
+    bL1PSI[[k]] <- data.frame(I(beta),nsup=fm$nsup[-1],lambda=fm$lambda[-1])
   }
   save(bSI,bPCSI,bL1PSI,file=paste0("coefficients_tp_",tp,".RData"))
   cat("Time-point=",tp,". Done \n")
@@ -378,18 +382,18 @@ for(tp in timepoints){
     
     # Fit genetic models   
     fitSI <- as.matrix(data.frame(I(SI),I(PCSI),I(L1PSI)))
-    fm <- getGenCov(y1=yTST,y2=fitSI,K=KTST,warn=FALSE,mc.cores=1)
-    fm$varU2 <- ifelse(fm$varU2<0.05,0.05,fm$varU2)
+    fm <- getGenCov(y=cbind(yTST,fitSI),K=KTST,verbose=FALSE)
+    fm$varU <- ifelse(fm$varU<0.05,0.05,fm$varU)
     
     # Retrieve accuracy components
-    h <- sqrt(fm$varU2/(fm$varU2 + fm$varE2))
-    gencor <- fm$covU/sqrt(fm$varU1*fm$varU2)
-    acc2 <- fm$covU/sqrt(fm$varU1)
+    h <- sqrt(fm$varU/(fm$varU + fm$varE))[-1]
+    gencor <- fm$covU/sqrt(fm$varU[1]*fm$varU[-1])
+    acc2 <- fm$covU/sqrt(fm$varU[1])
     accuracy <- abs(gencor)*h
     
-    df <- c(nrow(bSI[[k]]),bPCSI[[k]]$df,bL1PSI[[k]]$df)
+    nsup <- c(nrow(bSI[[k]]),bPCSI[[k]]$nsup,bL1PSI[[k]]$nsup)
     lambda <- c(min(bL1PSI[[k]]$lambda),bPCSI[[k]]$lambda,bL1PSI[[k]]$lambda)
-    accSI <- rbind(accSI,data.frame(rep=k,SI=colnames(fitSI),h,gencor,accuracy,df,lambda))
+    accSI <- rbind(accSI,data.frame(rep=k,SI=colnames(fitSI),h,gencor,accuracy,nsup,lambda))
   }
   save(accSI,file=paste0("accuracy_tp_",tp,".RData"))
   cat("Time-point=",tp,". Done \n")
@@ -411,14 +415,14 @@ accSI$SI = unlist(lapply(strsplit(rownames(accSI),"\\."),function(x)x[1]))
 
 # Plot of PC-SI
 if(requireNamespace("reshape") & requireNamespace("ggplot2")){
- dat <- reshape::melt(accSI[accSI$SI=="PCSI",],id=c("df","lambda","SI"))
- plot1 <- ggplot2::ggplot(dat,ggplot2::aes(df,value,group=variable,color=variable)) +
+ dat <- reshape::melt(accSI[accSI$SI=="PCSI",],id=c("nsup","lambda","SI"))
+ plot1 <- ggplot2::ggplot(dat,ggplot2::aes(nsup,value,group=variable,color=variable)) +
   ggplot2::theme_bw() + ggplot2::geom_line(size=1) + 
   ggplot2::labs(title="PC-SI",y="correlation",x="Number of PCs")
   
 # Plot of L1-PSI
- dat <- reshape::melt(accSI[accSI$SI=="L1PSI",],id=c("df","lambda","SI"))
- plot2 <- ggplot2::ggplot(dat,ggplot2::aes(df,value,group=variable,color=variable)) +
+ dat <- reshape::melt(accSI[accSI$SI=="L1PSI",],id=c("nsup","lambda","SI"))
+ plot2 <- ggplot2::ggplot(dat,ggplot2::aes(nsup,value,group=variable,color=variable)) +
   ggplot2::theme_bw() + ggplot2::geom_line(size=1) + 
   ggplot2::labs(title="L1-PSI",y="correlation",x="Number of active predictors")
 
@@ -530,12 +534,12 @@ for(k in 1:nPart)
     # PC-based SI
     gamma <- t(sweep(EVDx$vectors,2,1/EVDx$values,FUN="*")) %*%  Gencov[,k]
     beta <- apply(sweep(EVDx$vectors,2,as.vector(gamma),FUN="*"),1,cumsum)[1:500,]
-    bPCSI[[k]] <- data.frame(I(beta),df=1:nrow(beta),lambda=NA)
+    bPCSI[[k]] <- data.frame(I(beta),nsup=1:nrow(beta),lambda=NA)
     
     # L1-PSI
     fm <- solveEN(VARx, Gencov[,k],nlambda=100,maxiter=200,tol=1E-3)
     beta <- t(as.matrix(fm$beta)[,-1])
-    bL1PSI[[k]] <- data.frame(I(beta),df=fm$df[-1],lambda=fm$lambda[-1])
+    bL1PSI[[k]] <- data.frame(I(beta),nsup=fm$nsup[-1],lambda=fm$lambda[-1])
 }
 save(bPCSI,bL1PSI,nPart,file="multi_timepoint_coefficients.RData")
 ```
@@ -568,17 +572,17 @@ for(k in 1:nPart)
     
     # Fit genetic models
     fitSI <- as.matrix(data.frame(I(PCSI_multi),I(L1PSI_multi)))
-    fm <- getGenCov(y1=yTST,y2=fitSI,K=KTST,warn=FALSE,mc.cores=1)
-    fm$varU2 <- ifelse(fm$varU2<0.05,0.05,fm$varU2)
+    fm <- getGenCov(y=cbind(yTST,fitSI),K=KTST,verbose=FALSE)
+    fm$varU <- ifelse(fm$varU<0.05,0.05,fm$varU)
    
     # Retrieve accuracy components
-    h <- sqrt(fm$varU2/(fm$varU2 + fm$varE2))
-    gencor <- fm$covU/sqrt(fm$varU1*fm$varU2)
+    h <- sqrt(fm$varU/(fm$varU + fm$varE))[-1]
+    gencor <- fm$covU/sqrt(fm$varU[1]*fm$varU[-1])
     accuracy <- gencor*h
     
-    df <- c(bPCSI[[k]]$df,bL1PSI[[k]]$df)
+    nsup <- c(bPCSI[[k]]$nsup,bL1PSI[[k]]$nsup)
     lambda <- c(bPCSI[[k]]$lambda,bL1PSI[[k]]$lambda)
-    AccSI <- rbind(AccSI,data.frame(rep=k,SI=colnames(fitSI),h,gencor,accuracy,df,lambda))
+    AccSI <- rbind(AccSI,data.frame(rep=k,SI=colnames(fitSI),h,gencor,accuracy,nsup,lambda))
 }
 save(AccSI,file="multi_timepoint_accuracy.RData")
 ```
@@ -628,7 +632,8 @@ load("multi_timepoint_accuracy.RData")
 
 # Get genetic covariances
 x <- scale(do.call(cbind,X))
-fm <- getGenCov(y1=y,y2=x,U=evdK$vectors,d=evdK$values, mc.cores=5,warn=FALSE)
+y <- as.vector(scale(y))
+fm <- getGenCov(y=cbind(y,x),U=evdK$vectors,d=evdK$values,scale=FALSE,verbose=FALSE)
 gencov <- fm$covU
 
 # Get a value of lambda across partitions

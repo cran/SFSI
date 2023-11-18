@@ -1,41 +1,44 @@
 
-\name{LARS}
+\name{5. Least Angle Regression (LARS)}
 \alias{LARS}
 \title{Least Angle Regression to solve LASSO-type problems}
 \usage{
-LARS(Sigma, Gamma, X =NULL, method=c("LAR","LAR-LASSO"),
-      dfmax = NULL, eps = .Machine$double.eps, 
-      scale = TRUE, mc.cores = 1L, return.beta = TRUE, 
-      save.beta = FALSE, verbose = FALSE)
+LARS(Sigma, Gamma, method=c("LAR","LASSO"),
+     nsup.max = NULL, eps = .Machine$double.eps*100,
+     scale = TRUE, sdx = NULL, mc.cores = 1L, save.at = NULL,
+     precision.format = c("double","single"),
+     fileID = NULL, verbose = FALSE)
 
 }
 \arguments{
-\item{Sigma}{(numeric matrix) Variance-covariance matrix of predictors. It can be of the "float32" type as per the 'float' R-package}
+\item{Sigma}{(numeric matrix) Variance-covariance matrix of predictors}
 
 \item{Gamma}{(numeric matrix) Covariance between response variable and predictors. If it contains more than one column, the algorithm is applied to each column separately as different response variables}
-
-\item{X}{(numeric matrix) Optional matrix of predictors to obtain fitted values}
 
 \item{method}{(character) Either:
 \itemize{
  \item \code{'LAR'}: Computes the entire sequence of all coefficients. Values of lambdas are calculated at each step.
- \item \code{'LAR-LASSO'}: Similar to \code{'LAR'} but solutions when a predictor leaves the solution are also returned.
+ \item \code{'LASSO'}: Similar to \code{'LAR'} but solutions when a predictor leaves the solution are also returned.
 }
 Default is \code{method='LAR'}}
 
-\item{dfmax}{(integer) Maximum number of non-zero coefficients in the last LARS solution.
-Default \code{dfmax=NULL} will calculate solutions for the entire lambda sequence}
+\item{nsup.max}{(integer) Maximum number of non-zero coefficients in the last LARS solution.
+Default \code{nsup.max=NULL} will calculate solutions for the entire lambda sequence}
 
 \item{eps}{(numeric) An effective zero. Default is the machine precision}
 
-\item{scale}{\code{TRUE} or \code{FALSE} to scale matrix \code{Sigma} for variables with unit variance and scale \code{Gamma} by the standard deviation of the corresponding predictor
+\item{scale}{\code{TRUE} or \code{FALSE} to scale matrix \code{Sigma} for variables with unit variance and scale \code{Gamma} by the standard deviation (\code{sdx}) of the corresponding predictor
 taken from the diagonal of \code{Sigma}}
 
-\item{mc.cores}{(integer) Number of cores used. The analysis is run in parallel when \code{mc.cores} is greater than 1. Default is \code{mc.cores=1}}
+\item{sdx}{(numeric vector) Scaling factor that will be used to scale the regression coefficients. When \code{scale = TRUE} this scaling factor vector is set to the squared root of the diagonal of \code{Sigma}, otherwise a provided value is used assuming that \code{Sigma} and \code{Gamma} are scaled}
 
-\item{return.beta}{\code{TRUE} or \code{FALSE} to whether return regression coefficients in the output object}
+\item{mc.cores}{(integer) Number of cores used. When \code{mc.cores} > 1, the analysis is run in parallel for each column of \code{Gamma}. Default is \code{mc.cores=1}}
 
-\item{save.beta}{\code{TRUE} or \code{FALSE} to whether save regression coefficients (in a temporary folder). When \code{TRUE} coefficients are not returned in the output object and instead the path where coefficients were saved is returned. They can be retrieved using \code{coef} method if at least one \code{return.beta} or \code{save.beta} is TRUE}
+\item{save.at}{(character) Path where regression coefficients are to be saved (this may include a prefix added to the files). Default \code{save.at=NULL} will no save the regression coefficients and they are returned in the output object}
+
+\item{fileID}{(character) Suffix added to the file name where regression coefficients are to be saved. Default \code{fileID=NULL} will automatically add sequential integers from 1 to the number of columns of \code{Gamma}}
+
+\item{precision.format}{(character) Either 'single' or 'double' for numeric precision and memory occupancy (4 or 8 bytes, respectively) of the regression coefficients. This is only used when \code{save.at} is not \code{NULL}}
 
 \item{verbose}{\code{TRUE} or \code{FALSE} to whether printing each LARS step}
 }
@@ -44,10 +47,9 @@ Returns a list object with the following elements:
 \itemize{
   \item \code{lambda}: (vector) all the sequence of values of the LASSO penalty.
   \item \code{beta}: (matrix) regression coefficients for each predictor (in rows) associated to each value of the penalization parameter lambda (in columns).
-  \item \code{df}: (vector) degrees of freedom, number of non-zero predictors associated to each value of lambda.
-  \item \code{yHat}: (matrix) fitted values calculated using a matrix of predictors (when argument X is not NULL), associated to each value of lambda (in columns).
+  \item \code{nsup}: (vector) number of non-zero predictors associated to each value of lambda.
 }
-The returned object is of the class 'LASSO' for which methods \code{fitted} exist. Function \code{path.plot} can be also used
+The returned object is of the class 'LASSO' for which methods \code{coef} and \code{fitted} exist. Function 'path.plot' can be also used
 }
 \description{
 Computes the entire LASSO solution for the regression coefficients, starting from zero, to the
@@ -112,24 +114,16 @@ is the \ifelse{html}{\out{j<sup>th</sup>}}{\eqn{j^{th}}{j^th}} column of the mat
   Xty = cov(X[trn,],y[trn])
   
   # Run the penalized regression
-  fm1 = LARS(XtX,Xty,method="LAR-LASSO")  
+  fm = LARS(XtX, Xty, method="LASSO")  
   
   # Predicted values
-  yHat1 = fitted(fm1, X=X[trn,])  # training data
-  yHat2 = fitted(fm1, X=X[tst,])  # testing data
+  yHat1 = fitted(fm, X=X[trn,])  # training data
+  yHat2 = fitted(fm, X=X[tst,])  # testing data
   
   # Penalization vs correlation
-  plot(-log(fm1$lambda[-1]),cor(y[trn],yHat1[,-1]), main="training")
-  plot(-log(fm1$lambda[-1]),cor(y[tst],yHat2[,-1]), main="testing")
-  \donttest{
-  if(requireNamespace("float")){
-   # Using a 'float' type variable
-   XtX2 = float::fl(XtX)
-   fm2 = LARS(XtX2,Xty,method="LAR-LASSO")  
-   max(abs(fm1$beta-fm2$beta))      # Check for discrepances in beta
-   max(abs(fm1$lambda-fm2$lambda))  # Check for discrepances in lambda
-  }
-  }
+  plot(-log(fm$lambda[-1]),cor(y[trn],yHat1[,-1]), main="Training", type="l")
+  plot(-log(fm$lambda[-1]),cor(y[tst],yHat2[,-1]), main="Testing", type="l")
+
 }
 \references{
 Efron B, Hastie T, Johnstone I, Tibshirani R (2004). Least angle regression. \emph{The Annals of Statistics}, \bold{32}(2), 407–499.
@@ -141,6 +135,6 @@ Hastie T, Efron B (2013). lars: least angle regression, Lasso and forward stagew
 Tibshirani R (1996). Regression shrinkage and selection via the LASSO. \emph{Journal of the Royal Statistical Society B}, \bold{58}(1), 267–288.
 }
 \author{
-Marco Lopez-Cruz (\email{maraloc@gmail.com}) and Gustavo de los Campos. Adapted from the 'lars' function in package 'lars' (Hastie & Efron, 2013)
+Adapted from the 'lars' function in package 'lars' (Hastie & Efron, 2013)
 }
 \keyword{LARS}

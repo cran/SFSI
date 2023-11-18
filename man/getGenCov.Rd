@@ -1,48 +1,46 @@
 
-\name{getGenCov}
+\name{8. Computing Genetic Covariances}
 \alias{getGenCov}
-\title{Genetic covariances}
+\title{Pairwise Genetic Covariance}
 \usage{
-getGenCov(y1, y2, X = NULL, Z = NULL, K = NULL, 
-          U = NULL, d = NULL, scale = TRUE, 
-          mc.cores = 1, warn = FALSE, ...)
+getGenCov(y, X = NULL, Z = NULL, K = NULL,
+          U = NULL, d = NULL, scale = TRUE,
+          pairwise=FALSE, verbose = TRUE, ...)
+          
 }
 \arguments{
-\item{y1}{(numeric vector) Response variable 1}
-
-\item{y2}{(numeric matrix) Response variable 2. The number of rows must be equal to length of vector y1}
+\item{y}{(numeric matrix) Response variable matrix. It should contain more than one column}
 
 \item{X}{(numeric matrix) Design matrix for fixed effects. When \code{X=NULL} a vector of ones is constructed only for the intercept (default)}
 
 \item{Z}{(numeric matrix) Design matrix for random effects. When \code{Z=NULL} an identity matrix is considered (default) thus \ifelse{html}{\out{<b>G</b> = <b>K</b>}}{\eqn{\textbf{G = K}}{G = K}}; otherwise \ifelse{html}{\out{<b>G</b> = <b>Z K Z'</b>}}{\eqn{\textbf{G} = \textbf{Z K Z'}}{G = Z K Z'}} is used}
 
-\item{K}{(numeric matrix) Kinship relationships}
+\item{K}{(numeric matrix) Kinship relationship matrix}
 
 \item{U}{(numeric matrix) Eigenvectors from spectral value decomposition of \ifelse{html}{\out{<b>G</b> = <b>U D U'</b>}}{\eqn{\textbf{G} = \textbf{U D U'}}{G = U D U'}}}
 
 \item{d}{(numeric vector) Eigenvalues from spectral value decomposition of \ifelse{html}{\out{<b>G</b> = <b>U D U'</b>}}{\eqn{\textbf{G} = \textbf{U D U'}}{G = U D U'}}}
 
-\item{scale}{\code{TRUE} or \code{FALSE} to scale y1 and y2 by their corresponding standard deviations so the resulting variables will have unit variance}
+\item{scale}{\code{TRUE} or \code{FALSE} to scale each column of \code{y} by their corresponding standard deviations so the resulting variables will have unit variance}
 
-\item{mc.cores}{(integer) Number of cores used. The analysis is run in parallel when \code{mc.cores} is greater than 1. Default is \code{mc.cores=1}}
+\item{pairwise}{\code{TRUE} or \code{FALSE} to calculate pairwise genetic covariances for all columns in \code{y}. When \code{pairwise=FALSE} (default) covariances of the first column in \code{y} with the remaining columns (2,...,\code{ncol(y)}) are calculated}
 
-\item{warn}{\code{TRUE} or \code{FALSE} to whether show warnings}
+\item{verbose}{\code{TRUE} or \code{FALSE} to whether show progress}
 
 \item{...}{Other arguments passed to the function 'fitBLUP'} 
 }
 \value{
 Returns a list object that contains the elements:
 \itemize{
-  \item \code{varU1}: genetic variance for response variable 1.
-  \item \code{varU2}: (vector) genetic variances for response variable 2.
-  \item \code{varE1}: error variance for response variable 1.
-  \item \code{varE2}: (vector) error variances for response variable 2.
-  \item \code{covU}: (vector) genetic covariances between response variables 1 and 2.
-  \item \code{covE}: (vector) environmental covariances between response variables 1 and 2.
+  \item \code{varU}: (vector) genetic variances.
+  \item \code{varE}: (vector) error variances.
+  \item \code{covU}: (vector) genetic covariances between response variable 1 and the rest.
+  \item \code{covE}: (vector) environmental covariances between response variable 1 and the rest.
 }
+When \code{pairwise=TRUE}, \code{varU} and \code{varE} are matrices containing all variances (diagonal) and pairwise covariances (off diagonal)
 }
 \description{
-Pairwise genetic covariances for variables with the same experimental design and equal variance
+Pairwise genetic covariances for variables with the same experimental design
 }
 \details{
 Assumes that both \ifelse{html}{\out{<b>y</b><sub>1</sub>}}{\eqn{\textbf{y}_1}{y_1}} and
@@ -94,24 +92,23 @@ Solutions are found using the function 'fitBLUP' (see \code{help(fitBLUP)}) to s
   require(SFSI)
   data(wheatHTP)
   
-  index = which(Y$trial \%in\% 1:6)     # Use only a subset of data
+  index = which(Y$trial \%in\% 1:8)     # Use only a subset of data
   Y = Y[index,]
-  X = scale(X_E1[index,30:50])        # Subset reflectance data
   M = scale(M[index,])/sqrt(ncol(M))  # Subset and scale markers
   G = tcrossprod(M)                   # Genomic relationship matrix
-  y = as.vector(scale(Y[,"E1"]))      # Scale response variable
+  y = scale(Y[,4:7])                  # Response variable
   
-  fm = getGenCov(y,X,K=G)
+  # Covariances between the first and the rest: y[,1] and y[,2:4]
+  fm = getGenCov(y=y, K=G)
+  fm$varU           # Genetic variances
+  fm$varE           # Residual variances
+  fm$covU           # Genetic covariance between y[,1] and y[,2:4]
+  fm$covU+fm$covE   # Phenotypic covariance
+  cov(y)[1,-1]      # Sample phenotypic covariance
   
-  covU = fm$covU                     # Genetic covariance
-  covP_corrected = fm$covU+fm$covE   # Phenotypic covariance
-  covP_uncorrected = cov(y,X)        # Sample phenotypic covariance
-  
-  plot(covP_corrected,covP_uncorrected)
-  plot(covU,covP_uncorrected)
-  plot(covU,covP_corrected)
-}
-\author{
-Marco Lopez-Cruz (\email{maraloc@gmail.com}) and Gustavo de los Campos
+  # Pairwise covariance for all columns in y
+  fm = getGenCov(y=y, K=G, pairwise=TRUE)
+  fm$varU 
+  fm$varE
 }
 \keyword{fitBLUP}

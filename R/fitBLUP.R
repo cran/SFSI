@@ -1,181 +1,193 @@
 
-fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, U = NULL, d = NULL,
-                    theta = NULL, BLUP = TRUE, method = c("REML","ML"),
-                    return.Hinv = FALSE, tol = 1E-5, maxiter = 1000,
-                    interval = c(1E-9,1E9), warn = TRUE)
+fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, U = NULL,
+                    d = NULL, varU = NULL, varE = NULL,
+                    intercept = TRUE, BLUP = TRUE,
+                    method = c("REML","ML"), interval = c(1E-9,1E9),
+                    tol = 1E-8, maxiter = 1000, n.regions = 10,
+                    verbose = TRUE)
 {
   method <- match.arg(method)
+  dmin <- .Machine$double.eps
+  ratio <- NULL
+  # y=yNA[,]; X=X0; K=G0; method="REML"; BLUP=FALSE
 
-  if(is.character(K)){
-    K <- readBinary(K)
-  }
-  y <- as.vector(y)
-  indexOK <- which(!is.na(y))
-  n <- length(indexOK)
-
-  if(is.null(X))
-  {
-    X <- stats::model.matrix(~1,data=data.frame(rep(1,length(y))))
+  if(length(dim(y)) == 2L){
+    y <- as.matrix(y)
   }else{
-    if(length(dim(X))<2){
-      X <- stats::model.matrix(~X)
-      if(ncol(X)>2)  colnames(X)[-1] <- substr(colnames(X)[-1],2,nchar(colnames(X)[-1]))
+    y <- matrix(y, ncol=1L)
+  }
+
+  n <- nrow(y) # Number of total observations
+  q <- ncol(y)
+  trn_list <- get_common_trn(y)
+
+  # Track if the training set is the same across all response variables.
+  # If not, SVD is performed for each group with common trn set
+  commonTRN <- (length(trn_list)==1L)
+
+  if((q > 1L) & !commonTRN){
+    if(verbose){
+      message(" ",length(trn_list)," different training sets were found for the response variable.")
+      message(" Eigenvalue decomposition is applied to each common training set")
     }
   }
-  stopifnot(nrow(X) == length(y))
 
-  isGeigen <- FALSE
-  if(is.null(U) & is.null(d))
+  BLUE <- ifelse(is.null(X) & !intercept, FALSE, TRUE)
+  if(verbose & !BLUE){
+    message(" No intercept is estimated. Response is assumed to have mean zero")
+  }
+  X <- setX(n=n, X=X)
+  p <- ncol(X)
+
+  isEigen <- FALSE
+  if(is.null(U) | is.null(d))
   {
-    if(is.null(Z))
-    {
-      if(is.null(K)){
-        G <- diag(length(y))
-      }else{
-        G <- K
-      }
+    G <- setK(n=n, Z=Z, K=K)
 
+  }else{
+    isEigen <- TRUE
+    G <- K <- Z <- NULL
+    stopifnot(ncol(U) == length(d))
+    tmp <- unlist(lapply(trn_list,function(x)length(x$trn)))
+    if(any(tmp != n)){
+       stop("No 'NA' values are allowed when parameters 'U' and 'd' are provided")
+    }
+    EVD <- list(values=d, vectors=U)
+  }
+
+  # If varE and varU are provided
+  if(is.null(ratio) & !is.null(varU) & !is.null(varE)){
+    stopifnot(length(varU) == length(varE))
+    ratio <- varU/varE
+    if(length(ratio)==1L){
+       ratio <- rep(ratio, q)
     }else{
-      if(length(dim(Z)) != 2) stop("Object 'Z' must be a matrix")
-      if(is.null(K)){
-        G <- float::tcrossprod(Z)  # G = ZKZ'  with K=I
-      }else{
-        G <- float::tcrossprod(Z,float::tcrossprod(Z,K))  # G = ZKZ'
+      if(length(ratio) != q){
+        stop("Length of 'varU' and 'varE' must be equal to the number of columns of 'y'")
       }
     }
-    stopifnot(nrow(G) == length(y))
-    stopifnot(ncol(G) == length(y))
-
-    U <- float::eigen(G[indexOK,indexOK])
-    d <- U$values
-    U <- U$vectors
-
-  }else{
-    isGeigen <- TRUE
-    if(is.null(U)) stop("You are providing the eigenvalues, but not the eigenvectors")
-    if(is.null(d)) stop("You are providing the eigenvectors, but not the eigenvalues")
-    if(n<length(y)) stop("No 'NA' values are allowed when parameters 'U' and 'd' are provided")
-  }
-  G <- NULL
-
-  tol <- .Machine$double.eps^(3/4)
-  if(any(d < tol)){
-    if(warn){
-      warning("Some eigenvalues are negative or very small:\n\t",
-      " ",sum(d<tol)," eigenvalue(s) lie between ",float::dbl(min(d))," and <",tol,".\n\t",
-      " The corresponding eigenvector(s) will be ignored",immediate.=TRUE)
-    }
-    d[d<tol] <- 0
   }
 
-  stopifnot(nrow(U) == n)
-  stopifnot(ncol(U) == length(d))
+  stopifnot(n.regions > 0)
+  isREML <- (method=="REML")
 
-  Uty <- float::crossprod(U,y[indexOK])[,1]
-  UtX <- float::crossprod(U,X[indexOK, ,drop=FALSE])
+  bounds <- exp(seq(log(interval[1]), log(interval[2]), length=n.regions+1))
 
-  c0 <- ncol(X)-1
+  out <- vector("list", q)
+  conty <- 0
 
-  varP <- var(y[indexOK])*sum(d)/length(d) # mean(d)
-  convergence <- varU <- varE <- bHat <- dbar <- msg <- NA
-
-  if(is.null(theta))
+  # Perform the analysis for all traits
+  if(verbose & q>1L){
+    pb <- utils::txtProgressBar(style=3)
+  }
+  for(tr in 1:length(trn_list))
   {
-    ratio <- NA
-    tt <- searchInt(method,interval=interval,n=n,c0=c0,Uty=Uty,UtX=UtX,d=d,
-           maxiter=maxiter,tol=tol,lower=interval[1],upper=interval[2],varP=varP)
+    trn <- trn_list[[tr]]$trn
+    nTRN <- length(trn)
 
-    if(is.na(tt$convergence))
-    {
-      # Divide seeking interval into smaller intervals
-      bb <- exp(seq(log(interval[1]),log(interval[2]),length=200))
-      tt <- searchInt(method,interval=bb,n=n,c0=c0,Uty=Uty,UtX=UtX,d=d,
-             maxiter=maxiter,tol=tol,lower=interval[1],upper=interval[2],varP=varP)
-
-      if(is.na(tt$convergence)){
-        # Search in the lower bound
-        bb <- exp(seq(log(interval[1]^2),log(interval[1]^0.5),length=200))
-        tt <- searchInt(method,interval=bb,n=n,c0=c0,Uty=Uty,UtX=UtX,d=d,
-               maxiter=maxiter,tol=tol,lower=interval[1],upper=interval[2],varP=varP)
-
-        if(is.na(tt$convergence)){
-          # Search in the upper bound
-          bb <- exp(seq(log(interval[2]^0.5),log(interval[2]^2),length=200))
-          tt <- searchInt(method,interval=bb,n=n,c0=c0,Uty=Uty,UtX=UtX,d=d,
-                 maxiter=maxiter,tol=tol,lower=interval[1],upper=interval[2],varP=varP)
+    if(!isEigen){
+      if(is.null(Z) & is.null(K)){
+        # EVD of a diagonal matrix
+        EVD <- list(values=rep(1, nTRN), vectors=matrix(0, ncol=nTRN, nrow=nTRN))
+        for(i in 1:nTRN){
+          EVD$vectors[i,nTRN-i+1] <- 1
         }
-      }
-    }
-    msg <- tt$msg
-    ratio <- tt$ratio
-    bHat <- tt$bHat
-    dbar <- tt$dbar
-    varU <- tt$varU; varE <- tt$varE
-    convergence <- ifelse(is.na(tt$convergence),FALSE,tt$convergence)
-
-  }else{
-    ratio <- 1/theta
-    dbar <- 1/(ratio*d + 1)
-    qq1 <- t(Uty*dbar)%*%UtX
-    qq2 <- solve(sweep(t(UtX),2L,dbar,FUN="*")%*%UtX)
-    ytPy <- drop(sum(dbar*Uty^2)-qq1%*%qq2%*%t(qq1))
-    bHat <- drop(qq2%*%t(qq1))
-    varE <- ifelse(method=="REML",ytPy/(n-c0-1),ytPy/n)
-    varU <- ratio*varE
-  }
-
-
-  uHat <- Hinv <- NULL
-  if(return.Hinv | (BLUP & !is.na(ratio) & !isGeigen)){
-    if(float::storage.mode(U) == "float32"){
-      Hinv <- float::tcrossprod(float::sweep(U,2L,float::fl(ratio*dbar),FUN="*"),U)
-    }else{
-      Hinv <- float::tcrossprod(float::sweep(U,2L,ratio*dbar,FUN="*"),U)
-    }
-  }
-
-  # Compute BLUP: uHat = KZ'V^{-1} (y-X*b)   with V = varU*ZKZ' + varE*I
-  if(BLUP & !is.na(ratio))
-  {
-    yStar <- y[indexOK] - X[indexOK ,,drop=FALSE]%*%bHat
-    if(isGeigen){
-      H <- float::tcrossprod(sweep(U,2L,d*ratio*dbar,FUN="*"),U)
-      uHat <- as.vector(H%*%yStar)
-    }else{
-      if(is.null(Z) & is.null(K)){  # Z=NULL, K=NULL
-        uHat <- rep(0,length(y))
-        uHat[indexOK] <- as.vector(Hinv%*%yStar)   # V^{-1}*(y-Xb)
 
       }else{
-        if(is.null(Z)){     # Z=NULL, K=K
-          uHat <- as.vector(float::crossprod(K[indexOK,,drop=FALSE],Hinv)%*%yStar)  # K[,trn]*V^{-1}*(y-Xb)
-        }else{
-          if(is.null(K)){   # Z=Z, K=NULL
-              uHat <- as.vector(float::crossprod(Z[indexOK,,drop=FALSE],Hinv)%*%yStar)  # Z[,trn]'*V^{-1}*(y-Xb)
-          }else{            # Z=Z, K=K
-              ZKt <- float::tcrossprod(Z[indexOK, ,drop=FALSE],K)   # ZK' which is the transpose of KZ'
-              uHat <- as.vector(float::crossprod(ZKt,Hinv)%*%yStar)
+        EVD <- eigen(G[trn,trn], symmetric=TRUE)
+      }
+    }
+
+    iy <- trn_list[[tr]]$iy  # columns of y with a common trn set
+
+    for(k in seq_along(iy))
+    {
+      ind <- iy[k]
+      conty <- conty + 1
+      ytrn <- as.vector(y[trn, ind])
+      stopifnot(all(!is.na(ytrn)))
+      ratio0 <- NULL
+      if(!is.null(ratio)) ratio0 <- ratio[ind]
+
+      #dyn.load("c_blup.so")
+      res <- .Call('R_solve_mixed', n, ratio0, trn-1, ytrn, X, Z, K,
+                    EVD$vectors, EVD$values, bounds, tol, maxiter,
+                    dmin, isREML, isEigen, BLUE, BLUP)
+      #dyn.unload("c_blup.so")
+
+      bHat0 <- res[[10]]
+      if(BLUE){
+        names(bHat0) <- colnames(X)
+      }
+      if(verbose & q>1L){
+        utils::setTxtProgressBar(pb, conty/q)
+      }
+
+      out[[ind]] <- list(ind=ind, solution=res[[1]], status=res[[4]],
+                         convergence=(res[[5]]>0), nDsmall=res[[6]],
+                         varU=res[[7]], varE=res[[8]], h2=res[[9]],
+                         bHat=bHat0, yHat=res[[11]], uHat=res[[12]])
+    }
+  }
+
+  if(verbose & q>1L) {
+    close(pb)
+  }
+
+  # Checkpoint
+  if(any(seq(q) != unlist(lapply(out,function(x) x$ind)) )){
+      stop("Some sub-processes failed. Something went wrong during the analysis")
+  }
+
+  if(verbose){
+    nDsmall <- unlist(lapply(out,function(x)x$nDsmall))
+    tmp <- ifelse(any(nDsmall>0),ifelse(sum(nDsmall>0)==1,nDsmall[nDsmall>0],
+                  paste(range(nDsmall[nDsmall>0]),collapse="-")),NA)
+    if(any(nDsmall>0) | !is.na(tmp)){
+      message(ifelse(max(commonTRN),nDsmall,tmp)," eigenvalue(s) are very small.",
+              " The corresponding eigenvector(s) were ignored")
+    }
+
+    status <- unlist(lapply(out, function(x)x$status))
+    status <- status[!is.na(status)]
+    if(any(status > 0)){
+      for(k in 1:4){
+        index <- which(status==k)
+        if(length(index)>0){
+          msg <- switch(k,
+            '1'=paste0("The log Likelihood function is horizontal. No search for ratio varU/varE\n",
+                     " was performed and was set to varU/varE=",interval[1]),
+            '2'=paste0("Algorithm to find ratio varU/varE did not converge after ",
+                     maxiter," iterations.\n Results are doubtful"),
+            '3'=paste0("Ratio varU/varE is around the lower bound ",interval[1],
+                     "\n Results might be doubtful"),
+            '4'=paste0("Ratio varU/varE is around the upper bound ",interval[2],
+                     "\n Results might be doubtful"))
+          if(q > 1L){
+            tmp <- ifelse(length(index)<=15, paste(index,collapse=","),
+                paste0(paste(index[1:3],collapse=","),",...,",paste(index[length(index)-(3:1)],collapse=",")))
+            msg <- paste(msg, "for",length(index),"trait(s):",tmp)
           }
+          message(msg)
         }
       }
     }
-
-    if(!return.Hinv) Hinv <- NULL
   }
 
-  if(warn){
-    if(ifelse(is.na(convergence),is.na(ratio),!convergence)){
-      warning("Convergence was not reached in the 'GEMMA' algorithm.",immediate.=TRUE)
-    }
-    if(!is.na(msg)){
-      warning(msg, immediate.=TRUE)
-    }
+  out <- list(varE=unlist(lapply(out,function(x)x$varE)),
+              varU=unlist(lapply(out,function(x)x$varU)),
+              h2=unlist(lapply(out,function(x)x$h2)),
+              b=do.call(cbind,lapply(out,function(x)x$bHat)),
+              yHat=do.call(cbind,lapply(out,function(x)x$yHat)),
+              u=do.call(cbind,lapply(out,function(x)x$uHat)),
+              convergence=unlist(lapply(out,function(x)x$convergence)),
+              method=method)
+
+  if(q == 1L){
+    out$b <- drop(out$b)
+    out$u <- as.vector(out$u)
+    out$yHat <- as.vector(out$yHat)
   }
 
-  theta <- 1/ratio
-  h2 <- varU/(varU + varE)
-
-  out <- list(varE = varE, varU = varU, theta=theta, h2 = h2, b = bHat, u = uHat,
-              Hinv = Hinv, convergence = convergence, method = method)
   return(out)
 }

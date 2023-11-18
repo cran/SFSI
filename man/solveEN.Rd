@@ -1,21 +1,21 @@
 
-\name{solveEN}
+\name{4. Solve an Elastic-Net problem}
 \alias{solveEN}
 \title{Coordinate Descent algorithm to solve Elastic-Net-type problems}
 \usage{
-solveEN(Sigma, Gamma, X = NULL, alpha = 1, lambda = NULL,
-        nlambda = 100, common.lambda = TRUE, 
-        lambda.min = .Machine$double.eps^0.5, dfmax = NULL, 
-        scale = TRUE, tol = 1E-5, maxiter = 1000, mc.cores = 1L,
-        return.beta = TRUE, save.beta = FALSE, verbose = FALSE)
+solveEN(Sigma, Gamma, alpha = 1, lambda = NULL,
+        nlambda = 100, lambda.min = .Machine$double.eps^0.5,
+        lambda.max = NULL, common.lambda = TRUE, beta0 = NULL,
+        nsup.max = NULL, scale = TRUE, sdx = NULL, tol = 1E-5,
+        maxiter = 1000, mc.cores = 1L, save.at = NULL,
+        precision.format = c("double","single"),
+        fileID = NULL, verbose = FALSE)
         
 }
 \arguments{
-\item{Sigma}{(numeric matrix) Variance-covariance matrix of predictors. It can be of the "float32" type as per the 'float' R-package}
+\item{Sigma}{(numeric matrix) Variance-covariance matrix of predictors}
 
 \item{Gamma}{(numeric matrix) Covariance between response variable and predictors. If it contains more than one column, the algorithm is applied to each column separately as different response variables}
-
-\item{X}{(numeric matrix) Optional matrix of predictors to obtain fitted values}
 
 \item{lambda}{(numeric vector) Penalization parameter sequence. Default is \code{lambda=NULL}, in this case a decreasing grid of
 \code{'nlambda'} lambdas will be generated starting from a maximum equal to
@@ -26,28 +26,34 @@ to a minimum equal to zero. If \code{alpha=0} the grid is generated starting fro
 
 \item{nlambda}{(integer) Number of lambdas generated when \code{lambda=NULL}}
 
-\item{lambda.min}{(numeric) Minimum value of lambda that are generated when \code{lambda=NULL}}
+\item{lambda.min, lambda.max}{(numeric) Minimum and maximum value of lambda that are generated when \code{lambda=NULL}}
 
 \item{common.lambda}{\code{TRUE} or \code{FALSE} to whether computing the coefficients for a grid of lambdas common to all columns of \code{Gamma}
  or for a grid of lambdas specific to each column of \code{Gamma}. Default is \code{common.lambda=TRUE}}
+ 
+\item{beta0}{(numeric vector) Initial value for the regression coefficients that the algorithm will update for \code{maxiter} iterations. If \code{beta0 = NULL} a vector of zeros will be considered. These values will be used as starting values for the first lambda value}
 
 \item{alpha}{(numeric) Value between 0 and 1 for the weights given to the L1 and L2-penalties}
 
-\item{scale}{\code{TRUE} or \code{FALSE} to scale matrix \code{Sigma} for variables with unit variance and scale \code{Gamma} by the standard deviation of the corresponding predictor
+\item{scale}{\code{TRUE} or \code{FALSE} to scale matrix \code{Sigma} for variables with unit variance and scale \code{Gamma} by the standard deviation (\code{sdx}) of the corresponding predictor
 taken from the diagonal of \code{Sigma}}
+
+\item{sdx}{(numeric vector) Scaling factor that will be used to scale the regression coefficients. When \code{scale = TRUE} this scaling factor vector is set to the squared root of the diagonal of \code{Sigma}, otherwise a provided value is used assuming that \code{Sigma} and \code{Gamma} are scaled}
 
 \item{tol}{(numeric) Maximum error between two consecutive solutions of the CD algorithm to declare convergence}
 
 \item{maxiter}{(integer) Maximum number of iterations to run the CD algorithm at each lambda step before convergence is reached}
 
-\item{dfmax}{(integer) Maximum number of non-zero coefficients in the last solution.
-Default \code{dfmax=NULL} will calculate solutions for the entire lambda grid}
+\item{nsup.max}{(integer) Maximum number of non-zero coefficients in the last solution.
+Default \code{nsup.max=NULL} will calculate solutions for the entire lambda grid}
 
-\item{mc.cores}{(integer) Number of cores used. The analysis is run in parallel when \code{mc.cores} is greater than 1. Default is \code{mc.cores=1}}
+\item{mc.cores}{(integer) Number of cores used. When \code{mc.cores} > 1, the analysis is run in parallel for each column of \code{Gamma}. Default is \code{mc.cores=1}}
 
-\item{return.beta}{\code{TRUE} or \code{FALSE} to whether return regression coefficients in the output object}
+\item{save.at}{(character) Path where regression coefficients are to be saved (this may include a prefix added to the files). Default \code{save.at=NULL} will no save the regression coefficients and they are returned in the output object}
 
-\item{save.beta}{\code{TRUE} or \code{FALSE} to whether save regression coefficients (in a temporary folder). When \code{TRUE} coefficients are not returned in the output object and instead the path where coefficients were saved is returned. They can be retrieved using \code{coef} method if at least one \code{return.beta} or \code{save.beta} is TRUE}
+\item{fileID}{(character) Suffix added to the file name where regression coefficients are to be saved. Default \code{fileID=NULL} will automatically add sequential integers from 1 to the number of columns of \code{Gamma}}
+
+\item{precision.format}{(character) Either 'single' or 'double' for numeric precision and memory occupancy (4 or 8 bytes, respectively) of the regression coefficients. This is only used when \code{save.at} is not \code{NULL}}
 
 \item{verbose}{\code{TRUE} or \code{FALSE} to whether printing progress}
 }
@@ -56,8 +62,7 @@ Returns a list object containing the elements:
 \itemize{
   \item \code{lambda}: (vector) all the sequence of values of the penalty.
   \item \code{beta}: (matrix) regression coefficients for each predictor (in rows) associated to each value of the penalization parameter lambda (in columns).
-  \item \code{df}: (vector) degrees of freedom, number of non-zero predictors associated to each value of lambda.
-  \item \code{yHat}: (matrix) fitted values calculated using a matrix of predictors (when argument X is not NULL), associated to each value of lambda (in columns).
+  \item \code{nsup}: (vector) number of non-zero predictors associated to each value of lambda.
 }
 The returned object is of the class 'LASSO' for which methods \code{coef} and \code{fitted} exist. Function 'path.plot' can be also used
 }
@@ -140,23 +145,16 @@ by "soft-thresholding" their OLS estimate until convergence as fully described i
   Xty = cov(X[trn,],y[trn])
   
   # Run the penalized regression
-  fm1 = solveEN(XtX,Xty,alpha=0.5,nlambda=100) 
+  fm = solveEN(XtX,Xty,alpha=0.5,nlambda=100) 
   
   # Predicted values
-  yHat1 = fitted(fm1, X=X[trn,])  # training data
-  yHat2 = fitted(fm1, X=X[tst,])  # testing data
+  yHat1 = fitted(fm, X=X[trn,])  # training data
+  yHat2 = fitted(fm, X=X[tst,])  # testing data
   
   # Penalization vs correlation
-  plot(-log(fm1$lambda[-1]),cor(y[trn],yHat1[,-1]), main="training")
-  plot(-log(fm1$lambda[-1]),cor(y[tst],yHat2[,-1]), main="testing")
-  \donttest{
-  if(requireNamespace("float")){
-   # Using a 'float' type variable
-   XtX2 = float::fl(XtX)
-   fm2 = solveEN(XtX2,Xty,alpha=0.5)  
-   max(abs(fm1$beta-fm2$beta))   # Check for discrepances in beta
-  }
-  }
+  plot(-log(fm$lambda[-1]),cor(y[trn],yHat1[,-1]), main="training", type="l")
+  plot(-log(fm$lambda[-1]),cor(y[tst],yHat2[,-1]), main="testing", type="l")
+
 }
 \references{
 Friedman J, Hastie T, Höfling H, Tibshirani R (2007). Pathwise coordinate optimization. \emph{The Annals of Applied Statistics}, \bold{1}(2), 302–332.
@@ -167,7 +165,5 @@ Tibshirani R (1996). Regression shrinkage and selection via the LASSO. \emph{Jou
 
 Zou H, Hastie T (2005). Regularization and variable selection via the elastic net. \emph{Journal of the Royal Statistical Society B}, \bold{67}(2), 301–320.
 }
-\author{
-Marco Lopez-Cruz (\email{maraloc@gmail.com}) and Gustavo de los Campos
-}
+
 \keyword{solveEN}

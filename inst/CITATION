@@ -1,7 +1,7 @@
 citHeader("To cite SFSI in publications use:")
 
-citEntry(
-    entry = "Article",
+bibentry(
+    bibtype = "Article",
     title = "Regularized selection indices for breeding value prediction using hyper-spectral image data",
     author = c(
         person("Marco", "Lopez-Cruz"),

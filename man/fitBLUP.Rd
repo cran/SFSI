@@ -1,33 +1,35 @@
-\name{fitBLUP}
+
+\name{7. BLUP estimation from Linear Mixed Model}
 \alias{fitBLUP}
-\title{Function fitBLUP}
+\title{Fitting a Linear Mixed model to calculate BLUP}
 \usage{
-fitBLUP(y, X = NULL, Z = NULL, K = NULL, U = NULL, 
-        d = NULL, theta = NULL, BLUP = TRUE, 
-        method = c("REML","ML"), return.Hinv = FALSE, 
-        tol = 1E-5, maxiter = 1000, interval = c(1E-9,1E9),
-        warn = TRUE)  
+fitBLUP(y, X = NULL, Z = NULL, K = NULL, 
+        U = NULL, d = NULL, varU = NULL, 
+        varE = NULL, intercept = TRUE, BLUP = TRUE, 
+        method = c("REML","ML"), 
+        interval = c(1E-9,1E9), tol = 1E-8, 
+        maxiter = 1000, n.regions = 10,
+        verbose = TRUE)
+            
 }
 \arguments{
-\item{y}{(numeric vector) Response variable}
+\item{y}{(numeric matrix) Response variable. It can contain >1 columns, each of them will be fitted separately}
 
 \item{X}{(numeric matrix) Design matrix for fixed effects. When \code{X=NULL} a vector of ones is constructed only for the intercept (default)}
 
 \item{Z}{(numeric matrix) Design matrix for random effects. When \code{Z=NULL} an identity matrix is considered (default) thus \ifelse{html}{\out{<b>G</b> = <b>K</b>}}{\eqn{\textbf{G = K}}{G = K}}; otherwise \ifelse{html}{\out{<b>G</b> = <b>Z K Z'</b>}}{\eqn{\textbf{G} = \textbf{Z K Z'}}{G = Z K Z'}} is used}
 
-\item{K}{(numeric matrix) Kinship relationships. This can be of the "float32" type as per the 'float' R-package, or a (character) name of a binary file where the matrix is stored}
+\item{K}{(numeric matrix) Kinship relationship matrix}
 
-\item{U}{(numeric matrix) Eigenvectors from spectral value decomposition of \ifelse{html}{\out{<b>G</b> = <b>U D U'</b>}}{\eqn{\textbf{G} = \textbf{U D U'}}{G = U D U'}}}
+\item{U, d}{(numeric matrix/vector) Eigenvectors and eigenvalues from eigen value decomposition of \ifelse{html}{\out{<b>G</b> = <b>U D U'</b>}}{\eqn{\textbf{G} = \textbf{U D U'}}{G = U D U'}}}
 
-\item{d}{(numeric vector) Eigenvalues from spectral value decomposition of \ifelse{html}{\out{<b>G</b> = <b>U D U'</b>}}{\eqn{\textbf{G} = \textbf{U D U'}}{G = U D U'}}}
+\item{varU, varE}{(numeric) Genetic and residual variances. When both \code{varU} and \code{varE} are not \code{NULL} they are not calculated; otherwise, the likelihood function (REML or ML) is optimized to search for the genetic/residual variances ratio}
 
-\item{theta}{(numeric) Residual/genetic variances ratio. When it is not \code{NULL}, the optimization of the likelihood function (REML or ML) is not performed}
+\item{intercept}{\code{TRUE} or \code{FALSE} to whether fit an intercept. When \code{FALSE}, the model assumes a null intercept}
 
 \item{BLUP}{\code{TRUE} or \code{FALSE} to whether return the random effects estimates}
 
 \item{method}{(character) Either 'REML' (Restricted Maximum Likelihood) or 'ML' (Maximum Likelihood)}
-
-\item{return.Hinv}{\code{TRUE} or \code{FALSE} to whether return the inverse of the matrix H}
 
 \item{tol}{(numeric) Maximum error between two consecutive solutions (convergence tolerance) when finding the root of the log-likelihood's first derivative}
 
@@ -35,7 +37,9 @@ fitBLUP(y, X = NULL, Z = NULL, K = NULL, U = NULL,
 
 \item{interval}{(numeric vector) Range of values in which the root is searched}
 
-\item{warn}{\code{TRUE} or \code{FALSE} to whether show warnings}
+\item{n.regions}{(numeric) Number of regions in which the searched 'interval' is divided for local optimization}
+
+\item{verbose}{\code{TRUE} or \code{FALSE} to whether show progress}
 }
 \value{
 Returns a list object that contains the elements:
@@ -64,7 +68,7 @@ where
 \ifelse{html}{\out{<b>e</b>}}{\eqn{\textbf{e}}{e}} is the vector of environmental residuals (random error), and
 \ifelse{html}{\out{<b>X</b>}}{\eqn{\textbf{X}}{X}} and \ifelse{html}{\out{<b>Z</b>}}{\eqn{\textbf{Z}}{Z}} are design matrices conecting the fixed and genetic effects with replicates. Genetic values are assumed to follow a Normal distribution as
 \ifelse{html}{\out{<b>u</b> ~ N(<b>0</b>,&sigma;<sup>2</sup><sub>u</sub><b>K</b>)}}{\eqn{\textbf{u}\sim N(\textbf{0},\sigma^2_u\textbf{K})}{u ~ N(0,sigma^2_u K)}}, and the error terms are assumed
-\ifelse{html}{\out{<b>e</b> ~ N(<b>0</b>,&sigma;<sup>2</sup><sub>e</sub><b>D</b>)}}{\eqn{\textbf{e}\sim N(\textbf{0},\sigma^2_e\textbf{D})}{e ~ N(0,sigma^2_e D)}}, with \ifelse{html}{\out{<b>D</b>=<b>I</b>}}{\eqn{\textbf{D}=\textbf{I}}{D = I}} being an identity matrix.
+\ifelse{html}{\out{<b>e</b> ~ N(<b>0</b>,&sigma;<sup>2</sup><sub>e</sub><b>I</b>)}}{\eqn{\textbf{e}\sim N(\textbf{0},\sigma^2_e\textbf{I})}{e ~ N(0,sigma^2_e I)}}.
 
 The vector of genetic values
 \ifelse{html}{\out{<b>g</b> = <b>Z u</b>}}{\eqn{\textbf{g}=\textbf{Z}\textbf{u}}{g = Z u}} will therefore follow 
@@ -77,19 +81,24 @@ In the un-replicated case, \ifelse{html}{\out{<b>Z</b> = <b>I</b>}}{\eqn{\textbf
 The predicted values \ifelse{html}{\out{<b>u</b><sub>trn</sub> = (u<sub>i</sub>)}}{\eqn{\textbf{u}_{trn}=(u_i)}{u_trn = (u_i)}},
 \ifelse{html}{\out{i = 1,2,...,n<sub>trn</sub>}}{\eqn{i=1,2,...,n_{trn}}{i = 1,2,...,n_trn}}, corresponding to observed data (training set) are derived as
 
-\ifelse{html}{\out{<p style='text-align:center'><b>u</b><sub>trn</sub> = <b>H</b> (<b>y</b><sub>trn</sub> - <b>X</b><sub>trn</sub><b>b</b>)</p>}}{\deqn{\textbf{u}_{tst}=\textbf{H}(\textbf{y}_{trn}-\textbf{X}_{trn}\textbf{b})}{u_tst = H (y_trn - X_trn*b)}}
+\ifelse{html}{\out{<p style='text-align:center'><b>u</b><sub>trn</sub> = <b>B</b> (<b>y</b><sub>trn</sub> - <b>X</b><sub>trn</sub><b>b</b>)</p>}}{\deqn{\textbf{u}_{tst}=\textbf{B}(\textbf{y}_{trn}-\textbf{X}_{trn}\textbf{b})}{u_tst = B (y_trn - X_trn*b)}}
 
-where \ifelse{html}{\out{<b>H</b>}}{\eqn{\textbf{H}}{H}}
+where \ifelse{html}{\out{<b>B</b>}}{\eqn{\textbf{B}}{B}}
 is a matrix of weights given by
 
-\ifelse{html}{\out{<p style='text-align:center'><b>H</b> = <b>G</b><sub>trn</sub> (<b>G</b><sub>trn</sub> + &theta;<b>D</b>)<sup>-1</sup></p>}}{\deqn{\textbf{H}=\textbf{G}_{trn}(\textbf{G}_{trn} + \theta\textbf{D})^{-1}}{H = G[trn](G[trn] + theta D)^-1}}
+\ifelse{html}{\out{<p style='text-align:center'><b>B</b> = &sigma;<sup>2</sup><sub>u</sub><b>G</b><sub>trn</sub> (&sigma;<sup>2</sup><sub>u</sub><b>G</b><sub>trn</sub> + &sigma;<sup>2</sup><sub>e</sub><b>I</b>)<sup>-1</sup></p>}}{\deqn{\textbf{B}=\sigma_u^2\textbf{G}_{trn}(\sigma_u^2\textbf{G}_{trn} + \sigma_e^2\textbf{I})^{-1}}{B = sigma^2_u G[trn](sigma^2_u G[trn] + sigma^2_e I)^-1}}
 
 where \ifelse{html}{\out{<b>G</b><sub>trn</sub>}}{\eqn{\textbf{G}_{trn}}{G[trn]}}
-is the sub-matrix corresponding to the training set, and \ifelse{html}{\out{&theta; = &sigma;<sup>2</sup><sub>e</sub>/&sigma;<sup>2</sup><sub>u</sub>}}{\eqn{\theta=\sigma_e^2/\sigma_u^2}{theta = sigma^2_e/sigma^2_u}} is the residual/genetic variances ratio representing a shrinkage parameter. This parameter is expressed in terms of the heritability, \ifelse{html}{\out{h<sup>2</sup> = &sigma;<sup>2</sup><sub>u</sub>/(&sigma;<sup>2</sup><sub>u</sub> + &sigma;<sup>2</sup><sub>e</sub>)}}{\eqn{h^2=\sigma^2_u/(\sigma^2_u+\sigma^2_e)}{h^2 = sigma^2_u/(sigma^2_u + sigma^2_e)}}, as \ifelse{html}{\out{&theta; = (1 - h<sup>2</sup>)/h<sup>2</sup>}}{\eqn{\theta=(1-h^2)/h^2}{theta = (1 - h^2)/h^2}}.
+is the sub-matrix corresponding to the training set. This matrix can be rewritten as
 
-The predictions of \ifelse{html}{\out{<b>u</b><sub>tst</sub>}}{\eqn{\textbf{u}_{tst}}{u_tst}} corresponding to un-observed data (testing set) can be obtained by using 
+\ifelse{html}{\out{<p style='text-align:center'><b>B</b> = <b>G</b><sub>trn</sub> (<b>G</b><sub>trn</sub> + &theta;<b>I</b>)<sup>-1</sup></p>}}{\deqn{\textbf{B}=\textbf{G}_{trn}(\textbf{G}_{trn} + \theta\textbf{I})^{-1}}{B = G[trn](G[trn] + theta I)^-1}}
 
-\ifelse{html}{\out{<p style='text-align:center'><b>H</b> = <b>G</b><sub>tst,trn</sub> (<b>G</b><sub>trn</sub> + &theta;<b>D</b>)<sup>-1</sup></p>}}{\deqn{\textbf{H}=\textbf{G}_{tst,trn}(\textbf{G}_{trn} + \theta\textbf{D})^{-1}}{H = G[tst,trn](G[trn] + theta D)^-1}}
+where \ifelse{html}{\out{&theta; = &sigma;<sup>2</sup><sub>e</sub>/&sigma;<sup>2</sup><sub>u</sub>}}{\eqn{\theta=\sigma_e^2/\sigma_u^2}{theta = sigma^2_e/sigma^2_u}} is the residual/genetic variances ratio representing a ridge-like shrinkage parameter.
+
+The matrix \ifelse{html}{\out{<b>H</b> = <b>G</b><sub>trn</sub> + &theta;<b>I</b>}}{\eqn{\textbf{H}=\textbf{G}_{trn} + \theta\textbf{I}}{H = G[trn] + theta I}}
+in the above equation can be used to obtain predictions corresponding to un-observed data (testing set), \ifelse{html}{\out{<b>u</b><sub>tst</sub>}}{\eqn{\textbf{u}_{tst}}{u_tst}}, by  
+
+\ifelse{html}{\out{<p style='text-align:center'><b>B</b> = <b>G</b><sub>tst,trn</sub> (<b>G</b><sub>trn</sub> + &theta;<b>I</b>)<sup>-1</sup></p>}}{\deqn{\textbf{B}=\textbf{G}_{tst,trn}(\textbf{G}_{trn} + \theta\textbf{I})^{-1}}{B = G[tst,trn](G[trn] + theta I)^-1}}
 
 where
 \ifelse{html}{\out{<b>G</b><sub>tst,trn</sub>}}{\eqn{\textbf{G}_{tst,trn}}{G[tst,trn]}}
@@ -101,39 +110,31 @@ Solutions are found using the GEMMA (Genome-wide Efficient Mixed Model Analysis)
   require(SFSI)
   data(wheatHTP)
   
-  index = which(Y$trial \%in\% 1:6)     # Use only a subset of data
+  index = which(Y$trial \%in\% 1:10)     # Use only a subset of data
   Y = Y[index,]
   M = scale(M[index,])/sqrt(ncol(M))  # Subset and scale markers
   G = tcrossprod(M)                   # Genomic relationship matrix
   y = as.vector(scale(Y[,"E1"]))      # Scale response variable
   
   # Training and testing sets
-  tst = which(Y$trial == 2)
-  trn = which(Y$trial != 2)
+  tst = which(Y$trial \%in\% 1:2)
+  trn = which(!Y$trial \%in\% 1:2)
 
   yNA <- y
   yNA[tst] <- NA
-  fm1 = fitBLUP(yNA, K=G)
-  plot(y[tst],fm1$u[tst])      # Predicted vs observed values in testing set
-  cor(y[tst],fm1$u[tst])       # Prediction accuracy in testing set
-  cor(y[trn],fm1$u[trn])       # Prediction accuracy in training set
-  fm1$theta                    # Residual/Genetic variances ratio
-  fm1$h2                       # Heritability
-  \donttest{
-  if(requireNamespace("float")){
-   # Using a 'float' type variable
-   G2 = float::fl(G)
-   fm2 = fitBLUP(yNA, K=G2)
-   max(abs(fm1$u-fm2$u))  # Check for discrepances
-  }
-  }
+  fm = fitBLUP(yNA, K=G)
+  plot(y[tst],fm$u[tst])    # Predicted vs observed values in testing set
+  cor(y[tst],fm$u[tst])     # Prediction accuracy in testing set
+  cor(y[trn],fm$u[trn])     # Prediction accuracy in training set
+  fm$varU                   # Genetic variance
+  fm$varE                   # Residual variance
+  fm$h2                     # Heritability
+  fm$b                      # Intercept
+  
 }
 \references{
 VanRaden PM (2008). Efficient methods to compute genomic predictions. \emph{Journal of Dairy Science}, \bold{91}(11), 4414–4423.
 
 Zhou X, Stephens M (2012). Genome-wide efficient mixed-model analysis for association studies. \emph{Nature Genetics}, \bold{44}(7), 821-824
-}
-\author{
-Paulino Perez-Rodriguez, Marco Lopez-Cruz (\email{maraloc@gmail.com}) and Gustavo de los Campos
 }
 \keyword{fitBLUP}

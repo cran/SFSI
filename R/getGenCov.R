@@ -1,77 +1,109 @@
 
-getGenCov <- function(y1, y2, X = NULL, Z = NULL, K = NULL, U = NULL,
-           d = NULL, scale = TRUE, mc.cores = 1, warn = FALSE, ...)
+# X <- Z <- K <- U <- d <- NULL; scale = TRUE; pairwise=FALSE; verbose = TRUE
+getGenCov <- function(y, X = NULL, Z = NULL, K = NULL,
+                      U = NULL, d = NULL, scale = TRUE,
+                      pairwise=FALSE, verbose = TRUE, ...)
 {
-  if(!is.matrix(y2))
-    stop("Object 'y2' must be a matrix with 'nrow(y2)' equal to the number of elements in 'y1'")
+  # K=G0; X = NULL; Z = NULL; U = NULL; d = NULL; scale = TRUE
+  eps <- .Machine$double.eps
 
-  sdy1 <- sd(y1)
-  sdy2 <- apply(y2,2,sd)
-  if(scale){
-    y1 <- as.vector(y1/sdy1)
-    y2 <- scale(y2,FALSE,sdy2)
-    #y1 <- as.vector(scale(y1))
-    #y2 <- scale(y2)
+  if(length(dim(y)) == 2L){
+    y <- as.matrix(y)
   }else{
-    if(any(abs(sdy1 -sdy2) > sqrt(.Machine$double.eps)))
-      warning("Variances of y1 and y2 are not equal",immediate.=TRUE)
+    y <- matrix(y, ncol=1L)
   }
 
-  if(length(y1) != nrow(y2)){
-    stop("The number of elements in 'y1' must be equal to the number of rows in 'y2'")
+  trn <- which(apply(y,1,function(x)all(!is.na(x))))  # Common TRN set
+  if(length(trn) == 0){
+    stop("No common training set to all response variables was found")
+  }else{
+    if(verbose){
+      message(" Calculating genetic covariances using n=",length(trn)," training observations")
+    }
+    y <- y[trn,,drop=FALSE]
   }
 
-  if(is.null(U) & is.null(d))
-  {
-    if(is.null(Z))
-    {
-      if(is.null(K)){
-          K <- diag(length(y1))
-      }
-      G <- K
-    }else{
-      if(length(dim(Z)) != 2) stop("Object 'Z' must be a matrix")
-      if(is.null(K)){
-        G <- float::tcrossprod(Z)  # G = ZKZ'  with K=I
-      }else{
-        G <- float::tcrossprod(Z,float::tcrossprod(Z,K))  # G = ZKZ'
-      }
+  n <- nrow(y)
+  p <- ncol(y)
+
+  if(scale){
+    sdy <- as.vector(apply(y, 2, sd, na.rm=TRUE))
+    y <- scale(y, center=FALSE, scale=sdy)
+  }else{
+    sdy <- rep(1,p)
+  }
+
+  # Create an index for pairwise models
+  tmp <- expand.grid(j=1:p,i=1:p)
+  INDEX <- data.frame(pos=p+seq(p*(p-1)/2),
+                      tmp[tmp$i < tmp$j,c("i","j")])
+  if(!pairwise){
+    INDEX <- INDEX[INDEX$i==1,]
+  }
+
+  Y0 <- cbind(y, matrix(NA, nrow=n, ncol=nrow(INDEX)))
+
+  for(k in 1:nrow(INDEX)){
+    Y0[,INDEX$pos[k]] <- y[,INDEX$i[k]] + y[,INDEX$j[k]]
+  }
+
+  fm <- fitBLUP(Y0, BLUP=FALSE, X=X, Z=Z, K=K, U=U, d=d, verbose=verbose, ...)
+
+  varUi <- fm$varU[1:p]*(sdy^2)   # Scale using their initial SD
+  varEi <- fm$varE[1:p]*(sdy^2)
+
+  # Fixed effects
+  if(is.null(fm$b)){
+    b <- NULL
+  }else{
+    b <- sweep(fm$b[,1:p,drop=F],2L,sdy,FUN="*")
+  }
+
+  if(pairwise){
+    varU <- varE <- matrix(NA, ncol=p, nrow=p)
+    diag(varU) <- varUi
+    diag(varE) <- varEi
+
+    if(!is.null(colnames(y))){
+      dimnames(varU) <- dimnames(varE) <- list(colnames(y),colnames(y))
     }
 
-    stopifnot(nrow(G) == length(y1))
-    stopifnot(ncol(G) == length(y1))
-    out <- float::eigen(G)
-    d <- out$values
-    U <- out$vectors
+    out <- list(varU=varU, varE=varE, b=b)
   }else{
-    if(is.null(U)) stop("You are providing the eigenvalues, but not the eigenvectors")
-    if(is.null(d)) stop("You are providing the eigenvectors, but not the eigenvalues")
+    # Only the gencov between the first y[,1] and the
+    # remaining y[,2:p] response variables
+    varU <- varUi
+    varE <- varEi
+    covU <- covE <- rep(NA, p-1)
+
+    if(!is.null(colnames(y))){
+      names(varU) <- names(varE) <- colnames(y)
+      names(covU) <- names(covE) <- colnames(y)[-1]
+    }
+
+    out <- list(varU=varU, varE=varE, covU=covU, covE=covE, b=b)
   }
 
-  fm1 <- fitBLUP(y1,BLUP=FALSE,X=X,U=U,d=d,warn=warn, ...)   # Model for variable 1
+  for(k in 1:nrow(INDEX)){
+    pos <- INDEX$pos[k]
+    i <- INDEX$i[k]
+    j <- INDEX$j[k]
 
-  compApply <- function(j)
-  {
-     fm2 <- fitBLUP(y2[,j],BLUP=FALSE,X=X,U=U,d=d,warn=warn, ...)       # Model for variable 2
-     fm3 <- fitBLUP(y1 + y2[,j],BLUP=FALSE,X=X,U=U,d=d,warn=warn, ...)  # Model for variable 3
+    # Genetic and Environmental covariances
+    varUij <- 0.5*sdy[i]*sdy[j]*(fm$varU[pos] - fm$varU[i] - fm$varU[j])
+    varEij <- 0.5*sdy[i]*sdy[j]*(fm$varE[pos] - fm$varE[i] - fm$varE[j])
 
-     cat(1, file = con, append = TRUE)
-     utils::setTxtProgressBar(pb,nchar(scan(con,what="character",quiet=TRUE))/ncol(y2))
+    if(pairwise){
+      out$varU[i,j] <- varUij
+      out$varE[i,j] <- varEij
 
-     c(varU2=fm2$varU, covU=0.5*(fm3$varU - fm1$varU - fm2$varU),
-        	varE2=fm2$varE, covE=0.5*(fm3$varE - fm1$varE - fm2$varE))
+      out$varU[j,i] <- out$varU[i,j]
+      out$varE[j,i] <- out$varE[i,j]
+    }else{
+      out$covU[k] <- varUij
+      out$covE[k] <- varEij
+    }
   }
 
-  pb = utils::txtProgressBar(style = 3); con <- tempfile()
-  if(mc.cores == 1L){
-    out = lapply(X=1:ncol(y2), FUN=compApply)
-  }else{
-    out = parallel::mclapply(X=1:ncol(y2), FUN=compApply, mc.cores=mc.cores)
-  }
-  close(pb)
-  unlink(con)
-
-  out <- data.frame(do.call(rbind,out))
-  list(varU1=fm1$varU, varE1=fm1$varE, varU2=out$varU2,
-      varE2=out$varE2, covU=out$covU,covE=out$covE)
+  return(out)
 }
