@@ -1,5 +1,5 @@
 
-LARS <- function(Sigma, Gamma, method=c("LAR","LASSO"),
+LARS <- function(Sigma, Gamma, method = c("LAR","LASSO"),
                  nsup.max = NULL, eps = .Machine$double.eps*100,
                  scale = TRUE, sdx = NULL, mc.cores = 1L, save.at = NULL,
                  precision.format = c("double","single"),
@@ -17,7 +17,7 @@ LARS <- function(Sigma, Gamma, method=c("LAR","LASSO"),
   q <- ncol(Gamma)
 
   if((sum(dim(Sigma))/2)^2 != p^2){
-    stop("Input 'Sigma' must be a p*p squared matrix where p=nrow(Gamma)")
+    stop("'Sigma' must be a p x p matrix where p = nrow(Gamma)")
   }
 
   scaleb <- TRUE
@@ -30,7 +30,7 @@ LARS <- function(Sigma, Gamma, method=c("LAR","LASSO"),
       scaleb <- FALSE
     }else{
       if(length(sdx) != p){
-        stop("Input 'sdx' must be a numeric vector of length = ",p)
+        stop("'sdx' must be a numeric vector with length(sdx) = ",p)
       }
     }
   }
@@ -38,8 +38,8 @@ LARS <- function(Sigma, Gamma, method=c("LAR","LASSO"),
   nsup.max <- ifelse(is.null(nsup.max), p, nsup.max)
   flagsave <- as.logical(!is.null(save.at))
   isLASSO <- as.logical(method=="LASSO")
-  verbose2 <- as.logical(verbose & q==1L)
-  mc.cores <- ifelse(q==1L & mc.cores>1L, 1L, mc.cores)
+  verbose2 <- as.logical((q==1L) & verbose)
+  mc.cores <- ifelse((q==1L) & (mc.cores>1L), 1L, mc.cores)
   doubleprecision <- as.logical(precision.format=="double")
 
   compApply <- function(ind)
@@ -58,16 +58,16 @@ LARS <- function(Sigma, Gamma, method=c("LAR","LASSO"),
                  doubleprecision, verbose2)
     #dyn.unload("c_lasso.so")
 
-    if(verbose & q>1L){
+    if((q>1L) & verbose){
       cat(1,file=con,append=TRUE)
       utils::setTxtProgressBar(pb, nchar(scan(con,what="character",quiet=TRUE))/q)
     }
 
-    list(ind=ind, beta=res[[1]], lambda=res[[2]], nsup=res[[3]])
+    res$ind <- ind
+    return(res)
   }
 
   tmpdir0 <- tempdir()
-
   file_beta <- NULL
   if(flagsave){
     stopifnot(is.character(save.at))
@@ -81,12 +81,12 @@ LARS <- function(Sigma, Gamma, method=c("LAR","LASSO"),
     if(is.null(fileID)){
       fileID <- seq(q)
     }else{
-      stopifnot(length(fileID)==q)
+      stopifnot(length(fileID) == q)
     }
   }
 
   # Run the analysis for 1:ncol(Gamma)
-  if(verbose & q>1L){
+  if((q>1L) & verbose){
      pb <- utils::txtProgressBar(style=3)
      con <- tempfile(tmpdir=tmpdir0)
   }
@@ -95,7 +95,7 @@ LARS <- function(Sigma, Gamma, method=c("LAR","LASSO"),
   }else{
     out <- parallel::mclapply(X=seq(q),FUN=compApply,mc.cores=mc.cores)
   }
-  if(verbose & q>1L) {
+  if((q>1L) & verbose) {
     close(pb); unlink(con)
   }
 
@@ -105,7 +105,7 @@ LARS <- function(Sigma, Gamma, method=c("LAR","LASSO"),
   }
 
   out <- list(p=p, q=q, method=method,
-              nlambda=unlist(lapply(out, function(x)length(x$lambda))),
+              nlambda = unlist(lapply(out, function(x)length(x$lambda))),
               lambda = lapply(out, function(x)x$lambda),
               nsup = lapply(out, function(x)x$nsup),
               beta = lapply(out, function(x)x$beta)

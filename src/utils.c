@@ -459,23 +459,23 @@ void update_chol(int n, double *A, int nR, double *R,
 {
   if(nR == 0){
     R[0] = sqrt(A[(long long)n*(long long)k + (long long)k]);
-    *info = 0;
+    info[0] = 0;
   }else{
-    int inc1=1;
+    int inc1 = 1;
     double rpp;
     //Rprintf("    Obtaining the kth vector: v=A[k,index] ...\n");
-    slice_matrix(n,A,work,nR,index,k,1);
+    slice_matrix(n, A, work, nR, index, k, 1);
 
     //Rprintf("    Obtaining backsolve solution Lv=r...\n");
     backsolvet(nR, R, work);
     rpp = A[(long long)n*(long long)k + (long long)k] - F77_NAME(ddot)(&nR, work, &inc1, work, &inc1);
 
-    if(rpp <= (*eps)){
-      rpp = *eps;
-      *info = 1;
+    if(rpp <= eps[0]){
+      rpp = eps[0];
+      info[0] = 1;
     }else{
       rpp=sqrt(rpp);
-      *info = 0;
+      info[0] = 0;
     }
     //Rprintf("    Enlarging R ...\n");
     resize_matrix(nR, nR, nR+1, nR+1, R);
@@ -489,21 +489,23 @@ void update_chol(int n, double *A, int nR, double *R,
 //====================================================================
 //====================================================================
 
-void invert_matrix(int n, double *A, double *Ainv, double *eps, double *work)
+void invert_matrix(int n, double *A, double *Ainv,
+                   double *eps, double *work,
+                   int *info)
 {
-  int k, info;
+  int k;
 
   // Get the Cholesky factorization stepwise A = R'R
-  info = 0;
+  info[0] = 0;
   for(k=0; k<n; k++){
-    update_chol(n, A, k, Ainv, k, NULL, eps, work, &info);
-    if(info != 0){
-      Rprintf(" Row/column %d is collinear. No inverse is calculated\n",k+1);
+    update_chol(n, A, k, Ainv, k, NULL, eps, work, info);
+    if(info[0] != 0){
+      //Rprintf(" Row/column %d is collinear.\n",k+1);
       break;
     }
   }
 
-  if(info == 0){
+  if(info[0] == 0){
     long long j;
 
     // Invert R matrix by columwise backsolve: Rinv[,j]
@@ -604,23 +606,23 @@ void append_to_sorted_vector_integer(int n,
 
   if(n == 0){
     vector[0] = values[0];
-    start=1;
+    start = 1;
   }else{
-    start=0;
+    start = 0;
   }
 
   for(i=start; i<k; i++){
     j = 0;
     while(vector[j]<values[i]){
       j++;
-      if(j==(n+i)){
+      if(j == (n+i)){
         break;
       }
     }
     if(j < (n+i)){
       memmove(vector + j+1, vector + j, (n+i-j)*sizeof(int));
     }
-    vector[j]=values[i];
+    vector[j] = values[i];
   }
 }
 
@@ -648,9 +650,9 @@ void reduce_vector_integer(int n,
     }
     if((index[j]+1) < n){
       if((j+1) < k){
-        chunk=index[j+1]-index[j]-1;
+        chunk = index[j+1]-index[j]-1;
       }else{
-        chunk=n-index[j]-1;
+        chunk = n-index[j]-1;
         flag = 0;
       }
       memmove(vector + pos, vector + index[j]+1, chunk*sizeof(int));

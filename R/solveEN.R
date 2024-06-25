@@ -1,11 +1,10 @@
 
-solveEN <- function(Sigma, Gamma, alpha = 1, lambda = NULL,
-                    nlambda = 100, lambda.min = .Machine$double.eps^0.5,
-                    lambda.max = NULL, common.lambda = TRUE, beta0 = NULL,
-                    nsup.max = NULL, scale = TRUE, sdx = NULL, tol = 1E-5,
-                    maxiter = 1000, mc.cores = 1L, save.at = NULL,
-                    precision.format = c("double","single"),
-                    fileID = NULL, verbose = FALSE)
+solveEN <- function(Sigma, Gamma, alpha = 1, lambda = NULL, nlambda = 100,
+                    lambda.min = .Machine$double.eps^0.5, lambda.max = NULL,
+                    common.lambda = TRUE, beta0 = NULL, nsup.max = NULL,
+                    scale = TRUE, sdx = NULL, tol = 1E-5, maxiter = 1000,
+                    mc.cores = 1L, save.at = NULL, fileID = NULL,
+                    precision.format = c("double","single"), verbose = FALSE)
 {
     precision.format <- match.arg(precision.format)
     alpha <- as.numeric(alpha)
@@ -22,7 +21,7 @@ solveEN <- function(Sigma, Gamma, alpha = 1, lambda = NULL,
     q <- ncol(Gamma)
 
     if((sum(dim(Sigma))/2)^2 != p^2){
-      stop("Input 'Sigma' must be a squared matrix of dimension equal to nrow(Gamma)")
+      stop("'Sigma' must be a p x p matrix where p = nrow(Gamma)")
     }
 
     if(alpha<0 | alpha>1){ stop("Parameter 'alpha' must be a number between 0 and 1")}
@@ -42,61 +41,60 @@ solveEN <- function(Sigma, Gamma, alpha = 1, lambda = NULL,
         scaleb <- FALSE
       }else{
         if(length(sdx) != p){
-          stop("Input 'sdx' must be a numeric vector of length = ",p)
+          stop("'sdx' must be a numeric vector with length(sdx) = ",p)
         }
       }
     }
 
     # Get lambda grid. Diagonal values in Sigma are assumed to be zero
-    lambda <- setLambda(Gamma, alpha=alpha, lambda=lambda, nlambda=nlambda,
-                        lambda.min=lambda.min, lambda.max=lambda.max,
-                        common.lambda=common.lambda,verbose=FALSE)
+    lambda <- set_lambda(Gamma, alpha=alpha, lambda=lambda, nlambda=nlambda,
+                           lambda.min=lambda.min, lambda.max=lambda.max,
+                           common.lambda=common.lambda, verbose=FALSE)
     nlambda <- nrow(lambda)
 
     if(ifelse(is.null(beta0),FALSE,length(beta0)!=p)){
-      stop("Input 'beta0' must be a numeric vector of length = ",p)
+      stop("'beta0' must be a numeric vector with length(beta0) = ",p)
     }
 
     flagsave <- as.logical(!is.null(save.at))
-    verbose2 <- as.logical(verbose & q==1L)
-    mc.cores <- ifelse(q==1L & mc.cores>1L, 1L, mc.cores)
+    verbose2 <- as.logical((q==1L) & verbose)
+    mc.cores <- ifelse((q==1L) & (mc.cores>1L), 1L, mc.cores)
     doubleprecision <- as.logical(precision.format=="double")
 
-    compApply <- function(ind)
+    compApply <- function(task)
     {
       if(ncol(lambda)>1L){
-        lambda0 <- lambda[,ind]
+        lambda0 <- lambda[,task]
       }else{
         lambda0 <- lambda[,1]
       }
 
       if(flagsave){
-        filename <- paste0(file_beta,fileID[ind],".bin")
+        filename <- paste0(file_beta,fileID[task],".bin")
       }else{
         filename <- NULL
       }
 
       #dyn.load("c_solveEN.so")
-      res <- .Call('R_updatebeta', Sigma, Gamma[,ind],
+      res <- .Call('R_updatebeta', Sigma, Gamma[,task],
                   lambda0, alpha, beta0, tol, maxiter, nsup.max,
                   scaleb, sdx, filename,
                   doubleprecision, verbose2)
       #dyn.unload("c_solveEN.so")
 
-      if(verbose & q>1L){
+      if((q>1L) & verbose){
         cat(1,file=con,append=TRUE)
         utils::setTxtProgressBar(pb, nchar(scan(con,what="character",quiet=TRUE))/q)
       }
 
-      list(ind=ind, beta=res[[1]], lambda=res[[2]], nsup=res[[3]])
+      res$task <- task
+      return(res)
     }
 
-    tmpdir0 <- tempdir()
     file_beta <- NULL
     if(flagsave){
       stopifnot(is.character(save.at))
-      save.at <- normalizePath(save.at, mustWork=F)
-      file_beta <- paste0(save.at,"beta_i_")
+      file_beta <- normalizePath(paste0(save.at,"beta_i_"), mustWork=FALSE)
 
       if(!file.exists(dirname(file_beta))){
         dir.create(dirname(file_beta), recursive=TRUE)
@@ -110,38 +108,42 @@ solveEN <- function(Sigma, Gamma, alpha = 1, lambda = NULL,
     }
 
     # Run the analysis for 1:ncol(Gamma)
-    if(verbose & q>1L){
+    if((q>1L) & verbose){
       pb <- utils::txtProgressBar(style=3)
-      con <- tempfile(tmpdir=tmpdir0)
+      con <- tempfile(tmpdir=tempdir())
     }
     if(mc.cores == 1L){
       out <- lapply(X=seq(q), FUN=compApply)
     }else{
       out <- parallel::mclapply(X=seq(q), FUN=compApply, mc.cores=mc.cores)
     }
-    if(verbose & q>1L) {
+    if((q>1L) & verbose) {
       close(pb); unlink(con)
     }
 
     # Checkpoint
-    if(any(seq(q) != unlist(lapply(out,function(x) x$ind)) )){
-      stop("Some sub-processes failed. Something went wrong during the analysis.")
+    if(!all(seq(q) == unlist(lapply(out,function(x) x$task)))){
+      stop("Some sub-processes failed. Something went wrong during the analysis")
     }
 
-    out <- list(p=p, q=q, nlambda=nlambda,
+    out <- list(p=p, q=q, alpha=alpha, nlambda=nlambda,
                 lambda = lapply(out, function(x)x$lambda),
                 nsup = lapply(out, function(x)x$nsup),
+                niter = lapply(out, function(x)x$niter),
+                error = lapply(out, function(x)x$error),
                 beta = lapply(out, function(x)x$beta)
                )
 
     if(q == 1L){
       out$nsup <- out$nsup[[1]]
       out$lambda <- out$lambda[[1]]
+      out$niter <- out$niter[[1]]
+      out$error <- out$error[[1]]
       out$beta <- as.matrix(out$beta[[1]])
     }
 
     if(flagsave){
-      out$file_beta <- gsub("i_[0-9]+.bin$","i_\\*.bin",
+      out$file_beta <- gsub("i_[0-9]+.bin$", "i_\\*.bin",
                             normalizePath(paste0(file_beta,fileID[1],".bin")))
       out$fileID <- fileID
       out$beta <- NULL

@@ -47,7 +47,7 @@
 
 \item{sets}{(character vector) Names of the types of node: row, 'active' column, and 'non-active' column, respectively}
 
-\item{circle}{\code{TRUE} or \code{FALSE} to whether draw a circle for each trait in a Multi-trait 'SSI'}
+\item{circle}{\code{TRUE} or \code{FALSE} to whether draw a circle for each trait in a multi-trait 'SGP'}
 
 \item{...}{Other arguments for method \code{plot}: 'xlab', 'ylab', 'main'}
 
@@ -59,39 +59,7 @@ Plot a Graphical Network obtained from a numeric matrix
 Plot a Graphical Network from a matrix where nodes are subjects in the rows and columns, and edges are obtained from the matrix entries. This Network is obtained using \code{net} function 
 }
 \examples{
-  require(SFSI)
-  data(wheatHTP)
-  
-  #--------------------------------------
-  # Net for an SSI object
-  #--------------------------------------
-  index = which(Y$trial \%in\% 1:6)     # Use only a subset of data
-  Y = Y[index,]
-  M = scale(M[index,])/sqrt(ncol(M))  # Subset and scale markers
-  G = tcrossprod(M)                   # Genomic relationship matrix
-  y = as.vector(scale(Y[,"E1"]))      # Scale response variable
-  
-  trn_tst = ifelse(Y$trial == 2, 0, 1)
-
-  fm = SSI(y,K=G,trn_tst=trn_tst)
-  
-  tmp = net(fm)          # Get the net
-  plot(tmp)              # Plot the net
-  plot(tmp, i=c(1,2))    # Show the first and fifth tst elements
-  plot(net(fm, nsup=10), show.names=c(TRUE,TRUE,FALSE))
-  \donttest{
-  #--------------------------------------
-  # Net for a numeric matrix
-  #--------------------------------------
-  B = as.matrix(coef(fm, nsup=10))
-  plot(net(B), curve=TRUE, set.size=c(3.5,1.5,1))
-  
-  #--------------------------------------
-  # Net for a symmetric numeric matrix
-  #--------------------------------------
-  X = X_E1[,seq(1,ncol(X_E1),by=5)]
-  R2 = cor(X)^2  # An R2 matrix
-  plot(net(R2, delta=0.9))
-  }
+  # See examples in
+  # help(net, package="SFSI")
 }
 

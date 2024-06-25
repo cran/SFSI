@@ -2,7 +2,7 @@
 # Plot the top 2 PCs of the K matrix showing tst and trn points
 #====================================================================
 
-net <- function(object, Z = NULL, K = NULL,
+net <- function(object, K = NULL,
                 nsup = NULL, p.radius = 1.7,
                 delta = .Machine$double.eps)
 {
@@ -12,41 +12,37 @@ net <- function(object, Z = NULL, K = NULL,
     if(length(dim(K)) != 2L | (length(K) != nrow(K)^2)) {
       stop("Input 'K' must be a squared matrix")
     }
-    if(!is.null(Z)){
-      if(length(dim(Z)) != 2L) stop("Object 'Z' must be a matrix with ncol(Z)=nrow(K)\n")
-      K <- tcrossprod(Z,tcrossprod(Z,K))   # Z%*%K%*%t(Z)
-    }
     if(has_names(K)){
       stopifnot(all(rownames(K)==colnames(K)))
       namesK <- rownames(K)
     }
   }
 
-  isSSI <- FALSE
-  if(inherits(object, "SSI")){
+  isSGP <- FALSE
+  if(inherits(object, "SGP")){
     X <- NULL
-    isSSI <- TRUE
+    isSGP <- TRUE
   }else{
     if(length(dim(object)) == 2L){
       X <- object
       rm(object)
     }else{
-      stop("The input object is not of the class 'SSI' or a matrix")
+      stop("The input object is not of the class 'SGP' or a matrix")
     }
   }
 
-  if(isSSI){
+  if(isSGP){
     n <- object$n
     q <- object$ntraits
-    if(is.null(nsup)) nsup <- summary.SSI(object)$optCOR['nsup']
+    if(is.null(nsup)) nsup <- summary.SGP(object)$optCOR['nsup']
     if(0 > nsup | nsup > range(object$nsup)[2]){
       stop("Parameter 'nsup' must be greater than zero and no greater than 'trn' size")
     }
-    X <- as.matrix(coef.SSI(object, nsup=nsup))
+    X <- as.matrix(coef.SGP(object, nsup=nsup))
     symmetric <- FALSE
     xxx <- object$trn
     yyy <- object$tst
-    MAP <- map_set(n, q, x=xxx, y=yyy, labels=object$labels)
+    MAP <- map_set(i=object$ID_geno, j=object$ID_trait, n=n, x=xxx, y=yyy, labels=object$labels)
 
     if(!is.null(K)){
       if(has_names(K) & !is.null(object$labels)){
@@ -60,7 +56,7 @@ net <- function(object, Z = NULL, K = NULL,
           tmp <- apply(expand.grid(namesK, seq(q)),1,paste0,collapse="_")
           yyy <- match(MAP$label_j[yyy], tmp)
           xxx <- match(MAP$label_j[xxx], tmp)
-          MAP <- map_set(n, q, x=xxx, y=yyy, labels=namesK)
+          MAP <- map_set(i=object$ID_geno, j=object$ID_trait, n=n, x=xxx, y=yyy, labels=namesK)
         }
       }else{
         if(nrow(K) != n){
@@ -123,7 +119,7 @@ net <- function(object, Z = NULL, K = NULL,
         }
       }
     }
-    MAP <- map_set(n, q, x=xxx, y=yyy, labels=labels0)
+    MAP <- map_set(n=n, x=xxx, y=yyy, labels=labels0)
   }
 
   out <- get_net(X=X, MAP=MAP, symmetric=symmetric,
@@ -132,7 +128,7 @@ net <- function(object, Z = NULL, K = NULL,
 
   out$label <- MAP$label
   out$isEigen <- !is.null(K)
-  out$isSSI <- isSSI
+  out$isSGP <- isSGP
   out$symmetric <- symmetric
 
   class(out) <- c("net")

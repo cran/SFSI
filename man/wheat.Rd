@@ -64,5 +64,3 @@ VanRaden PM (2008). Efficient methods to compute genomic predictions. \emph{Jour
 \source{
   International Maize and Wheat Improvement Center (CIMMYT), Mexico.
 }
-
-\keyword{datasets}

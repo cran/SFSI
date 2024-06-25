@@ -2,8 +2,9 @@
 #====================================================================
 # Prune elements based on pairwise similarity R^2
 #====================================================================
-Prune <- function(X, alpha=0.95, pos=NULL, d.max=NULL,
-                  centered=FALSE, scaled=FALSE, verbose=FALSE)
+Prune <- function(X, alpha = 0.95, pos = NULL, d.max = NULL,
+                  centered = FALSE, scaled = FALSE,
+                  verbose = FALSE)
 {
     if(!is.null(d.max) & is.null(pos)){
       message(" Maximum distance 'd.max' is ignored when vector 'pos=NULL'")

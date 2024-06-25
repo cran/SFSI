@@ -28,19 +28,19 @@ SEXP R_writeBinFile(SEXP filename_,
                     SEXP doubleprecision_,
                     SEXP verbose_)
 {
-    FILE *f=NULL;
+    FILE *f = NULL;
     long long i, j, tmp;
     int varsize = 0, vartype = 0;
     float valuefloat;
     size_t cont;
     char *type = NULL;
 
-    int nrow=INTEGER_VALUE(nrow_);
-    int ncol=INTEGER_VALUE(ncol_);
-    int doubleprecision=asLogical(doubleprecision_);
-    int verbose=asLogical(verbose_);
+    int nrow = INTEGER_VALUE(nrow_);
+    int ncol = INTEGER_VALUE(ncol_);
+    int doubleprecision = asLogical(doubleprecision_);
+    int verbose = asLogical(verbose_);
 
-    f=fopen(CHAR(STRING_ELT(filename_,0)),"wb");
+    f = fopen(CHAR(STRING_ELT(filename_,0)),"wb");
     fwrite(&nrow, sizeof(int), 1, f);
     fwrite(&ncol, sizeof(int), 1, f);
 
@@ -54,8 +54,8 @@ SEXP R_writeBinFile(SEXP filename_,
       type = TYPEOF(X_) ==  INTSXP ? "integer" : "logical";
       //Rprintf(" Writting variable of '%s' type ...\n",type);
 
-      PROTECT(X_=AS_INTEGER(X_));
-      int *X=INTEGER_POINTER(X_);   // An integer pointer is also used if is FLOAT
+      PROTECT(X_ = AS_INTEGER(X_));
+      int *X = INTEGER_POINTER(X_);   // An integer pointer is also used if is FLOAT
       varsize = sizeof(X[0]);
       fwrite(&vartype, sizeof(int), 1, f);
       fwrite(&varsize, sizeof(int), 1, f);
@@ -71,8 +71,8 @@ SEXP R_writeBinFile(SEXP filename_,
         vartype = 3;
         type = "numeric";
         //Rprintf(" Writting variable of '%s' type ...\n",type);
-        PROTECT(X_=AS_NUMERIC(X_));
-        double *X=NUMERIC_POINTER(X_);
+        PROTECT(X_ = AS_NUMERIC(X_));
+        double *X = NUMERIC_POINTER(X_);
 
         if(doubleprecision)
         {
@@ -108,7 +108,6 @@ SEXP R_writeBinFile(SEXP filename_,
     if(cont == tmp){
       if(verbose){
         tmp = tmp*varsize + 4*sizeof(int);  // File size
-        //char *fs = format_file_size(tmp);
 
         Rprintf(" Saved file: '%s'\n",CHAR(STRING_ELT(filename_,0)));
         if(ismatrix){
@@ -160,7 +159,6 @@ void read_integer(FILE *f, long long start, long long ncol, long long nrow,
     }
   }
   status[0] = (cont == (nrow*p)) ? 0 : 1;
-
 }
 
 //====================================================================
@@ -216,7 +214,6 @@ void read_double(FILE *f, long long start, long long ncol, long long nrow,
     }
   }
   status[0] = (cont == (nrow*p)) ? 0 : 1;
-
 }
 
 //====================================================================
@@ -226,7 +223,6 @@ SEXP R_readBinFile(SEXP filename_, SEXP irow_, SEXP icol_, SEXP drop_,
                    SEXP verbose_)
 {
     FILE *f=NULL;
-    int *irow, *icol;
     int varsize, vartype;
     long long tmp;
     int nrow, ncol, n, p;
@@ -234,19 +230,19 @@ SEXP R_readBinFile(SEXP filename_, SEXP irow_, SEXP icol_, SEXP drop_,
     char *type;
     int nprotect = 2;
 
-    int drop=asLogical(drop_);
-    int verbose=asLogical(verbose_);
-    int nirow=Rf_isNull(irow_) ? 0 : XLENGTH(irow_);
-    int nicol=Rf_isNull(icol_) ? 0 : XLENGTH(icol_);
+    int drop = asLogical(drop_);
+    int verbose = asLogical(verbose_);
+    int nirow = Rf_isNull(irow_) ? 0 : XLENGTH(irow_);
+    int nicol = Rf_isNull(icol_) ? 0 : XLENGTH(icol_);
     SEXP X_ = NULL;
 
-    PROTECT(irow_=AS_INTEGER(irow_));
-    irow=INTEGER_POINTER(irow_);
+    PROTECT(irow_ = AS_INTEGER(irow_));
+    int *irow = INTEGER_POINTER(irow_);
 
-    PROTECT(icol_=AS_INTEGER(icol_));
-    icol=INTEGER_POINTER(icol_);
+    PROTECT(icol_ = AS_INTEGER(icol_));
+    int *icol = INTEGER_POINTER(icol_);
 
-    f=fopen(CHAR(STRING_ELT(filename_,0)),"rb");
+    f = fopen(CHAR(STRING_ELT(filename_,0)),"rb");
 
     cont = fread(&nrow, sizeof(int), 1, f);
     cont += fread(&ncol, sizeof(int), 1, f);
@@ -276,7 +272,7 @@ SEXP R_readBinFile(SEXP filename_, SEXP irow_, SEXP icol_, SEXP drop_,
        tmp =  irow[imax_integer(nirow, irow)]+1;
        //Rprintf("  Max index row=%d\n",itmp);
        if(tmp > nrow){
-         Rprintf(" Error: row %d can not be read, file contains only %d rows\n",tmp,nrow);
+         Rprintf(" Error: row %lld can not be read, file contains only %d rows\n",tmp,nrow);
          UNPROTECT(nprotect);
          return(R_NilValue);
        }
@@ -285,7 +281,7 @@ SEXP R_readBinFile(SEXP filename_, SEXP irow_, SEXP icol_, SEXP drop_,
        tmp = icol[imax_integer(nicol, icol)]+1;
        //Rprintf("  Max index column=%d\n",itmp);
        if(tmp > ncol){
-         Rprintf(" Error: column %d can not be read, file contains only %d column\n",tmp,ncol);
+         Rprintf(" Error: column %lld can not be read, file contains only %d column\n",tmp,ncol);
          UNPROTECT(nprotect);
          return(R_NilValue);
        }
@@ -314,7 +310,7 @@ SEXP R_readBinFile(SEXP filename_, SEXP irow_, SEXP icol_, SEXP drop_,
             X_ = PROTECT(Rf_allocMatrix(INTSXP, n, p));
           }
         }else{
-          X_=PROTECT(Rf_allocVector(INTSXP, n));
+          X_ = PROTECT(Rf_allocVector(INTSXP, n));
         }
         type = "integer";
       }else{
@@ -337,7 +333,7 @@ SEXP R_readBinFile(SEXP filename_, SEXP irow_, SEXP icol_, SEXP drop_,
       }
       nprotect++;
 
-      int *X=INTEGER_POINTER(X_);
+      int *X = INTEGER_POINTER(X_);
       read_integer(f, start, ncol, nrow, n, p, X,
                    varsize, nirow, irow, nicol, icol, &status);
 
@@ -358,11 +354,11 @@ SEXP R_readBinFile(SEXP filename_, SEXP irow_, SEXP icol_, SEXP drop_,
             X_ = PROTECT(Rf_allocMatrix(REALSXP, n, p));
           }
         }else{
-          X_=PROTECT(Rf_allocVector(REALSXP, n));
+          X_ = PROTECT(Rf_allocVector(REALSXP, n));
         }
         nprotect++;
 
-        double *X=NUMERIC_POINTER(X_);
+        double *X = NUMERIC_POINTER(X_);
         read_double(f, start, ncol, nrow, n, p, X,
                     varsize, nirow, irow, nicol, icol, &status);
 

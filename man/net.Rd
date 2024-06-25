@@ -2,20 +2,18 @@
 \alias{net}
 \title{Graphical Network}
 \usage{
-net(object, Z = NULL, K = NULL,
+net(object, K = NULL,
     nsup = NULL, p.radius = 1.7,
     delta = .Machine$double.eps)
 }
 \arguments{
-\item{object}{Either a numeric matrix \code{X} or an object of the 'SSI' class. When the object is an 'SSI' the regression coefficients are used as \code{X}}
+\item{object}{Either a numeric matrix \code{X} or an object of the 'SGP' class. When the object is of the 'SGP' class the regression coefficients are used as \code{X}}
 
 \item{K}{(numeric matrix) Kinship relationship matrix among nodes}
 
-\item{Z}{(numeric matrix) Design matrix for random effects. When \code{Z=NULL} an identity matrix is considered (default) thus \ifelse{html}{\out{<b>G</b> = <b>K</b>}}{\eqn{\textbf{G = K}}{G = K}}; otherwise \ifelse{html}{\out{<b>G</b> = <b>Z K Z'</b>}}{\eqn{\textbf{G} = \textbf{Z K Z'}}{G = Z K Z'}} is used}
+\item{nsup}{(numeric) For a SGP, average number of training individuals contributing to the prediction (with non-zero regression coefficient) of testing individuals. Default \code{nsup = NULL} will use the value of \code{nsup} that yielded the optimal accuracy}
 
-\item{nsup}{(numeric) For a SSI, average number of training individuals contributing to the prediction (with non-zero regression coefficient) of testing individuals. Default \code{nsup=NULL} will use the value of \code{nsup} that yielded the optimal accuracy}
-
-\item{p.radius}{(numeric) For a Multi-trait SSI, a factor (x-folds radius) to separate each trait from the origin}
+\item{p.radius}{(numeric) For a multi-trait SGP, a factor (x-folds radius) to separate each trait from the origin}
 
 \item{delta}{(numeric) Minumum value to determine nodes to be connected. Default is the machine precision (numerical zero)}
 }
@@ -31,16 +29,16 @@ determined if the corresponding (absolute) entry matrix is larger than certain v
 
 For a symmetric matrix, only \code{m}=\code{n} nodes are considered with edges determined by the above diagonal entries of the matrix.
 
-Nodes and edges are plotted in the cartesian plane according to the Fruchterman-Reingold algorithm. When a matrix \ifelse{html}{\out{<b>K</b>}}{\eqn{\textbf{K}}{K}} is provided, nodes are plotted according to the top 2 eigenvectors from the spectral value decomposition of \ifelse{html}{\out{<b>Z K Z'</b> = <b>U D U'</b>}}{\eqn{\textbf{Z K Z'} = \textbf{U D U'}}{Z K Z' = U D U'}}.
+Nodes and edges are plotted in the cartesian plane according to the Fruchterman-Reingold algorithm. When a matrix \ifelse{html}{\out{<b>K</b>}}{\eqn{\textbf{K}}{K}} is provided, nodes are plotted according to the top 2 eigenvectors from the spectral value decomposition of \ifelse{html}{\out{<b>K</b> = <b>U D U'</b>}}{\eqn{\textbf{K} = \textbf{U D U'}}{K = U D U'}}.
 
-When the object is a 'SSI' object the edges are taken from the regression coefficients (associated to a specific \code{nsup} value) are used as matrix \ifelse{html}{\out{<b>X</b>}}{\eqn{\textbf{X}}{X}} with testing subjects in rows and training subjects in columns.  
+When the object is a 'SGP' class object the edges are taken from the regression coefficients (associated to a specific \code{nsup} value) are used as matrix \ifelse{html}{\out{<b>X</b>}}{\eqn{\textbf{X}}{X}} with testing subjects in rows and training subjects in columns.  
 }
 \examples{
   require(SFSI)
   data(wheatHTP)
   
   #--------------------------------------
-  # Net for an SSI object
+  # Net for an SGP object
   #--------------------------------------
   index = which(Y$trial \%in\% 1:6)     # Use only a subset of data
   Y = Y[index,]
@@ -48,13 +46,15 @@ When the object is a 'SSI' object the edges are taken from the regression coeffi
   G = tcrossprod(M)                   # Genomic relationship matrix
   y = as.vector(scale(Y[,"E1"]))      # Scale response variable
   
-  trn_tst = ifelse(Y$trial == 2, 0, 1)
+  # Training and testing sets
+  tst = which(Y$trial \%in\% 2)
+  trn = seq_along(y)[-tst]
 
-  fm = SSI(y,K=G,trn_tst=trn_tst)
+  fm = SGP(y, K=G, trn=trn, tst=tst)
   
-  tmp = net(fm)          # Get the net
-  plot(tmp)              # Plot the net
-  plot(tmp, i=c(1,2))    # Show the first and fifth tst elements
+  nt = net(fm)          # Get the net
+  plot(nt)              # Plot the net
+  plot(nt, i=c(1,5))    # Show the first and fifth tst elements
   plot(net(fm, nsup=10), show.names=c(TRUE,TRUE,FALSE))
   \donttest{
   #--------------------------------------

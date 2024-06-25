@@ -1,21 +1,24 @@
 ---
-title: "Documentation: Optimal breeding value prediction using a Sparse Selection Index"
+title: "Documentation: Regularized selection indices for breeding value prediction using hyper-spectral image data"
 author: 
-  - name: Marco Lopez-Cruz^1^, and Gustavo de los Campos^2,3,4,$\star$^
+  - name: Marco Lopez-Cruz^1^, Eric Olson^1^, Gabriel Rovere^2,3,4^, Jose Crossa^6^, Susanne Dreisigacker^6^, Suchismita Mondal^6^, Ravi Singh^6^, and Gustavo de los Campos^3,4,5,$\star$^
     affiliation: 
     - ^1^Department of Plant, Soil and Microbial Sciences, Michigan State University, USA.
-    - ^2^Department of Epidemiology and Biostatistics, Michigan State University, USA.
-    - ^3^Department of Statistics and Probability, Michigan State University, USA.
+    - ^2^Department of Animal Science, Michigan State University, USA.
+    - ^3^Department of Epidemiology and Biostatistics, Michigan State University, USA.
     - ^4^Institute for Quantitative Health Science and Engineering, Michigan State University, USA.
+    - ^5^Department of Statistics and Probability, Michigan State University, USA.
+    - ^6^International Maize and Wheat Improvement Center (CIMMYT), Mexico.
     - ^$\star$^Corresponding author (<gustavoc@msu.edu>)
 output:
   html_document:
     css: style.css
     toc: true
+    toc_float: true
 bibliography: references.bib
 vignette: |
-  %\VignetteIndexEntry{Documentation: Lopez-Cruz and de los Campos (2021) Genetics 218(1):1-10}
-  %\VignetteEngine{rmarkdown::render}
+  %\VignetteIndexEntry{Documentation: Lopez-Cruz et. al. (2020) Sci. Rep. 10:8195)}
+  %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
@@ -23,272 +26,521 @@ vignette: |
 knitr::opts_chunk$set(cache=FALSE)
 ```
 
-# Standard Selection Index
-
-Recall the basic **genetic model** that decomposes phenotypic observations, $\boldsymbol{y}=(y_1,…,y_n)'$, as the sum of breeding values, $\boldsymbol{u}=(u_1,…,u_n)'$, and environmental deviations, $\boldsymbol{\varepsilon}=(\varepsilon_1,…,\varepsilon_n)'$, as 
-
-\begin{equation*}
-y_i=u_i+\varepsilon_i 
-\end{equation*}
-
-Both $\boldsymbol{u}$ and $\boldsymbol{e}$ are assumed to have null means and $\text{var}(\boldsymbol{u})=\sigma_u^2 \textbf{G}$, $\text{var}(\boldsymbol{\varepsilon})=\sigma_\varepsilon^2 \textbf{I}$, and $\text{cov}(\boldsymbol{u},\boldsymbol{\varepsilon}')=\textbf{0}$, where $\sigma_u^2$ and $\sigma_\varepsilon^2$ are the common genetic and residual variances, respectively; $\textbf{G}$ is the **genetic relationship matrix** and $\textbf{I}$ is an identity matrix.
-
-A standard **selection index** (SI) predicts the breeding value of an individual ($u_i$) using a linear combination of the training phenotypes:
-
-\begin{equation*}
-\mathcal{I}_i=\boldsymbol{\beta}'_i\boldsymbol{y}
-\end{equation*}
-
-where $\boldsymbol{\beta}_i=\{\beta_{ij}\}$ is a vector of weights which are obtained as the solution to the following optimization problem:
-
-\begin{equation*}
-\hat{\boldsymbol{\beta}}_i = \underset{\boldsymbol{\beta}_i}{\text{arg min}}\frac{1}{2}\mathbb{E}\left(u_i-\boldsymbol{\beta}'_i\boldsymbol{y}\right)^2
-\end{equation*}
-
-This optimization problem can be reduced to
-
-\begin{equation*}
-\hat{\boldsymbol{\beta}}_i = \underset{\boldsymbol{\beta}_i}{\text{arg min}}\left[\frac{1}{2}\boldsymbol{\beta}'_i(\textbf{G}+\theta \textbf{I})\boldsymbol{\beta}_i - \textbf{G}'_i\boldsymbol{\beta}_i\right]
-\end{equation*}
-
-where $\theta=\sigma_\varepsilon^2/\sigma_u^2=(1-h^2)/h^2$  is the ratio of the residual to the genetic variance, which can be expressed in terms of the **heritability**, $h^2$. The solution to the above problem can be shown to be 
-
-\begin{equation*}
-\hat{\boldsymbol{\beta}}_i = (\textbf{G}+\theta \textbf{I})^{-1}\textbf{G}_i 
-\end{equation*}
-
-The vector $\hat{\boldsymbol{\beta}}_i$ can be shown to be the $i^{th}$ row of the Hat matrix of the **BLUPs of the genetic values** of the individuals in the prediction set, thus, depending on whether $\textbf{G}$ is a pedigree- or genomic-derived relationship matrix, the standard SI is equivalent to a **pedigree-** [@Henderson1963] or **genomic-BLUP**, respectively.
-
-# Sparse Selection Index (SSI)
-
-Sparsity (and possibly differential shrinkage on the $\hat{\boldsymbol{\beta}}_i$) can be achieved by adding an L1-penalty to the above optimization function; therefore,
-
-\begin{equation*}
-\tilde{\boldsymbol{\beta}}_i = \underset{\boldsymbol{\beta}_i}{\text{arg min}}\left[\frac{1}{2}\boldsymbol{\beta}'_i(\textbf{G}+\theta \textbf{I})\boldsymbol{\beta}_i - \textbf{G}'_i\boldsymbol{\beta}_i + \lambda\sum_{j=1}^n|\beta_{ij}|\right]
-\end{equation*}
-
-The above optimization problem does not have a closed-form solution; however, solutions can be obtained using a Coordinate Descent algorithm very similar to the one used to solve LASSO problems [@Lopez-Cruz2020]. The value $\lambda=0$ produces the coefficients of the standard SI (or G-BLUP).
-
-The regularization parameter $\lambda$ controls how sparse $\tilde{\boldsymbol{\beta}}_i$ will be; this parameter is also expected to affect the accuracy of the index. Therefore, an optimal value of $\lambda$ can be found by maximizing the accuracy of the resulting index. 
-
-# Genetic analysis
-
-To quantify the **prediction accuracy** of each of the indices, we randomly divide data set into training (trn) and testing (tst) sets. Predictions were derived by first obtaining $\hat{\boldsymbol{\beta}}_i$ for the standard SI and $\tilde{\boldsymbol{\beta}}_i(\lambda)$ for the SSI.
-These coeficicients are obtained using training data, i.e., with $\textbf{G}=\textbf{G}_{trn}$ representing the genomic matrix of the training data points, and $\textbf{G}_i=\textbf{G}_{trn,tst(i)}$ being the vector containing the genomic relationships between the $i^{th}$ data-point of the testing set, with each of the individuals assigned to the training set. This is repeated for each individual in the testing set ($i=1,...,n_{tst}$). Subsequently, predictions for each individual are obtained using $\hat{\mathcal{I}}_i=\hat{\boldsymbol{\beta}}'_i \boldsymbol{y}_{trn}$ (for the standard SI) and $\hat{\mathcal{I}}_i(\lambda)=\tilde{\boldsymbol{\beta}}'_i(\lambda) \boldsymbol{y}_{trn}$ (for the SSI) where $\boldsymbol{y}_{trn}$ is a $n_{trn}\times 1$ vector with the adjusted-centered phenotypes of the training set. 
-
-The implementation of the SI requires **heritability estimates**. These are derived by fitting a G-BLUP model as above-mentioned within the training set, i.e., using $\boldsymbol{y}_{trn}$ and $\textbf{G}_{trn}$. We then use the variance parameters estimates to derive $h^2=\sigma_u^2/(\sigma_u^2 + \sigma_\varepsilon^2 )$.
-
-**Prediction accuracy** ($\rho$) is measured with the correlation between the phenotype and the index, divided by the square-root of the heritability of the trait, $\rho=Acc(\mathcal{I})=Cor(\hat{\mathcal{I}}_i,y_i )/h$ [@Dekkers2007]. We apply all methods to the same training-testing partitions and report, from these analyses, the average prediction accuracy and the proportion of times that one method is better than the other. 
-
-To determine an **optimal value of** $\boldsymbol{\lambda}$ we implement a calibration analysis using data from the training data only. Specifically, for each training set, we conduct an internal **cross-validation** (CV) as follows: (i) The training data set is partitioned into $k$ subsets. (ii) SSIs are derived over a grid of values of $\lambda$ using data from $k-1$ folds for training and the data in the $k^{th}$ fold as testing. (iii) The resulting curves profiling accuracy ($\rho$) by values of $\lambda$ are used to identify the value of $\lambda$ ($\hat{\lambda}_{cv}$) that maximizes accuracy. (iv) Finally, we use all the data from the training set to derive $\mathcal{I}_i (\hat{\lambda}_{cv})$ and evaluated the accuracy of the resulting index in the left-out data from the testing set.
-
 # Implementation
-To illustrate how to fit Sparse Selection Indices for grain yield, we use data from the Wheat-small data set which is available with the [BGLR](https://github.com/gdlc/BGLR-R) R-package [@Perez2014]. Sparse Selection Indices will be derived using the [SFSI](https://github.com/MarcooLopez/SFSI) R-package [@Lopez-Cruz2020].
 
-## Data preparation
+This document contains the scripts used to perform all the analyses presented in the manuscript on the derivation of selection indices for grain yield (as selection target) using all the wavelengths (as measured phenotypes). Analyses will be implemented in `R` software [@RCore2019] using the `SFSI` R-package.
 
-The following code shows how to prepare data for environment 1; all the analyses hereinafter are based on this data. 
+## Experimental data
 
-```{r eval=FALSE}
-library(SFSI)
-if(requireNamespace("BGLR")){
- data(wheat, package="BGLR")     # Load data from the BGLR package
-}
+The data set consists of 1,092 inbred wheat lines grouped into 39 trials and grown during the 2013-
+2014 season at the Norman Borlaug experimental research station in Ciudad Obregon, Sonora,
+Mexico. Each trial consisted of 28 breeding lines that were arranged in an alpha-lattice design with
+three replicates and six sub-blocks. The trials were grown in four different environments:
 
-# Select the environment 1 to work with     
-y <- as.vector(scale(wheat.Y[,1]))     
 
-# Calculate G matrix       
-G <- tcrossprod(scale(wheat.X))/ncol(wheat.X)      
+|**Env**|  **Name**     | **Planting date**     | **Planting system**  |**Number of irrigations**|**N genotypes (records)**   |**Average (SD) YLD** |  
+|:-----:|:-------------:|:--------------------------:|:-------------:|:--------------:|:-----------:|
+|   E1  | Flat-Drought  |  Optimum     |   Flat      |  Minimal drip |  1,092 (3,274) | 2.06 (0.58) |
+|   E2  | Bed-2IR       |  Optimum     |   Bed       |       2       |  1,090 (3,267) | 3.67 (0.43) |
+|   E3  | Bed-5IR       |  Optimum     |   Bed       |       5       |  1,092 (3,274) | 6.11 (0.61) |
+|   E4  | Bed-EHeat     |  Early       |   Bed       |       5       |  1,013 (2,858) | 6.43 (0.73) |
 
-# Save data
-save(y, G, file="geno_pheno.RData")      
+
+Records of grain yield (YLD, *ton ha*$^{-1}$) were collected as the total plot yield after maturity. Measurements for days to heading (DTH), days to maturity (DTM), and plant height (PH, \textit{cm}) were recorded only in the first replicate at each trial. Reflectance phenotypic data were
+collected from the fields using both infrared and hyper-spectral cameras mounted on an aircraft on 9 different dates
+(time-points) between January $10^\text{th}$ and March $27^\text{th}$, 2014. During each flight, data from 250 wavelengths
+ranging from 392 to 850 nm were collected for each pixel in the pictures. The average
+reflectance of all the pixels for each wavelength was calculated from each of the geo-referenced
+trial plots and reported as each line reflectance.
+
+Grain yield and image data were pre-adjusted using mixed-effects model that accounted for genotype, trial, replicate, and sub-block. No pre-adjusting was made for DTH, DTM, and PH traits. Pre-adjusted phenotypes were obtained by subtracting from the phenotypic record the mean plus BLUPs of trial, replicate, and sub-block effects.
+
+Lines were sequenced using GBS technology. Next, SNP were extracted and filtered so that lines >50\% missing data were removed. Markers were recoded as –1, 0, and 1, corresponding to homozygous for the minor allele, heterozygous, and homozygous for the major allele, respectively. Next, markers with a minor allele frequency <0.05 and >15\% of missing data were removed. Remaining SNPs with missing values were imputed with the mean of observed genotypes.
+
+The `SFSI` R-package includes the `wheatHTP` dataset containing (un-replicated) YLD from all environments E1,...,E4, and reflectance (latest time-point only) data from the environment E1 only. Marker data is also included in the dataset. The phenotypic and reflectance data are averages (line effects from mixed models) for 776 lines evaluated in 28 trials (with at least 26 lines each) for which marker information on 3,438 SNPs is available.
+
+R-datasets (`*.RData`) `wheatHTP.E1`,...,`wheatHTP.E4` containing replicated (adjusted) phenotypic and reflectance data for all four environments are available at the GitHub repository https://github.com/MarcooLopez/Data_for_Lopez-Cruz_et_al_2020.
+
+## Data downloading
+
+Data wil be taken from the `SFSI` R-package (GitHub version). Each file corresponds to one environment and contains objects `Y`, `X`, and `VI`. Matrix `Y` contains pre-adjusted observations for YLD, DTH, DTM, and PH. Object `X` is a list type containing the hyper-spectral image data for all 9 time-points. Element `X[[j]]`,  $j=1,...,9$, is a matrix with 250 columns (wavelengths) and rows matched with those of matrix `Y`. Likewise, the object `VI` is a list with 9 elements being two-columns matrices containing green and
+red NDVI. Following code shows how to prepare data for a single environment which will be used in later analyses. For demostration purposes, only data from 9 trials will be considered
+
+```{r, Box1, eval=FALSE}
+rm(list = ls())
+setwd("~/Dropbox/projects/R_packages/test/pipeline")
+
+site <- "https://github.com/MarcooLopez/Data_for_Lopez-Cruz_et_al_2020/raw/main"
+filename <- "wheatHTP.E3.RData"
+
+# Download file
+download.file(paste0(site,"/",filename), filename, mode="wb")
+load(filename)
+
+trials <- as.numeric(as.character(Y$trial))
+
+index <- trials %in% unique(trials)[1:6]   # For ease, only 6 trials
+trials <- trials[index]
+Y <- Y[index,]
+X <- lapply(X,function(x)x[index,])
+                
+Y$gid <- factor(as.character(Y$gid)) 
+Z <- model.matrix(~0+gid,data=Y)
+K <- tcrossprod(Z)               # Connection of replicates
+y <- as.vector(Y[,"YLD"])
+
+# Save file
+save(y, trials, K, X, file="prepared_data.RData")
 ```
+
 
 ## Heritability and variance components
 
-Implementing the SSI requires an estimate of the heritability. We obtain this using a G-BLUP model $y_i=\mu+u_i+\varepsilon_i$ with $\varepsilon_i \overset{iid}{\sim} N(0,\sigma_\varepsilon^2)$ and $\boldsymbol{u}\sim N(\textbf{0},\sigma_u^2 \boldsymbol{G})$. This model can be fitted with the function `fitBLUP` included in the SFSI R-package. The BGLR R-package can be also used to fit a Bayesian version of the model. The code below illustrates how to estimate heritability using the function `fitBLUP`.
+Heritability can be calculated from variance components obtained by fitting the aforementioned genetic model for the whole data. Code below illustrates how to fit this model using the function `fitBLUP` from the `SFSI` R-package.
 
-```{r eval=FALSE}
-load("geno_pheno.RData") # Load data 
+```{r, Box2, eval=FALSE}
+library(SFSI)
+
+# Load data 
+load("prepared_data.RData")
+EVD <- eigen(K)                 # Decomposition of K
 
 # Fit model
-fm0 <- fitBLUP(y, K=G) 
-fm0$theta <- fm0$varE/fm0$varU          # Residual/genetic variances ratio
-fm0$h2 <- fm0$varU/(fm0$varU+fm0$varE)  # Heritability
-c(fm0$varU,fm0$varE,fm0$theta,fm0$h2)   # Print variance components
+y <- as.vector(scale(y))
+fm0 <- fitBLUP(y, EVD=EVD, BLUP=FALSE) 
+c(fm0$varU,fm0$varE,fm0$h2)
 
-save(fm0, file="varComps.RData")
+save(fm0, EVD, file="varComps.RData")
 ```
+
 
 ## Training-testing partitions
 
-The code below produces training (trn, $70\%$) and testing (tst, $30\%$) partitions. The parameter `nPart` defines the number of partitions. The output is a matrix with `nPart` columns containing 1's and 0's indexing the observations that are assigned to the training and testing sets, respectively. The object is saved in the file `partitions.RData` and will be used in later analyses.
+Code below illustrates how to split data into training (TRN) and testing (TST) sets. In this example, $\frac{2}{3}$ of the trials will be randomly assigned to the training set and the remaining $\frac{1}{3}$ trials to the testing set. The output will be a matrix whose columns are vectors with 1's and 2's indicating which observations are assigned to the training and testing sets, respectively. 
 
-```{r eval=FALSE}
-nPart <- 5                        # Number of partitions
-load("geno_pheno.RData")          # Load data 
+The time-point to be analyzed can be specified through variable `timepoints` thus it can be set to calculate covariances for all the 9 time-points. The number of TRN-TST partitions to run are specified through parameter `nPart`
 
-nTST <- ceiling(0.3*length(y))    # Number of elements in TST set
-partitions <- matrix(1,nrow=length(y),ncol=nPart)   # Matrix to store partitions
-seeds <- round(seq(1E3, .Machine$integer.max/10, length=nPart))
+The parameters will be saved in the file `paramaters.RData` and will be used later for single time-point and across time-points analyses.
+
+```{r, Box3, eval=FALSE}
+load("prepared_data.RData") # load data
+
+#---------- parameters ------------#
+pTST <- 1/3           # Perc of the trials to assign to testing
+nPart <- 3            # Number of TRN-TST partitions to perform
+timepoints <- 6:9     # Time-points to analyze
+#----------------------------------#
+
+nTrial <- length(unique(trials))
+nTST <- ceiling(pTST*nTrial)  # Number of trials in TST set
+
+seeds <- round(seq(1E3, .Machine$integer.max, length = 500))
+partitions <- matrix(1,nrow=length(y),ncol=length(seeds))   # Object to store partitions
+for(k in 1:length(seeds))
+{   set.seed(seeds[k])
+    tst <- sample(unique(trials),nTST,replace=FALSE)
+    partitions[which(trials %in% tst),k] <- 2
+}
+save(partitions, pTST, nPart, timepoints, file="parameters.RData")
+```
+
+
+## Genetic covariances estimation
+
+The genetic covariances between the grain yield and each of the wavelengths will be calculated using a sequence of genetic models implemented in the function `getGenCov` from the `SFSI` package. Code in snippet below shows how to calculate genetic and phenotypic covariances within time-point. Calculations are performed for each partition using data from training set only. 
+
+Results are stored in matrices `gencov` and `phencov`, and saved in the file `covariances_tp_*.RData`.
+
+```{r, Box4, eval=FALSE}
+load("prepared_data.RData"); load("parameters.RData")
+
+for(tp in timepoints){
+  gencov <- phencov <- c()   # Matrices to store covariances
+
+  for(k in 1:nPart)
+  { cat("  partition = ",k,"of",nPart,"\n")
+    indexTRN <- which(partitions[,k]==1)
+    
+    # Training set
+    xTRN <- scale(X[[tp]][indexTRN,])
+    yTRN <- as.vector(scale(y[indexTRN]))
+    KTRN <- K[indexTRN,indexTRN]   # Relationship matrix (given by replicates)
+  
+    # Get genetic variances and covariances
+    fm <- getGenCov(y=cbind(yTRN,xTRN), K=KTRN, scale=FALSE, pairwise=FALSE, verbose=FALSE)
+    
+    gencov <- cbind(gencov,fm$covU)
+    phencov <- cbind(phencov,fm$covU + fm$covE)
+  }
+  save(gencov, phencov, file=paste0("covariances_tp_",tp,".RData"))
+  cat("Time-point=",tp,". Done \n")
+}
+```
+
+## Single time-point selection indices
+
+Standard, L1-penalized and PC-based SIs will be fitted using data from a single time-point. The regression coefficients are to be obtained from training data within each partition previously created.
+
+### Regression coefficients
+
+Following code can be used to estimate regression coefficients using training data within each partition for the standard SI and for the PC-SI (with $1, 2,...,250$ PCs). Coefficients for L1-PSI are estimated the whose solutions are found using either the functions `LARS` or `solveEN` from the `SFSI` R-package. Function `solveEN` will yield solutions for a given grid of values of $\lambda$ while function `LARS` provides solutions for the entire $\lambda$ path.
+
+Time-point can be specified through variable `timepoints`. Regression coefficients are stored in matrices `bSI`, `bPCSI` and `bL1PSI`, and saved in the file `coefficients_tp_*.RData`. Calculations are performed using genetic covariances calculated for the partitions previously created.
+
+
+```{r, Box5a, eval=FALSE}
+load("prepared_data.RData"); load("parameters.RData")
+
+for(tp in timepoints){
+  load(paste0("covariances_tp_",tp,".RData"))
+  
+  # Objects to store regression coefficients
+  bSI <- bPCSI <- bL1PSI <- vector("list",nPart)
+
+  for(k in 1:nPart)
+  { cat("  partition = ",k,"of",nPart,"\n")
+    indexTRN <- which(partitions[,k]==1)
+    
+    # Training set
+    xTRN <- scale(X[[tp]][indexTRN,])
+    VARx <- var(xTRN)
+    EVDx <- eigen(VARx)
+    
+    # Standard SI
+    VARinv <- EVDx$vectors %*% diag(1/EVDx$values) %*% t(EVDx$vectors)
+    bSI[[k]] <- VARinv %*%  gencov[,k]    
+    
+    # PC-based SI
+    VARinv <- diag(1/EVDx$values)
+    gamma <- as.vector(VARinv %*% t(EVDx$vectors) %*%  gencov[,k])
+    beta <- apply(EVDx$vectors %*% diag(gamma),1,cumsum)
+    bPCSI[[k]] <- data.frame(I(beta),nsup=1:nrow(beta),lambda=NA)
+    
+    # L1-PSI
+    fm <- solveEN(VARx, gencov[,k], nlambda=100)
+    # fm <- LARS(VARx, gencov[,k])  # Second option
+    beta <- t(as.matrix(fm$beta)[,-1])
+    bL1PSI[[k]] <- data.frame(I(beta),nsup=fm$nsup[-1],lambda=fm$lambda[-1])
+  }
+  save(bSI, bPCSI, bL1PSI, file=paste0("coefficients_tp_",tp,".RData"))
+  cat("Time-point=",tp,". Done \n")
+}
+```
+
+
+### Accuracy of the index
+
+The regression coefficients above calculated can be applied to data from testing set to derive selection indices ($\mathcal{I}_i$). Code below can be used to (i) compute the SIs for the testing data, and then (ii) calculate the accuracy of the index, the heritability of the index, and genetic correlation of the index with grain yield. These (co)variance components are obtained using the function `getGenCov`. 
+
+Results for the three indices (standard SI, PC-SI and L1-PSI) are stored in the object matrix `accSI` and saved in the file `accuracy_tp_*.RData`. Calculations are performed across all partitions previously created.
+
+```{r, Box5b, eval=FALSE}
+load("prepared_data.RData"); load("parameters.RData")
+
+for(tp in timepoints){
+  load(paste0("coefficients_tp_",tp,".RData"))
+  accSI <- c()    # Object to store accuracy components
+
+  for(k in 1:nPart)
+  { cat("  partition = ",k,"of",nPart,"\n")
+    indexTST <- which(partitions[,k]==2)
+    
+    # Testing set
+    xTST <- scale(X[[tp]][indexTST,])
+    yTST <- as.vector(scale(y[indexTST]))
+    KTST <- K[indexTST,indexTST]   # Connection given by replicates
+    
+    # Calculate the indices
+    SI <- xTST %*% bSI[[k]]
+    PCSI <- tcrossprod(xTST, bPCSI[[k]]$beta)
+    L1PSI <- tcrossprod(xTST, bL1PSI[[k]]$beta)
+    
+    # Fit genetic models   
+    fitSI <- as.matrix(data.frame(I(SI),I(PCSI),I(L1PSI)))
+    fm <- getGenCov(y=cbind(yTST,fitSI), K=KTST, pairwise=FALSE, verbose=FALSE)
+    fm$varU <- ifelse(fm$varU<0.05,0.05,fm$varU)
+    
+    # Retrieve accuracy components
+    h <- sqrt(fm$varU/(fm$varU + fm$varE))[-1]
+    gencor <- fm$covU/sqrt(fm$varU[1]*fm$varU[-1])
+    acc2 <- fm$covU/sqrt(fm$varU[1])
+    accuracy <- abs(gencor)*h
+    
+    nsup <- c(nrow(bSI[[k]]),bPCSI[[k]]$nsup,bL1PSI[[k]]$nsup)
+    lambda <- c(min(bL1PSI[[k]]$lambda),bPCSI[[k]]$lambda,bL1PSI[[k]]$lambda)
+    accSI <- rbind(accSI,data.frame(rep=k,SI=colnames(fitSI),h,gencor,accuracy,nsup,lambda))
+  }
+  save(accSI, file=paste0("accuracy_tp_",tp,".RData"))
+  cat("Time-point=",tp,". Done \n")
+}
+```
+
+
+### Effect of regularization on the accuracy of the index
+
+The regularized selection indices were calculated for $q=1,2,...,250$ PCs for the PC-SI and for decreasing values, $\lambda_1,...,\lambda_{100}$, of the path of the penalization for the L1-PSI. In the later case, decreasing $\lambda$ will give increasing number of active number of predictors in the index. Code in the following snippet shows how to create a plot depicting the evolution of accuracy (and its components) over values of regularization (number of PCs or number of active predictors). Results for the standard SI corresponds to the case of a PC-SI with 250 PCs and a L1-PSI with 250 active predictors. These cases are shown at the right-most results in the plots.
+
+```{r, Box6, eval=FALSE}
+tp <- 9      # Time-point
+load(paste0("accuracy_tp_",tp,".RData"))
+
+accSI < split(accSI,as.character(accSI$SI))
+accSI <- data.frame(do.call(rbind,lapply(accSI,function(x)apply(x[,-c(1,2)],2,mean,na.rm=T))))
+accSI$SI <- unlist(lapply(strsplit(rownames(accSI),"\\."),function(x)x[1]))
+
+# Plot of PC-SI
+if(requireNamespace("reshape2") & requireNamespace("ggplot2")){
+ dat <- reshape2::melt(accSI[accSI$SI=="PCSI",],id=c("nsup","lambda","SI"))
+ plot1 <- ggplot2::ggplot(dat,ggplot2::aes(nsup,value,group=variable,color=variable)) +
+  ggplot2::theme_bw() + ggplot2::geom_line() + 
+  ggplot2::labs(title="PC-SI",y="correlation",x="Number of PCs")
+  
+# Plot of L1-PSI
+ dat <- reshape2::melt(accSI[accSI$SI=="L1PSI",],id=c("nsup","lambda","SI"))
+ plot2 <- ggplot2::ggplot(dat,ggplot2::aes(nsup,value,group=variable,color=variable)) +
+  ggplot2::theme_bw() + ggplot2::geom_line() + 
+  ggplot2::labs(title="L1-PSI",y="correlation",x="Number of active predictors")
+
+ plot1; plot2
+}
+```
+
+<center>
+![Figure. Accuracy (and its components) of the PCSI and L1PSI against regularization](Figure_PSI1.png){ width=80% }
+</center>
+
+
+### Optimal regularized vs standard selection indices
+
+An optimal regularized selection index can be chosen by selecting an optimal regularization (number of PCs or value of $\lambda$) such that the accuracy of selection of the resulting index in the testing set is maximum. Code below can be used to select the optimal PC-SI and L1-PSI, and to compare the accuracy of selection with that of the standard SI (non-regularized). Results are reported as an average across all partitions along with a $95\%$ confidence interval. 
+
+```{r, Box7, eval=FALSE}
+tp <- 9      # Time-point
+load(paste0("accuracy_tp_",tp,".RData"))
+
+accSI$Model <- unlist(lapply(strsplit(as.character(accSI$SI),"\\."),function(x)x[1]))
+accSI <- split(accSI,paste(accSI$rep,"_",accSI$Model))
+accSI <- do.call(rbind,lapply(accSI,function(x)x[which.max(x$accuracy),]))
+
+dat <- aggregate(accuracy ~ Model, mean, data=accSI)
+dat$sd <- aggregate(accuracy ~ Model,sd,data=accSI)$accuracy
+dat$n <- aggregate(accuracy ~ Model,length,data=accSI)$accuracy
+dat$se <- qnorm(0.975)*dat$sd/sqrt(dat$n)
+
+if(requireNamespace("ggplot2")){
+ ggplot2::ggplot(dat,ggplot2::aes(Model,accuracy)) + ggplot2::theme_bw() +
+   ggplot2::geom_bar(stat="identity",width=0.6,fill="orange") + 
+   ggplot2::geom_errorbar(ggplot2::aes(ymin=accuracy-se,ymax=accuracy+se),width=0.2) +
+   ggplot2::geom_text(ggplot2::aes(label=sprintf("%.2f",accuracy),y=accuracy*0.5)) 
+}
+```
+
+<center>
+![Figure. Accuracy of the single-timepoints L1PSI, PCSI, and SI](Figure_PSI2.png){ width=50% }
+</center>
+
+
+### Comparison of the indices across time-points
+
+The accuracy of indirect selection for the optimal (i.e., the one with the highest accuracy of indirect selection) L1-PSI and PC-SI can be assessed across time-points and compared with a standard SI. Code in box below can be used to calculate the optimal PC-SI and L1-PSI, and to compare their accuracy of selection with that of the standard SI across all time-points. 
+
+To this end, all the within time-point analyses (calculation of genetic covariances, regression coefficients, and prediction accuracy) must be previously performed for all the 9 time-points. This can be achieved using, for instance, by setting: `timepoints = 1:9`.
+
+```{r, Box8, eval=FALSE}
+load("parameters.RData")
+AccSI <- c()
+for(tp in timepoints)
+{ load(paste0("accuracy_tp_",tp,".RData"))
+  AccSI <- rbind(AccSI,data.frame(Timepoint=tp,accSI))
+}
+
+AccSI$Model <- unlist(lapply(strsplit(as.character(AccSI$SI),"\\."),function(x)x[1]))
+AccSI <- split(AccSI,paste(AccSI$Timepoint,"_",AccSI$rep,"_",AccSI$Model))
+AccSI <- do.call(rbind,lapply(AccSI,function(x)x[which.max(x$accuracy),]))
+AccSI$Timepoint <- factor(as.character(AccSI$Timepoint))
+
+dat <- aggregate(accuracy ~ Model+Timepoint,mean,data=AccSI)
+dat$sd <- aggregate(accuracy ~ Model+Timepoint,sd,data=AccSI)$accuracy
+dat$n <- aggregate(accuracy ~ Model+Timepoint,length,data=AccSI)$accuracy
+dat$se <- qnorm(0.975)*dat$sd/sqrt(dat$n)
+
+if(requireNamespace("ggplot2")){
+ ggplot2::ggplot(dat,ggplot2::aes(Timepoint,accuracy,color=Model,group=Model)) +
+    ggplot2::theme_bw() + ggplot2::geom_line() + ggplot2::geom_point() #+ geom_errorbar(aes(ymin=accuracy-se,ymax=accuracy+se),width=0.2)
+}
+```
+
+<center>
+![Figure. Accuracy of the L1PSI, PCSI, ans SI across timepoints](Figure_PSI3.png){ width=65% }
+</center>
+
+
+## Multi time-point selection indices
+
+Selection indices can be calculated to include reflectance data from multiple time-points. In this case, the vector of measured phenotypes $\boldsymbol{x}_i$ will contain $2,250$ traits corresponding to 250 wavebands measured at each of 9 time-points.
+
+### Regression coefficients
+
+Code in box below shows how to calculate coefficients for the PC-SI and L1-PSI using data from all 9 time-points. To this end, the genetic covariances of all $2,250$ traits with grain yield are needed, thus, all the within time-point genetic covariances must be previously calculated for all the 9 time-points. Results are saved in file `multi_timepoint_coefficients.RData`.
+
+PC-SIs will be calculated including $1,2, ...,500$ PCs only (the maximum possible is $2,250$ PCs). The function `solveEN` will be used to calculate the regression coefficients for the L1-PSI using a grid of 100 values of $\lambda$.
+
+```{r, Box9a, eval=FALSE}
+load("prepared_data.RData"); load("parameters.RData")
+
+Gencov <- c()   # To stack all covariances from all time-points
+for(tp in timepoints)
+{ load(paste0("covariances_tp_",tp,".RData"))
+  Gencov <- rbind(Gencov,gencov)
+}
+
+# Objects to store regression coefficients
+bPCSI <- bL1PSI <- vector("list",nPart)
 
 for(k in 1:nPart)
-{   set.seed(seeds[k])
-    partitions[sample(1:length(y), nTST),k] <- 0
+{   cat("  partition = ",k,"of",nPart,"\n")
+    indexTRN <- which(partitions[,k]==1)
+    
+    # Training set
+    xTRN <- scale(do.call(cbind,X[timepoints])[indexTRN,])
+    VARx <- var(xTRN)
+    EVDx <- eigen(VARx)
+    
+    # PC-based SI
+    gamma <- t(sweep(EVDx$vectors,2,1/EVDx$values,FUN="*")) %*%  Gencov[,k]
+    beta <- apply(sweep(EVDx$vectors,2,as.vector(gamma),FUN="*"),1,cumsum)[1:500,]
+    bPCSI[[k]] <- data.frame(I(beta),nsup=1:nrow(beta),lambda=NA)
+    
+    # L1-PSI
+    fm <- solveEN(VARx, Gencov[,k],nlambda=100,maxiter=200,tol=1E-3)
+    beta <- t(as.matrix(fm$beta)[,-1])
+    bL1PSI[[k]] <- data.frame(I(beta),nsup=fm$nsup[-1],lambda=fm$lambda[-1])
 }
-save(partitions, file="partitions.RData")    # Save partitions
+save(bPCSI, bL1PSI, nPart, file="multi_timepoint_coefficients.RData")
 ```
 
-## Accuracy of the G-BLUP and of the Sparse SI
 
-The following script shows how to derive SSIs using the partitions above created. The weights of the SSI are computed using the function `SSI` for `nLambda=100` values of $\lambda$. The G-BLUP model is fitted for comparison using the function `fitBLUP`. Estimates of $\mu$ and $h^2$ are computed internally in the function `SSI` when these are not provided. These estimates obtained from the G-BLUP model will be passed to the function `SSI` to save time. Indices denoting training and testing sets are passed through the `trn` and `tst` arguments, respectively. The accuracy of the G-BLUP and SSI models are stored in the object `accSSI`, and saved in the file `results_accuracy.RData`.
+### Accuracy of the index
 
-```{r eval=FALSE}
-# Load data
-load("geno_pheno.RData"); load("varComps.RData"); load("partitions.RData")
+As for the single time-point, the regression coefficients are applied to data from testing set to derive selection indices. The following code shows how to (i) compute the multi time-point PC-SI and L1-PSI for the testing data, and then (ii) calculate the accuracy of the index, the heritability of the index, and genetic correlation of the index with grain yield. The genetic covariances are obtained using the function `getGenCov`. 
 
-accSSI <- mu <- varU <- varE <- c()       # Objects to store results
+Results for the two indices (PC-SI and L1-PSI) are stored in the object matrix `AccSI` and saved in the file `multi_timepoint_accuracy.RData`. Calculations are performed across all partitions previously created.
 
-for(k in 1:ncol(partitions))
-{ cat("  partition = ",k,"\n")
-  trn_tst <- partitions[,k]
-  tst <- which(trn_tst==0)
-  yNA <- y;   yNA[tst] <- NA
+```{r, Box9b, eval=FALSE}
+load("parameters.RData")
+load("multi_timepoint_coefficients.RData")
+
+AccSI <- c()     # Objects to store accuracy components
+
+for(k in 1:nPart)
+{   cat("  partition = ",k,"of",nPart,"\n")
+    indexTST <- which(partitions[,k]==2)
     
-  # G-BLUP model
-  fm1 <- fitBLUP(yNA, K=G)
-  mu[k] <- fm1$b        # Retrieve mu estimate
-  varU[k] <- fm1$varU   # Retrieve varU
-  varE[k] <- fm1$varE   # Retrieve varE
-
-  # Sparse SI
-  fm2 <- SSI(y,K=G,b=mu[k],varU=varU[k],varE=varE[k],trn_tst=trn_tst,mc.cores=1,nlambda=100)
-  fm3 <- summary(fm2)   # Useful function to get results
+    # Testing set
+    xTST <- scale(do.call(cbind,X[timepoints])[indexTST,])
+    yTST <- as.vector(scale(y[indexTST]))
+    KTST <- K[indexTST,indexTST]   # Connection given by replicates
         
-  accuracy <- c(GBLUP=cor(fm1$yHat[tst],y[tst]), fm3$accuracy[,1])/sqrt(fm0$h2)
-  lambda <- c(min(fm3$lambda),fm3$lambda[,1])
-  nsup <- c(max(fm3$nsup),fm3$nsup[,1])
-  accSSI <- rbind(accSSI,data.frame(rep=k,SSI=names(accuracy),accuracy,lambda,nsup))
-}
-save(mu,varU,varE,accSSI,file="results_accuracy.RData")
-```
-
-## Displaying Results
-
-The following code creates a plot showing the estimated genetic prediction accuracy by values of the penalty parameter (in logarithmic scale). The rightmost point in the plot corresponds to the G-BLUP model (obtained when $\lambda=0$). The point at the peak denotes the maximum accuracy (in the testing set) that was obtained by the SSI.
-
-```{r eval=FALSE}
-load("results_accuracy.RData")
-
-dat <- data.frame(do.call(rbind,lapply(split(accSSI,accSSI$SSI),
-         function(x) apply(x[,-c(1:2)],2,mean))))
-dat$Model <- unlist(lapply(strsplit(rownames(dat),"\\."),function(x)x[1]))
- 
-dat2 <- do.call(rbind,lapply(split(dat,dat$Mod),function(x)x[which.max(x$acc),]))
-
-if(requireNamespace("ggplot2")){
- ggplot2::ggplot(dat[dat$nsup>1,],ggplot2::aes(-log(lambda),accuracy)) + 
-   ggplot2::geom_hline(yintercept=dat["GBLUP",]$accuracy, linetype="dashed") + 
-   ggplot2::geom_line(ggplot2::aes(color=Model),size=1.1) + ggplot2::theme_bw() +
-   ggplot2::geom_point(data=dat2,ggplot2::aes(color=Model),size=2.5)
-}
-```
-<center>
-![Figure. Effect of the penalization on the accuracy](Figure_SSI1.png){ width=45% }
-</center>
-
-
-## Cross-validating to obtain an optimal penalization
-
-The snippet below can be used to perform, within each trn-tst partition, $k$-folds CV to get an 'optimal' value of $\lambda$ within the training data, and then used to fit an SSI for the testing set. The CV is implemented using the function `SSI.CV` from the SFSI R-package for one 5-folds CV, this can be set by changing the `nCV` and `nfolds` arguments. 
-
-```{r eval=FALSE}
-load("geno_pheno.RData");   load("varComps.RData")
-load("partitions.RData");   load("results_accuracy.RData")
-
-lambdaCV <- accSSI_CV <- nsupCV <- c()   # Objects to store results
-
-for(k in 1:ncol(partitions))
-{   cat("  partition = ",k,"\n")
-    trn_tst <- partitions[,k]
+    # Calculate the indices
+    PCSI_multi <- tcrossprod(xTST, bPCSI[[k]]$beta)
+    L1PSI_multi <- tcrossprod(xTST, bL1PSI[[k]]$beta)
     
-    # Cross-validating the training set  
-    fm1 <- SSI.CV(y,K=G,trn_tst=trn_tst,nlambda=100,mc.cores=1,nfolds=5,nCV=1)
-    lambdaCV[k] <- summary(fm1)$optCOR["lambda"]
-      
-    # Fit a SSI with the estimated lambda
-    fm2 <- SSI(y,K=G,b=mu[k],varU=varU[k],varE=varE[k],trn_tst=trn_tst,lambda=lambdaCV[k])     
+    # Fit genetic models
+    fitSI <- as.matrix(data.frame(I(PCSI_multi),I(L1PSI_multi)))
+    fm <- getGenCov(y=cbind(yTST,fitSI), K=KTST, pairwise=FALSE, verbose=FALSE)
+    fm$varU <- ifelse(fm$varU<0.05,0.05,fm$varU)
+   
+    # Retrieve accuracy components
+    h <- sqrt(fm$varU/(fm$varU + fm$varE))[-1]
+    gencor <- fm$covU/sqrt(fm$varU[1]*fm$varU[-1])
+    accuracy <- gencor*h
     
-    accSSI_CV[k] <- summary(fm2)$accuracy/sqrt(fm0$h2)
-    nsupCV <- cbind(nsupCV, fm2$nsup) 
+    nsup <- c(bPCSI[[k]]$nsup,bL1PSI[[k]]$nsup)
+    lambda <- c(bPCSI[[k]]$lambda,bL1PSI[[k]]$lambda)
+    AccSI <- rbind(AccSI,data.frame(rep=k,SI=colnames(fitSI),h,gencor,accuracy,nsup,lambda))
 }
-save(accSSI_CV,lambdaCV,nsupCV,file="results_accuracyCV.RData")
+save(AccSI, file="multi_timepoint_accuracy.RData")
 ```
 
 
-After running the above analysis, the following snippet can be run to create a plot comparing partition-wise the accuracy of the optimal SSI with that of the G-BLUP. The average accuracies are also shown in the plot.
+### Optimal multi vs single time-point selection indices
 
-```{r eval=FALSE}
-load("results_accuracy.RData"); load("results_accuracyCV.RData")
+As for the single time-point case, one can obtain an optimal regularized selection index. Code in the following box can be used to select the optimal PC-SI and L1-PSI, and to compare the accuracy of selection with that of a single time-point (specified by parameter `tp`) standard SI, PC-SI and L1-PSI. Results are reported as an average across all partitions along with a $95\%$ confidence interval.
 
-dat <- data.frame(GBLUP=accSSI[accSSI$SSI=="GBLUP",]$acc,SSI=accSSI_CV)
-rg <- range(dat)
-tmp <- c(mean(rg),diff(rg)*0.4)
+```{r, Box10, eval=FALSE}
+tp <- 9      # Time-point
+load(paste0("accuracy_tp_",tp,".RData"))
+load("multi_timepoint_accuracy.RData")
+
+AccSI <- rbind(accSI,AccSI)
+AccSI$Model <- unlist(lapply(strsplit(as.character(AccSI$SI),"\\."),function(x)x[1]))
+AccSI <- split(AccSI,paste(AccSI$rep,"_",AccSI$Model))
+AccSI <- do.call(rbind,lapply(AccSI,function(x)x[which.max(x$accuracy),]))
+
+dat <- aggregate(accuracy ~ Model, mean,data=AccSI)
+dat$sd <- aggregate(accuracy ~ Model, sd, data=AccSI)$accuracy
+dat$n <- aggregate(accuracy ~ Model, length, data=AccSI)$accuracy
+dat$se <- qnorm(0.975)*dat$sd/sqrt(dat$n)
 
 if(requireNamespace("ggplot2")){
- ggplot2::ggplot(dat,ggplot2::aes(GBLUP,SSI)) + 
-  ggplot2::geom_abline(slope=1,linetype="dotted") + ggplot2::theme_bw() +
-  ggplot2::geom_point(shape=21,color="orange") + ggplot2::lims(x=rg,y=rg) +
-  ggplot2::annotate("text",tmp[1],tmp[1]-tmp[2],label=round(mean(dat$GBLUP),3)) +
-  ggplot2::annotate("text",tmp[1]-tmp[2],tmp[1],label=round(mean(dat$SSI),3))
+ ggplot2::ggplot(dat,ggplot2::aes(Model,accuracy)) + ggplot2::theme_bw() +
+  ggplot2::geom_bar(stat="identity",width=0.65,fill="orange") +
+  ggplot2::geom_errorbar(ggplot2::aes(ymin=accuracy-se,ymax=accuracy+se),width=0.2) + 
+  ggplot2::geom_text(ggplot2::aes(label=sprintf("%.2f",accuracy),y=accuracy*0.5))
 }
 ```
+
 <center>
-![Figure. Accuracy of the G-BLUP vs. that of the SSI](Figure_SSI2.png){ width=40% }
+![Figure. Accuracy of the single and multi-timepoints L1PSI, PCSI, and SI](Figure_PSI4.png){ width=60% }
 </center>
 
 
-The code below creates a plot showing the distribution of the number of points in the support set for the SSI, across all partitions.
+## Sparsity of the index
 
-```{r eval=FALSE}
-load("results_accuracyCV.RData")
+The value of the penalization parameter $\lambda$ in the L1-PSI define the number of predictors with non-zero coefficient in the index. Code below can be used to estimate the regression coefficients for a multi time-point L1-PSI for the whole dataset. To achieve this, the genetic covariances will be calculated for the $2,250$ wavelengths using whole data by means of the function `getGenCov`. The coefficients are then obtained using the function `solveEN` with a value of $\lambda$ obtained from the partitions.
 
-dat <- data.frame(nsup=as.vector(nsupCV))
+A heatmap of the coefficients will be generated to show the sparsity and regions of the electromagnetic spectrum that were selected by the method.
 
-bw <- round(diff(range(dat$nsup))/40)
+```{r, Box11, eval=FALSE}
+load("varComps.RData")    # Load the SVD of ZZ' to speed computation
+load("multi_timepoint_accuracy.RData")
+
+# Get genetic covariances
+x <- scale(do.call(cbind,X))
+y <- as.vector(scale(y))
+fm <- getGenCov(y=cbind(y,x), EVD=EVD, scale=FALSE, pairwise=FALSE, verbose=FALSE)
+gencov <- fm$covU
+
+# Get a value of lambda across partitions
+AccSI$Model <- unlist(lapply(strsplit(as.character(AccSI$SI),"\\."),function(x)x[1]))
+AccSI <- split(AccSI,paste0(AccSI$Model,"_",AccSI$rep))
+AccSI <- do.call(rbind,lapply(AccSI,function(x)x[which.max(x$accuracy),]))
+lambda <- mean(AccSI$lambda[AccSI$Model=="L1PSI_multi"])
+
+# Get regression coefficients   
+VARx <- var(x)
+beta <- solveEN(VARx, gencov, lambda=lambda)$beta
+
+wl <- factor(rep(gsub("wl","",colnames(X[[1]])),length(X)))
+Timepoint <- factor(rep(seq(length(X)),each=ncol(X[[1]])))
+dat <- data.frame(beta=as.vector(beta),Timepoint,wl)
+dat$beta[abs(dat$beta) < .Machine$double.eps] <- NA
+
 if(requireNamespace("ggplot2")){
- ggplot2::ggplot(data=dat,ggplot2::aes(nsup,stat(count)/length(nsupCV))) +  
-    ggplot2::theme_bw() +
-    ggplot2::geom_histogram(color="gray20",fill="lightblue",binwidth=bw) +
-    ggplot2::labs(x=bquote("Support set size(" *n[sup]*")"),y="Frequency")
+ ggplot2::ggplot(dat, ggplot2::aes(x=wl,y=Timepoint,fill = abs(beta))) +
+  ggplot2::theme_bw() + ggplot2::geom_tile(height=0.8) + ggplot2::labs(x="Wavelength (nm)") +
+  ggplot2::scale_x_discrete(breaks=levels(wl)[seq(1,nlevels(wl),25)]) + 
+  ggplot2::scale_fill_gradientn(na.value='gray35', colours=c(rev(heat.colors(15))))
 }
 ```
+
 <center>
-![Figure. Distribution of the number of support points](Figure_SSI3.png){ width=45% }
+![Figure. Heatmap of the regression coefficients](Figure_PSI5.png){ width=70% }
 </center>
 
-## Subject-specific training sets
-
-The next script can be used to create a plot showing (for a single trn-tst partition) the subset of points in the support set, for each individual being predicted. This plot can be made through the function `net.plot` from the SFSI package.
-
-```{r eval=FALSE}
-# Load data
-load("geno_pheno.RData"); load("partitions.RData"); load("results_accuracyCV.RData")
-
-part <- 1      # Choose any partition from 1,…,nPart
-trn_tst <- partitions[,part]
-
-# Fit SSI with lambda previously estimated using CV
-fm <- SSI(y,K=G,trn_tst=trn_tst,lambda=lambdaCV[part])
-
-plot(net(fm, K=G), i=1:16, unified=FALSE, main=NULL, bg.col="white",
-     set.size=c(3,1.5,0.2), point.color="gray40", axis.labels=FALSE)  
-```
-<center>
-![Figure. Subject specific trainig sets for the first 16 testing elements](Figure_SSI4.png){ width=55% }
-</center>
 
 # References
+
+
 
 

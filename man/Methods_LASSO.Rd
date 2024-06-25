@@ -1,12 +1,12 @@
 
-\name{Regression coefficients and fitted values in LASSO-type problems}
+\name{Regression coefficients and predicted values in LASSO-type problems}
 \alias{coef.LASSO}
-\alias{fitted.LASSO}
+\alias{predict.LASSO}
 \title{LASSO methods}
 \usage{
 \method{coef}{LASSO}(object, ...)
 
-\method{fitted}{LASSO}(object, ...)
+\method{predict}{LASSO}(object, ...)
 }
 \arguments{
 \item{object}{An object of the class 'LASSO' returned either by the function 'LARS' or 'solveEN'}
@@ -23,7 +23,7 @@
 \value{
 Method \code{coef} returns a matrix that contains the regression coefficients (in rows) associated to each value of lambda (in columns). When the regression was applied to an object \code{Gamma} with more than one column, method \code{coef} returns a list
 
-Method \code{fitted} returns a matrix with fitted values
+Method \code{predict} returns a matrix with predicted values
 \ifelse{html}{\out{X&beta;}}{\eqn{\textbf{X}\boldsymbol{\beta}}{X beta}} (in rows)
 for each value of lambda (in columns).
 }
@@ -31,33 +31,7 @@ for each value of lambda (in columns).
 Retrieving regression coefficients and predicted values from the 'solveEN' and 'LARS' functions' outputs
 }
 \examples{
-  require(SFSI)
-  data(wheatHTP)
-  
-  y = as.vector(Y[,"E1"])  # Response variable
-  X = scale(X_E1)          # Predictors
-  
-  # Training and testing sets
-  tst = which(Y$trial \%in\% 1:10)
-  trn = seq_along(y)[-tst]
-
-  # Calculate covariances in training set
-  XtX = var(X[trn,])
-  Xty = cov(X[trn,],y[trn])
-  
-  # Run the penalized regression
-  fm = solveEN(XtX,Xty,alpha=0.5)   
-  
-  # Regression coefficients
-  dim(coef(fm))
-  dim(coef(fm, ilambda=50)) # Coefficients associated to the 50th lambda
-  dim(coef(fm, nsup=25))    # Coefficients where around nsup=25 are non-zero
-  
-  # Predicted values
-  yHat1 = fitted(fm, X=X[trn,])  # training data
-  yHat2 = fitted(fm, X=X[tst,])  # testing data
-  
-  # Penalization vs correlation
-  plot(-log(fm$lambda[-1]),cor(y[trn],yHat1[,-1]),main="training",type="l")
-  plot(-log(fm$lambda[-1]),cor(y[tst],yHat2[,-1]),main="testing",type="l")
+  # See examples in
+  # help(solveEN, package="SFSI")
+  # help(LARS, package="SFSI")
 }

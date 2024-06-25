@@ -37,11 +37,9 @@ Save/read a numeric data as a fortran-formatted binary file at a defined precisi
 }
 \examples{
   require(SFSI)
-  data(wheatHTP)
-
-  # Read a numeric matrix
-  X = scale(X_E1)
-  X[1:10,1:5]
+  
+  # A numeric matrix
+  X = matrix(rnorm(500*100), ncol=100)
   
   # Save matrix as double-precision
   filename1 = paste0(tempdir(),"/Matrix1.bin")
@@ -53,21 +51,18 @@ Save/read a numeric data as a fortran-formatted binary file at a defined precisi
 
   # Read the double-precision matrix
   X2 = readBinary(filename1)
-  X2[1:10,1:5]
   max(abs(X-X2))             # No loss of precision
   file.info(filename1)$size  # Size of the file
 
   # Read the single-precision matrix
   X3 = readBinary(filename2)
-  X3[1:10,1:5]
   max(abs(X-X3))             # Loss of precision
   file.info(filename2)$size  # But smaller-size file
 
   # Read specific rows and columns
   rows = c(2,4,5,8,10)
   cols = c(1,2,5)
-  X2 = readBinary(filename1,rows=rows,cols=cols)
-  X2
+  (X2 = readBinary(filename1, rows=rows, cols=cols))
   # Equal to: 
   X[rows,cols]
 

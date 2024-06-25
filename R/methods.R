@@ -4,6 +4,9 @@
 coef.LASSO <- function(object, ...)
 {
   args0 <- list(...)
+  if(ifelse(length(args0)==0,FALSE,is.null(names(args0))|any(names(args0)==""))){
+    message("Some arguments have no names and were ignored")
+  }
 
   iy <- ilambda <- nsup <-  NULL
   if(length(dim(object$nsup)) == 2L){
@@ -28,36 +31,36 @@ coef.LASSO <- function(object, ...)
     iy <- seq(object$q)
   }
   if( any(!iy %in% seq(object$q)) ){
-    stop("All elements in 'iy' must be between 1 and ",object$q)
+    stop("All elements in 'iy' should be between 1 and ",object$q)
   }
 
   if("ilambda" %in% names(args0)){
     if(length(args0$ilambda)>1L){
-      message(" Only the first element of 'ilambda' is considered")
+      message("Only the first element of 'ilambda' is considered")
     }
     ilambda <- rep(args0$ilambda[1],length(iy))
     if( ilambda[1] < 1L | ilambda[1] > min(object$nlambda) ){
-      stop("Parameter 'ilambda' must be between 1 and ",min(object$nlambda))
+      stop("Input 'ilambda' should be between 1 and ",min(object$nlambda))
     }
   }
 
   if("nsup" %in% names(args0)){
     if(is.null(ilambda)){
       if(length(args0$nsup)>1L){
-        message(" Only the first element of 'nsup' is considered")
+        message("Only the first element of 'nsup' is considered")
       }
       nsup <- args0$nsup[1]
       if( nsup < 1L | nsup > object$p ){
-        stop("Parameter 'nsup' must be between 1 and ", object$p)
+        stop("Input 'nsup' should be between 1 and ", object$p)
       }
       if(is.list(nsup0)){ # LAR-LASSO case
         ilambda <- lapply(nsup0,function(x)which.min(abs(x-nsup)))
-        message(" A different column was selected for each 'iy' for the case of a LAR-LASSO")
+        message("A different column was selected for each 'iy' for the case of a LAR-LASSO")
       }else{
         ilambda <- rep(which.min(abs(nsup0-nsup)),length(iy))
       }
     }else{
-      message(" Parameter 'nsup' is ignored when 'ilambda' is provided")
+      message("Input 'nsup' is ignored when 'ilambda' is provided")
     }
   }
 
@@ -110,91 +113,93 @@ coef.LASSO <- function(object, ...)
 
 #====================================================================
 #====================================================================
-fitted.LASSO <- function(object, ...)
+predict.LASSO <- function(object, ...)
 {
   args0 <- list(...)
-  if(length(args0) == 0L){
-    stop("A matrix of predictors must be provided")
-  }else{
-    if('X' %in% names(args0)){
-      X <- args0$X
-    }else{
-      if(length(args0) > 1L){
-        message(" Only the second argument is considered as the matrix of predictors")
-      }
-      X <- args0[[1]]
-    }
-    if(length(dim(X)) == 2L){
-      X <- as.matrix(X)
-    }else{
-      X <- matrix(X, nrow=1L)
-    }
 
-    yHat <- lapply(seq(object$q),function(i){
-      tmp <- X%*%coef.LASSO(object, iy=i)
-      colnames(tmp) <- paste0("yHat",1:ncol(tmp))
-      tmp
-    })
-    if(nrow(X)==1L | object$q==1L){
-      yHat <- do.call(rbind, yHat)
-    }
+  if(!'X' %in% names(args0)){
+    stop("A matrix 'X' of ",object$p," predictors in columns should be provided")
   }
+
+  if(length(dim(args0$X)) == 2L){
+    X <- as.matrix(args0$X)
+  }else{
+    X <- matrix(args0$X, nrow=1L)
+  }
+  stopifnot(ncol(X) == object$p)
+
+  yHat <- lapply(seq(object$q),function(i){
+    tmp <- X%*%coef.LASSO(object, iy=i)
+    colnames(tmp) <- paste0("yHat",1:ncol(tmp))
+    tmp
+  })
+  if(nrow(X)==1L | object$q==1L){
+    yHat <- do.call(rbind, yHat)
+  }
+
   return(yHat)
 }
 
 #====================================================================
 #====================================================================
 
-coef.SSI <- function(object, ...){
+coef.SGP <- function(object, ...){
   coef.LASSO(object, ...)
 }
 
 #====================================================================
 #====================================================================
-fitted.SSI <- function(object, ...)
+predict.SGP <- function(object, ...)
 {
   args0 <- list(...)
-  if(!inherits(object, "SSI")){
-     stop("The input object is not of the class 'SSI'")
-  }
-  if("CV" %in% names(object)){
-     stop("'fitted' method cannot be applied after cross-validation")
+  if(ifelse(length(args0)==0,FALSE,is.null(names(args0))|any(names(args0)==""))){
+    message("Some arguments have no names and were ignored")
   }
 
-  if(length(args0) == 0L){
-    yHat <- object$yHat
+  if(!inherits(object, "SGP")){
+     stop("The input object is not of the class 'SGP'")
+  }
+  if("SGP.CV" %in% attr(object,"type")){
+     stop("'predict' method cannot be applied after cross-validation")
+  }
 
-  }else{
-    if('y' %in% names(args0)){
-      y0 <- as.vector(args0$y)
-    }else{
-      if(length(args0)>1L){
-        message(" Only the second argument is considered as the response matrix")
+  if(("y" %in% names(args0)) | ("yTRN" %in% names(args0))){
+    if(all(c("y","yTRN") %in% names(args0))){
+      message("Both vectors 'y' and 'yTRN' are passed. Training data is taken from 'yTRN'")
+    }
+    if("yTRN" %in% names(args0)){
+      if(length(args0$yTRN) != object$nTRN){
+        stop("A vector 'yTRN' of length nTRN = ",object$nTRN," should be provided")
       }
-      y0 <- as.vector(args0[[1]])
-    }
-
-    if(length(y0) != (object$n * object$ntraits)){
-      stop("Length of the response matrix must be equal to length(object$y)")
-    }
-    if(any(is.na(y0[object$trn]))){
-      stop("All entries in y[trn] must be non-NA")
-    }
-
-    if(is.null(object$b)){
-      yTRN <- as.vector(y0[object$trn])
+      yTRN <- as.vector(args0$yTRN)
     }else{
-      yTRN <- as.vector(y0[object$trn] - object$Xb[object$trn])
+      if(length(args0$y) != object$n){
+        stop("A vector 'y' of length n = ",object$n," should be provided")
+      }
+      yTRN <- as.vector(args0$y)[object$trn]
     }
 
-    u <- fitted.LASSO(object, yTRN)
+    if(!is.null(object$Xb)){
+      yTRN <- yTRN - as.vector(object$Xb)[object$trn]
+    }
+
+    u <- predict.LASSO(object, X=yTRN)
     dimnames(u) <- list(object$tst, paste0("SSI.",1:ncol(u)))
 
-    if(is.null(object$b)){
+    if(is.null(object$Xb)){
       yHat <- u[]
     }else{
       yHat <- sweep(u, 1L, object$Xb[object$tst], FUN="+")
     }
+
+  }else{
+    yTRN <- object$y[object$trn]
+    yHat <- object$yHat
+  }
+
+  if(ifelse(is.null(yTRN),TRUE,any(is.na(yTRN)))){
+    stop("A vector 'y' of length n = ",object$n," or a vector 'yTRN' of length",
+         " nTRN = ",object$nTRN,"\n  with non-NA training entries should be provided")
   }
 
   return(yHat)
@@ -202,104 +207,136 @@ fitted.SSI <- function(object, ...)
 
 #====================================================================
 #====================================================================
-summary.SSI <- function(object, ...)
+summary.SGP <- function(object, ...)
 {
   args0 <- list(...)
+  if(ifelse(length(args0)==0,FALSE,is.null(names(args0))|any(names(args0)==""))){
+    message("Some arguments have no names and were ignored")
+  }
 
-  if(!inherits(object, "SSI")){
-    stop("The input object is not of the class 'SSI'")
+  if(!inherits(object, "SGP")){
+    stop("The input object is not of the class 'SGP'")
+  }
+  if("summary" %in% attr(object,"type")){
+    stop("'summary' method was already applied to the input object")
   }
 
   map <- map_trn <- map_tst <- nsup_trait <- NULL
 
-  nTST <- length(object$tst)
-  nTRN <- length(object$trn)
+  nTST <- c("overall"=length(object$tst))
+  nTRN <- c("overall"=length(object$trn))
 
+  verbose <- ifelse("verbose" %in% names(args0), args0$verbose, TRUE)
+  simplify <- ifelse("simplify" %in% names(args0), args0$simplify, FALSE)
+  if("save.at" %in% names(args0)){
+    save.at <- args0$save.at
+  }else{
+    save.at <- NULL
+  }
   flag_accuracy <- TRUE
-  if(length(object$CV) > 0L)
+
+  if(attr(object,"type") == "SGP.CV")
   {
-    nfolds <- object$nfolds
-    nCV <- object$nCV
+    if("y" %in% names(args0) & verbose){
+      message("Response vector 'y' is ignored in CV")
+    }
+    fold_size <- do.call(rbind,lapply(object$CV,function(x)x$nTST))
+    nfolds_CV <- length(object$CV)
+    stopifnot(nfolds_CV <= object$nfolds_CV)
+    if(nfolds_CV == object$nfolds_CV){
+       tag <- ifelse(is.null(object$tag),ifelse(object$isLOOCV,"LOO-CV",
+                      paste0(object$nCV,"x",object$nfolds,"F-CV")),object$tag)
+    }else{
+      if(verbose){
+        message("CV results correspond to a subset of ",nfolds_CV," of ",object$nfolds_CV,
+                ifelse(object$isLOOCV," singleton","")," fold-CV sets")
+      }
+      tag <- ifelse(is.null(object$tag),ifelse(object$isLOOCV,"LOO-CV",
+                     names(object$CV)),object$tag)
+    }
 
-    # Average across all folds
-    nsup <- lapply(object$CV,function(x)Reduce("+",x$nsup)/nfolds)
-    lambda <- lapply(object$CV,function(x)Reduce("+",x$lambda)/nfolds)
-    accuracy <- lapply(object$CV,function(x)Reduce("+",x$accuracy)/nfolds)
-    MSE <- lapply(object$CV,function(x)Reduce("+",x$MSE)/nfolds)
+    if(object$isLOOCV){
+      nsup_trait <- NULL
+      yHat <- do.call(rbind,lapply(object$CV,function(x)x$yHat))
+      trn <- as.numeric(rownames(yHat))
+      stopifnot(length(trn) <= object$TRN)
+      if(length(trn) == object$nTRN){
+        stopifnot(all(trn == object$trn))
+      }
+      yTRN <- as.vector(object$y)[trn]
+      tmp <- list(colnames(yHat), "overall")
+      nsup <- matrix(colMeans(do.call(rbind,lapply(object$CV,function(x)x$nsup))),
+                     ncol=1,dimnames=tmp)
+      lambda <- matrix(colMeans(do.call(rbind,lapply(object$CV,function(x)x$lambda))),
+                       ncol=1,dimnames=tmp)
+      accuracy <- matrix(suppressWarnings(stats::cor(yHat,yTRN)),ncol=1,dimnames=tmp)
+      MSE <- matrix(suppressWarnings(apply(sweep(yHat,1L,yTRN,FUN="-")^2,2,mean)),
+                    ncol=1L,dimnames=tmp)
 
-    # Average across all CV repetitions
-    nsup <- Reduce("+",nsup)/nCV
-    lambda <- Reduce("+",lambda)/nCV
-    accuracy <- Reduce("+",accuracy)/nCV
-    MSE <- Reduce("+",MSE)/nCV
+    }else{ # Cross-validation results
+      # Average across all folds-CV combinations
+      nsup <- Reduce("+",lapply(object$CV,function(x)x$nsup))/nfolds_CV
+      lambda <- Reduce("+",lapply(object$CV,function(x)x$lambda))/nfolds_CV
+      accuracy <- Reduce("+",lapply(object$CV,function(x)x$accuracy))/nfolds_CV
+      MSE <- Reduce("+",lapply(object$CV,function(x)x$MSE))/nfolds_CV
 
-    if(object$ntraits > 1L){
-      names_nsup <- paste0("nsup_",1:object$ntraits)
-      nsup_trait <- lapply(object$CV,function(x){
-        Reduce("+",lapply(x$nsup_trait,function(z)z[,names_nsup]))/nfolds
-      })
-      nsup_trait <- Reduce("+",nsup_trait)/nCV
-      tmp <- object$CV[[1]]$nsup_trait[[1]][,c("SSI","trait")]
-      nsup_trait <- data.frame(tmp, nsup_trait)
+      if(object$ntraits > 1L){
+        names_nsup <- paste0("nsup_",1:object$ntraits)
+        nsup_trait <- Reduce("+",lapply(object$CV,function(x)x$nsup_trait[,names_nsup]))/nfolds_CV
+        tmp <- object$CV[[1]]$nsup_trait[,c("SSI","trait")]
+        nsup_trait <- data.frame(tmp, nsup_trait)
 
-      map <- map_set(object$n, object$ntraits, x=object$trn, y=NULL,
-                   xlab="trn", ylab="tst")
-      map_trn <- map[object$trn,]
+        #map <- map_set_old(object$n, object$ntraits, x=object$trn, y=NULL,
+        #             xlab="trn", ylab="tst")
+        map <- map_set(i=object$ID_geno, j=object$ID_trait, x=object$trn, xlab="trn")
+        map_trn <- map[object$trn,]
 
-      tt <- factor(as.character(map_trn$j), levels=seq(object$ntraits))
-      nTRN <- c("Across"=nTRN, table(tt))
+        tt <- factor(as.character(map_trn$j), levels=seq(object$ntraits))
+        nTRN <- c(nTRN, table(tt))
+      }
     }
 
   }else{
-    if(length(args0) == 0L){
+    if("y" %in% names(args0)){
+      y <- as.vector(args0$y)
+      yHat <- predict.SGP(object, y=y)
+    }else{
       y <- object$y
-      yHat <- object$yHat # Should be equal to fitted.SSI(object)
-
-    }else{
-      if('y' %in% names(args0)){
-        y <- args0$y
-      }else{
-        if(length(args0)>1L){
-          message(" Only the second argument is considered as the response matrix")
-        }
-        y <- args0[[1]]
-      }
-      yHat <- fitted.SSI(object, y)
+      yHat <- predict.SGP(object) # Should be equal to object$yHat
     }
-    if(length(dim(y)) == 2L){
-      stopifnot(nrow(y) == object$n)
-      stopifnot(ncol(y) == object$ntraits)
+    tst <- as.numeric(rownames(yHat))
+    nTST <- c("overall"=nrow(yHat))
+    stopifnot(nTST <= object$nTST)
+    if(nTST == object$nTST){
+      stopifnot(all(tst == object$tst))
     }else{
-      if(object$ntraits > 1L){
-        stop("Response matrix 'y' should contain ",object$n," rows and ",object$ntraits," columns")
+      if(verbose){
+        message("Fitted values correspond to a subset of ",nTST," of ",object$nTST," testing subjects")
       }
     }
-    y0 <- as.vector(y)
 
-    if(sum(is.na(y0[object$tst])) > 0L){
-       message(" Some testing entries in the response matrix 'y' are NA.\n",
-               " Provide a full 'y' matrix to compute accuracy in testing data")
+    if(any(is.na(y[tst])) & verbose){
+       message("Some testing entries in the response vector are NA.\n",
+               "Provide a full response vector 'y' to compute accuracy in testing data")
        flag_accuracy <- FALSE
     }
 
-    yTST <- y0[object$tst]
-    tmp <- list(colnames(yHat), "Across")
+    yTST <- y[tst]
+    tmp <- list(colnames(yHat), "overall")
     nsup <- matrix(colMeans(object$nsup),ncol=1,dimnames=tmp)
     lambda <- matrix(colMeans(object$lambda),ncol=1,dimnames=tmp)
     accuracy <- matrix(suppressWarnings(stats::cor(yHat,yTST)),ncol=1,dimnames=tmp)
     MSE <- matrix(suppressWarnings(apply(sweep(yHat,1L,yTST,FUN="-")^2,2,mean)),
-                  ncol=1,dimnames=tmp)
+                  ncol=1L,dimnames=tmp)
 
     nsup1 <- lambda1 <- accuracy1 <- MSE1 <- NULL
     if(object$ntraits > 1L){  # Calculate MSE and accuracy within response variable
-      map <- map_set(object$n, object$ntraits, x=object$trn, y=object$tst,
+      map <- map_set(i=object$ID_geno, j=object$ID_trait, x=object$trn, y=object$tst,
                      xlab="trn", ylab="tst")
       map_trn <- map[object$trn,]
-      map_tst <- map[object$tst,]
+      map_tst <- map[tst,]  # map[object$tst,]
 
-      nsup1 <- lambda1 <- accuracy1 <- MSE1 <- matrix(NA,
-                                                    nrow=object$nlambda,
-                                                    ncol=object$ntraits)
+      nsup1 <- lambda1 <- accuracy1 <- MSE1 <- matrix(NA,nrow=object$nlambda,ncol=object$ntraits)
       colnames(nsup1) <- colnames(lambda1) <- seq(object$ntraits)
       colnames(accuracy1) <- colnames(MSE1) <- seq(object$ntraits)
 
@@ -309,13 +346,14 @@ summary.SSI <- function(object, ...)
         nsup1[,j] <- colMeans(object$nsup[index,,drop=F])
         lambda1[,j] <- colMeans(object$lambda[index,,drop=F])
 
-        yHat0 <- yHat[map0$index_set,,drop=F]
-        accuracy1[,j] <- drop(suppressWarnings(stats::cor(yHat0,y0[map0$index])))
-        MSE1[,j] <- suppressWarnings(apply(sweep(yHat0,1L,y0[map0$index],FUN="-")^2,2,mean))
+        #yHat0 <- yHat[map0$index_set,,drop=F]
+        yHat0 <- yHat[as.character(map0$index),,drop=F]
+        accuracy1[,j] <- drop(suppressWarnings(stats::cor(yHat0,y[map0$index])))
+        MSE1[,j] <- suppressWarnings(apply(sweep(yHat0,1L,y[map0$index],FUN="-")^2,2,mean))
       }
 
       # Get nsup_trait: nsup for each trait in tst corresponding to each trait in trn
-      nsup_trait <- get_summary_nsup(object, map=map)
+      nsup_trait <- get_summary_nsup(object, tst=tst, map=map)
 
       nsup <- cbind(nsup, nsup1)
       lambda <- cbind(lambda, lambda1)
@@ -323,192 +361,240 @@ summary.SSI <- function(object, ...)
       MSE <- cbind(MSE, MSE1)
 
       tt <- factor(as.character(map_trn$j), levels=seq(object$ntraits))
-      nTRN <- c("Across"=nTRN, table(tt))
+      nTRN <- c(nTRN, table(tt))
       tt <- factor(as.character(map_tst$j), levels=seq(object$ntraits))
-      nTST <- c("Across"=nTST, table(tt))
+      nTST <- c(nTST, table(tt))
     }
+
+    tag <- ifelse(is.null(object$tag),attr(object,"type"),object$tag)
   }
 
-  index <- which(colnames(accuracy)=="Across")
-  out <- data.frame(accuracy=accuracy[,index], MSE=MSE[,index],
-                    nsup=nsup[,index], lambda=lambda[,index])
-
-  # Detect maximum accuracy
-  index <- which.max(out$accuracy)
-  if(length(index) == 0L){
-    optCOR <- out[1, ,drop=FALSE]
-    if(nrow(out)>1) optCOR[1,] <- NA
-  }else{
-    optCOR <- out[index, ,drop=FALSE]
-  }
-
-  # Detect minimum MSE
-  index <- which.min(out$MSE)
-  if(length(index)==0){
-    optMSE <- out[1, ,drop=FALSE]
-    if(nrow(out)>1) optMSE[1,] <- NA
-  }else{
-    optMSE <- out[index, ,drop=FALSE]
-  }
-
-  optMSE <- as.matrix(optMSE)[1,]
-  optCOR <- as.matrix(optCOR)[1,]
-
-  out <- list(accuracy=accuracy, MSE=MSE, nsup=nsup, lambda=lambda)
-  if(object$ntraits > 1L){
-    out$nsup_trait <- nsup_trait
-  }
+  out <- list(nTST=nTST, nTRN=nTRN, accuracy=accuracy, MSE=MSE, nsup=nsup,
+              nsup_trait=nsup_trait, lambda=lambda)
 
   if(!flag_accuracy){
     out$accuracy <- NULL
     out$MSE <- NULL
   }
 
-  tmp <- list(n=object$n, q=object$q,
-              ntraits=object$ntraits,
-              nTST=list(nTST), nTRN=list(nTRN),
-              out,
-              optCOR=list(optCOR),
-              optMSE=list(optMSE))
+  if(object$ntraits == 1L){
+    out$nsup_trait <- NULL
+  }
 
-  return(do.call(c, tmp))
+  # Outputting
+  if(!simplify){
+    # Search for the optimum SGP (across all traits)
+    index <- which(colnames(accuracy)=="overall")
+    TMP <- data.frame(accuracy=accuracy[,index], MSE=MSE[,index],
+                      nsup=nsup[,index], lambda=lambda[,index])
+
+    # Detect maximum accuracy
+    index <- which.max(TMP$accuracy)
+    if(length(index) == 0L){
+      optCOR <- TMP[1, ,drop=FALSE]
+      if(nrow(TMP)>1) optCOR[1,] <- NA
+    }else{
+      optCOR <- TMP[index, ,drop=FALSE]
+    }
+    out$optCOR <- as.matrix(optCOR)[1,]
+
+    # Detect minimum MSE
+    index <- which.min(TMP$MSE)
+    if(length(index) == 0L){
+      optMSE <- TMP[1, ,drop=FALSE]
+      if(nrow(TMP)>1) optMSE[1,] <- NA
+    }else{
+      optMSE <- TMP[index, ,drop=FALSE]
+    }
+    out$optMSE <- as.matrix(optMSE)[1,]
+
+    names0 <- c("n","ntraits","trait_names","b","varU","varE","h2","nlambda")
+    tt <- object[names(object) %in% names0]
+    out <- do.call(c, list(tt,list(tag=tag),out))
+  }
+
+  class(out) <- class(object)
+  attr(out,"type") <- c(attr(object,"type"), "summary")
+
+  if(is.null(save.at)){
+    return(out)
+  }else{
+    outfile <- normalizePath(paste0(save.at,paste(attr(out,"type"),collapse="."),".RData"),
+                             mustWork=FALSE)
+    save(out, file=outfile)
+    if(verbose){
+      message("Results were saved at file: \n   '",outfile,"'")
+    }
+  }
 }
 
 #====================================================================
 #====================================================================
-# x.stat="nsup"; y.stat="accuracy"; nbreaks.x=7
-plot.SSI <- function(..., x.stat = c("nsup","lambda"),
+# x.stat=label="nsup"; y.stat="accuracy"; nbreaks.x=6
+plot.SGP <- function(..., x.stat = c("nsup","lambda"),
                      y.stat = c("accuracy","MSE"),
-                     nbreaks.x = 7)
+                     label = x.stat, nbreaks.x = 6)
 {
-    x <- y <- name <- obj <- lambda <- NULL
-
-    args0 <- list(...)
     x.stat <- match.arg(x.stat)
     y.stat <- match.arg(y.stat)
+    if(!is.null(label)){
+      label <- match.arg(label, choices=c("nsup","lambda"))
+    }
+    x <- tag <- obj <- lambda <- NULL
+    args0 <- list(...)
 
-    #if(!inherits(x, "SSI")){
-    #  stop("Input 'x' is not of the class 'SSI'")
-    #}
     object <- list()
-    #if(!missing(y)){
-    #  if(inherits(y, "SSI")) object[[length(object)+1]] <- y
-    #}
     if(length(args0) > 0L){
       for(i in 1:length(args0)){
-        if(inherits(args0[[i]], "SSI")) object[[length(object)+1]] <- args0[[i]]
+        if(inherits(args0[[i]], "SGP")) object[[length(object)+1]] <- args0[[i]]
       }
     }
-    if(length(object) == 0L){
-       stop("No input object of the class 'SSI' was provided")
+    np <- length(object) # Number of objects to plot
+    if(np == 0L){
+       stop("No input object of the class 'SGP' was provided")
     }
 
-    xlab <- ifelse(x.stat=="nsup","Support set size",expression(paste("-log(",lambda,")")))
+    trait <- ifelse("trait" %in% names(args0), as.character(args0$trait), "overall")
+    xlab <- ifelse(x.stat=="nsup",expression("Support set size ("*n[sup]*")"),
+                   expression("-log("*lambda*")"))
     ylab <- capitalize(y.stat)
     lwd <- ifelse("lwd" %in% names(args0), args0$lwd, 0.65)
     if("xlab" %in% names(args0)) xlab <- args0$xlab
     if("ylab" %in% names(args0)) ylab <- args0$ylab
 
-    # Treat repeated fm$name
-    objectNames <- unlist(lapply(1:length(object),function(k) object[[k]]$name))
-    index <- table(objectNames)[table(objectNames)>1L]
+    if("y" %in% names(args0)){
+      y <- as.vector(args0$y)
+    }else{
+      y <- NULL
+    }
+    for(k in 1:np){
+      if(!"summary" %in% attr(object[[k]],"type")){
+        if(is.null(object[[k]]$yHat)){
+          object[[k]] <- summary.SGP(object[[k]], y=y, verbose=FALSE)
+        }else{
+          object[[k]] <- summary.SGP(object[[k]], verbose=FALSE)
+        }
+      }
+    }
+    object_names <- unlist(lapply(object,function(fm) fm$tag))
+
+    # Treat repeated fm$tag
+    index <- table(object_names)[table(object_names)>1L]
     if(length(index) > 0L){
       for(i in seq_along(index)){
-        tmp <- which(objectNames == names(index[i]))
-        for(j in seq_along(tmp)) objectNames[[tmp[j]]] <- paste0(objectNames[[tmp[j]]],"-",j)
+        tmp <- which(object_names == names(index[i]))
+        for(j in seq_along(tmp)) object_names[[tmp[j]]] <- paste0(object_names[[tmp[j]]],"-",j)
       }
     }
 
-    nTRN <- unlist(lapply(object,function(x)length(x$trn)))
-    nTST <- unlist(lapply(object,function(x)length(x$tst)))
-    isCV <- unlist(lapply(object,function(x)length(x$CV)>0))
-    isTRN_TST <- unlist(lapply(object,function(x){
-     ifelse(length(x$trn)==length(x$tst), all(x$trn==x$tst), FALSE)
-    }))
+    ntraits <- unlist(lapply(object,function(fm)fm$ntraits))
+    if(any(ntraits == 1) & trait != "overall"){
+      trait <- "overall"
+      message("Single-trait SGP: input 'trait' was changed to 'overall'")
+    }
 
-    if(length(unique(nTRN))>1L){
-       stop("Training set size is not same across all 'SSI' class objects")
+    for(k in 1:length(object)){
+      if(object[[k]]$ntraits>1){
+        if(is.null(object[[k]]$trait_names)){
+          trait_names <- as.character(seq(object[[k]]$ntraits))
+        }else{
+          trait_names <- object[[k]]$trait_names
+        }
+        if(!trait %in% c("overall",trait_names)){
+          if(!is.null(object[[k]]$trait_names)){
+            trait_names <- paste0("'",trait_names,"'")
+          }
+          stop("Input 'trait' should be one of ",paste(trait_names,collapse=", "))
+        }
+      }
     }
-    if(length(unique(nTST))>1L){
-       stop("Testing set size is not same across all 'SSI' class objects")
-    }
-    if(length(table(isCV))>1L){
-       stop("All 'SSI' class objects must be of the same type:\n",
+    nlambda <- unlist(lapply(object,function(fm)fm$nlambda))
+    nTRN <- unlist(lapply(object,function(fm)fm$nTRN[trait]))
+    nTST <- unlist(lapply(object,function(fm)fm$nTST[trait]))
+    isCV <- unlist(lapply(object,function(fm)"SGP.CV" %in% attr(fm,"type")))
+
+    if(length(table(isCV)) > 1L){
+       stop("All 'SGP' class objects should be of the same type:\n",
             "  either a trn-tst prediction or a cross-validation")
     }
     isCV <- isCV[1]
+    tt <- as.vector(c(nTRN[1],nTST[1]))
+
+    if(length(unique(nTRN))>1L){
+      msg <- "Training set size is not same across all 'SGP' class objects"
+      if(isCV){
+        stop(msg)
+      }else{
+        message(msg)
+      }
+      tt[1] <- paste(range(nTRN),collapse="-")
+    }
+    if(length(unique(nTST))>1L){
+       message("Testing set size is not same across all 'SGP' class objects")
+       tt[2] <- paste(range(nTST),collapse="-")
+    }
 
     if(isCV){
-      main <- bquote("SSI CV ("*n[trn]==.(nTRN[1])*")")
+      main <- bquote(.(ifelse(np==1,object_names[1],"SGP CV"))*" ("*n[TRN]==.(tt[1])*")")
     }else{
-      if(isTRN_TST[1]){
-        main <- bquote("SSI ("*n[trn]==.(nTST[1])*")")
-      }else{
-        main <- bquote("SSI ("*n[tst]==.(nTST[1])*")")
-      }
+      #main <- bquote("SGP ("*n[TRN]*"="*.(tt[1])*", "*n[TST]==.(tt[2])*")")
+      main <- parse(text=paste0("'SGP ('*n[TRN]==",tt[1],"*', '*paste(n[TST]==",tt[2],")*')'"))
     }
     if("main" %in% names(args0)) main <- args0$main
 
-    theme0 <- theme(
-      panel.grid.minor = element_blank(),
-      panel.grid.major = element_blank(),
-      plot.title = element_text(hjust = 0.5),
-      legend.background = element_rect(fill="gray95"),
-      legend.box.spacing = unit(0.4, "lines"),
-      legend.key.size = unit(0.85, "lines"),
-      legend.text = element_text(size=8),
-      legend.justification = c(1,ifelse(tolower(y.stat)=="mse",1,0)),
-      legend.position=c(0.99,ifelse(tolower(y.stat)=="mse",0.99,0.01)),
-      legend.title = element_blank(),
-      legend.margin = margin(t=-0.2,r=0.2,b=0.2,l=0.2,unit='line'),
-      strip.text.x = element_text(size=8.5, margin=margin(t=1.5,b=1.5))
-    )
+    theme0 <- mytheme()
+    theme0$legend.justification <- c(1,ifelse(tolower(y.stat)=="mse",1,0))
+    theme0$legend.position <- c(0.99,ifelse(tolower(y.stat)=="mse",0.99,0.01))
+    if(np == 1L){
+      theme0$legend.position <- "none"
+    }
 
-    eps <- .Machine$double.eps
+    eps <- .Machine$double.eps^0.5
     dat <- data.frame(matrix(nrow=0,ncol=9))
-    nlambda <- ntraits <- rep(NA, length(object))
-    for(k in 1:length(object))
+    for(k in 1:np)
     {
-      fm0 <- object[[k]]
-      ntraits[k] <- fm0$ntraits
-      nlambda[k] <- fm0$nlambda
-      ss <- summary.SSI(fm0)
+      fm <- object[[k]]
 
-      if(nlambda[k] > 1L & !is.null(ss$accuracy) & !is.null(ss$MSE))
+      if(nlambda[k] > 1L & !is.null(fm$accuracy) & !is.null(fm$MSE))
       {
-        tt <- reshape2::melt(ss$lambda)
+        tt <- reshape2::melt(fm$lambda)
         colnames(tt) <- c("SSI","trait","lambda")
+        tt <- tt[as.character(tt$trait) == trait,]
         tt$x <- -log(tt$lambda)
-        tmp <- ss[[which(tolower(names(ss)) == tolower(y.stat))]]
-        tt$y <- reshape2::melt(tmp)$value
-        tt$nsup <- reshape2::melt(ss$nsup)$value
-        tt <- tt[as.character(tt$trait) == "Across",]
 
-        if(any(tt$lambda < eps)){
-          tmp <- tt$lambda[tt$lambda >= eps]
-          tt[tt$lambda < eps,'lambda'] <- ifelse(length(tmp)>0,min(tmp)/10,1E-6)
+        tmp <- reshape2::melt(fm[[which(tolower(names(fm)) == tolower(y.stat))]])
+        tmp <- tmp[as.character(tmp$Var2) == trait,]
+        tt$y <- tmp[match(tt$SSI, tmp$Var1),"value"]
+
+        tmp <- reshape2::melt(fm$nsup)
+        tmp <- tmp[as.character(tmp$Var2) == trait,]
+        tt$nsup <- tmp[match(tt$SSI, tmp$Var1),"value"]
+
+        if(length(which(tt$lambda < eps))>0){
+          tmp <- tt$lambda[which(tt$lambda >= eps)]
+          tt[which(tt$lambda < eps),'lambda'] <- ifelse(length(tmp)>0,min(tmp),eps)
         }
 
         if(isCV){
-          tt$n0 <- ss$nTRN[as.character(tt$trait)]
+          tt$n <- fm$nTRN[as.character(tt$trait)]
         }else{
-          tt$n0 <- ss$nTST[as.character(tt$trait)]
+          tt$n <- fm$nTST[as.character(tt$trait)]
         }
 
-        tt <- data.frame(object=k,name=objectNames[k],tt,stringsAsFactors=FALSE)
+        tt <- data.frame(object=k,tag=object_names[k],tt,stringsAsFactors=FALSE)
         dat <- rbind(dat,tt)
       }
     }
 
-    dat$name <- factor(as.character(dat$name))
+    dat$tag <- factor(as.character(dat$tag))
 
     if(any(nlambda == 1L)){
-      message(" Object(s) ",paste(which(nlambda==1L),collapse=",")," contain a single SSI point.",
-              " They are excluded from the plot")
+      message("Object(s) ",paste(which(nlambda==1L),collapse=",")," contain a single SGP point.",
+              "They are excluded from the plot")
     }
 
     if(nrow(dat) == 0){
-       stop("The plot can not be generated with the provided data")
+      stop("The plot can not be generated with the provided data")
     }
 
     dat <- dat[!is.na(dat$y),]   # Remove NA values
@@ -521,7 +607,7 @@ plot.SSI <- function(..., x.stat = c("nsup","lambda"),
     }
 
     breaksx <- labelsx <- NULL
-    if(x.stat=="nsup")
+    if(x.stat == "nsup")
     {
       if("xlim" %in% names(args0)){
          xlim <- args0$xlim
@@ -529,7 +615,7 @@ plot.SSI <- function(..., x.stat = c("nsup","lambda"),
          xlim <- c(1,max(dat$nsup, na.rm=TRUE))
       }
 
-      index <- dat$nsup >= xlim[1] & dat$nsup <= xlim[2]
+      index <- (dat$nsup >= xlim[1]) & (dat$nsup <= xlim[2])
       dat <- dat[index,]
 
       # Labels and breaks for the nsup axis
@@ -546,26 +632,40 @@ plot.SSI <- function(..., x.stat = c("nsup","lambda"),
         xlim <- c(mean(tmp$x, na.rm=T), max(dat$x))
       }
 
-      dat <- dat[dat$x >= xlim[1] & dat$x <= xlim[2],]
+      dat <- dat[(dat$x >= xlim[1]) & (dat$x <= xlim[2]),]
     }
 
-    dat2 <- do.call(rbind,lapply(split(dat, paste(dat$trait,dat$object)),function(x){
-      x[ifelse(tolower(y.stat)=="mse",which.min(x$y),which.max(x$y)),]
+    dat0 <- do.call(rbind,lapply(split(dat, paste(dat$trait,dat$object)),function(dt){
+      dt[ifelse(tolower(y.stat)=="mse",which.min(dt$y),which.max(dt$y)),]
     }))
 
-    pp <- ggplot(dat, aes(x,y,group=object,color=name)) +
-          geom_line(size=lwd) +
-          labs(title=main, x=xlab, y=ylab) +
-          theme_bw() + theme0 +
-          geom_vline(data=dat2, aes(xintercept=x),
-                      size=0.5,linetype="dotted",color="gray50") +
-          scale_y_continuous(limits=ylim)
+    pp <- ggplot2::ggplot(dat, ggplot2::aes(x,y,group=object,color=tag)) +
+          ggplot2::geom_line(linewidth=lwd) + ggplot2::theme_bw() +
+          ggplot2::labs(title=main, x=xlab, y=ylab) + theme0 +
+          ggplot2::geom_vline(data=dat0, ggplot2::aes(xintercept=x), linewidth=0.5,
+                     linetype="dotted", color="gray50") +
+          ggplot2::scale_y_continuous(limits=ylim)
 
-    if(x.stat=="nsup"){
-       pp <- pp + scale_x_continuous(breaks=breaksx, labels=round(labelsx))
+    if(!is.null(label) & (nrow(dat0)==1L)){
+      dat0$label <- unlist(lapply(1:nrow(dat0),function(i){
+        if(label == "nsup"){
+          bquote(n[sup]==.(round(dat0$nsup[i])))
+        }else{
+          bquote(lambda==.(sprintf('%.6f',dat0$lambda[i])))
+        }
+      }))
+
+      pp <- pp + ggplot2::geom_text(data=dat0, ggplot2::aes(x=x,y=-Inf,label=label),
+                                    angle=90, parse=TRUE, vjust=-0.25, hjust=-0.25,
+                                    size=2.6, color="gray20")
+    }
+
+    if(x.stat == "nsup"){
+       pp <- pp + ggplot2::scale_x_continuous(breaks=breaksx, labels=round(labelsx))
     }else{
        pp <- pp +
-        scale_x_continuous(breaks=scales::extended_breaks(n=nbreaks.x), limits=xlim)
+        ggplot2::scale_x_continuous(breaks=scales::extended_breaks(n=nbreaks.x),
+                                    limits=xlim)
     }
 
     return(pp)

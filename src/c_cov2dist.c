@@ -13,13 +13,13 @@ SEXP R_cov2dist(SEXP n_, SEXP a_, SEXP A_)
 {
     long long i, j;
 
-    int n=INTEGER_VALUE(n_);
-    double a=NUMERIC_VALUE(a_);
+    int n = INTEGER_VALUE(n_);
+    double a = NUMERIC_VALUE(a_);
 
     double *v = (double *) R_alloc(n, sizeof(double)); // Variances: Diagonal values
 
-    PROTECT(A_=AS_NUMERIC(A_));
-    double *A=NUMERIC_POINTER(A_);
+    PROTECT(A_ = AS_NUMERIC(A_));
+    double *A = NUMERIC_POINTER(A_);
 
     for(j=0; j<n; j++){   // Diagonal values
       v[j] = A[n*j + j];

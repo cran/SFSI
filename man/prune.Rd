@@ -63,4 +63,3 @@ The sets can be limited to lie within a distance less or equal to a \code{d.max}
   plot(nw2, show.names=TRUE)
 
 }
-\keyword{Prune}

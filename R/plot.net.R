@@ -27,7 +27,7 @@ plot.net <- function(x, i = NULL, show.names = FALSE,
   }
 
   axis_labels <- x$axis_labels
-  isSSI <- x$isSSI
+  isSGP <- x$isSGP
   isEigen <- x$isEigen
   symmetric <- x$symmetric
   modules <- x$modules
@@ -36,7 +36,7 @@ plot.net <- function(x, i = NULL, show.names = FALSE,
   mid_point <- x$mid_point
   radius <- x$radius
 
-  if(!isSSI & symmetric){
+  if(!isSGP & symmetric){
     legend.pos <- "none"
     if(!unified){
       message(" Only an 'unified' plot can be produced with the input object data")
@@ -53,7 +53,7 @@ plot.net <- function(x, i = NULL, show.names = FALSE,
   }
 
   if(!unified & length(yyy) >= ni){
-    message("Large number of ",ifelse(isSSI,"testing subjects","modules"),
+    message("Large number of ",ifelse(isSGP,"testing subjects","modules"),
             ". Only the first ",ni," are shown")
     yyy <- yyy[1:ni]
     modules <- modules[1:ni]
@@ -103,54 +103,53 @@ plot.net <- function(x, i = NULL, show.names = FALSE,
   if(!flagGp) dat$group <- dat$set_name
   levelsGp <- levels(dat$group)
   if(length(levelsGp) > 5){
-    stop("Number of levels of 'group' must be at most 5")
+    stop("'group' should be a vector with at most 5 levels")
   }
 
   if(is.null(group.shape)){
     if(flagGp){
       group.shape <- c(21,22,23,24,25)
-    }else group.shape <- c(21,21,21)
+    }else{
+      group.shape <- c(21,21,21)
+    }
   }
   group.shape <- group.shape[1:length(levelsGp)]
 
   if(is.null(set.color)){
     set.color <- c("#E69F00","#56B4E9","gray80")
-  }else if(length(set.color)==1) set.color <- rep(set.color,length(sets))
+  }else{
+     if(length(set.color)==1) set.color <- rep(set.color,length(sets))
+  }
   set.color <- set.color[1:length(sets)]
 
   if(is.null(set.size)){
     set.size <- c(3.1, 2.1, 0.8)
     if(any(show.names)) set.size[show.names] <- 3.1
-  }else if(length(set.size)==1L) set.size <- rep(set.size,length(sets))
+  }else{
+    if(length(set.size)==1L) set.size <- rep(set.size,length(sets))
+  }
   set.size <- set.size[1:length(sets)]
 
   if(any(is.na(group.shape))){
-    stop("The number of elements in 'group.shape' must be of length ",length(levelsGp))
+    stop("'group.shape' should be a vector with length(group.shape) = ",length(levelsGp))
   }
 
   if(any(is.na(set.size)) | any(is.na(set.color))){
-    stop("The number of elements in 'set.size' and 'set.color' must be of length ",length(sets))
+    stop("'set.size' and 'set.color' should be vectors with length ",length(sets))
   }
 
-  theme0 <- theme(
-    plot.title = element_text(hjust = 0.5),
-    panel.grid.minor = element_blank(),
-    panel.grid.major = element_blank(),
-    legend.box.spacing = unit(0.4, "lines"),
-    legend.background = element_rect(fill="gray95"),
-    legend.justification = c(justx,justy),
-    legend.position = legend.pos,
-    legend.key.height = unit(0.9,"line"),
-    legend.key.width = unit(0.9, "lines"),
-    legend.title = element_blank(),
-    legend.margin = margin(t=0,b=0.25,l=0.25,r=0.25,unit='line'),
-    strip.text = element_blank(), panel.spacing=unit(0.1,"lines")
-  )
+  theme0 <- mytheme()
+  theme0$legend.justification <- c(justx,justy)
+  theme0$legend.position <- legend.pos
+  theme0$legend.key.height <- ggplot2::unit(0.9, "lines")
+  theme0$legend.key.width <- ggplot2::unit(0.9, "lines")
+  theme0$strip.text.x <- ggplot2::element_blank()
+  theme0$panel.spacing <- ggplot2::unit(0.1,"lines")
 
   main <- NULL
   if("main" %in% names(args0)) main <- args0$main
   if(is.null(main)){
-    theme0 <- theme0 + theme(plot.title = element_blank())
+    theme0$plot.title <- ggplot2::element_blank()
   }
 
   xlab <- axis_labels[1]
@@ -159,15 +158,15 @@ plot.net <- function(x, i = NULL, show.names = FALSE,
   if("ylab" %in% names(args0)) ylab <- args0$ylab
 
   if(is.null(xlab)){
-    theme0 <- theme0 + theme(axis.title.x = element_blank())
+    theme0$axis.title.x <- ggplot2::element_blank()
   }
   if(is.null(ylab)){
-    theme0 <- theme0 + theme(axis.title.y = element_blank())
+    theme0$axis.title.y <- ggplot2::element_blank()
   }
 
-  if(!isEigen){
-    theme0 <- theme0 + theme(axis.text = element_blank(),
-                             axis.ticks = element_blank())
+  if(!isEigen | !axis.labels){
+    theme0$axis.text <- ggplot2::element_blank()
+    theme0$axis.ticks <- ggplot2::element_blank()
   }
 
   names(group.shape) <- levelsGp
@@ -175,15 +174,18 @@ plot.net <- function(x, i = NULL, show.names = FALSE,
 
   # If unified plot
   if(unified){
-    pp <- ggplot(dat, aes(x=x,y=y))
+    pp <- ggplot2::ggplot(dat, ggplot2::aes(x=x,y=y))
     if(show.names[3]){
-      pp <- pp + geom_label(data=dat[dat$set==3,], aes(label=label,fill=set_name),
-                            label.padding=unit(0.15,"lines"), color=point.color,
-                            size=set.size[3], show.legend=FALSE)
+      pp <- pp + ggplot2::geom_label(data=dat[dat$set==3,],
+                                     ggplot2::aes(label=label,fill=set_name),
+                                     label.padding=ggplot2::unit(0.15,"lines"),
+                                     color=point.color, size=set.size[3],
+                                     show.legend=FALSE)
 
     }else{
-      pp <- pp + geom_point(data=dat[dat$set==3,], aes(shape=group,fill=set_name),
-                            color=point.color,size=set.size[3])
+      pp <- pp + ggplot2::geom_point(data=dat[dat$set==3,],
+                                     ggplot2::aes(shape=group,fill=set_name),
+                                     color=point.color,size=set.size[3])
     }
 
     for(k in 1:length(yyy))
@@ -197,11 +199,14 @@ plot.net <- function(x, i = NULL, show.names = FALSE,
         colnames(dat2) <- paste0(colnames(dat2),"_TST")
         dat1 <- data.frame(dat2[rep(1,nrow(dat1)),],dat1)
         if(curve){
-          pp <- pp + geom_curve(aes(x=x_TST,y=y_TST,xend=x_TRN,yend=y_TRN),
-                        data=dat1,alpha=0.4,size=line.tick,color=line.color,curvature=0.4)
+          pp <- pp +
+                ggplot2::geom_curve(ggplot2::aes(x=x_TST,y=y_TST,xend=x_TRN,yend=y_TRN),
+                                    data=dat1,alpha=0.4,size=line.tick,
+                                    color=line.color,curvature=0.4)
         }else{
-          pp <- pp + geom_segment(aes(x=x_TST,y=y_TST,xend=x_TRN,yend=y_TRN),
-                        data=dat1,alpha=0.4,size=line.tick,color=line.color)
+          pp <- pp +
+                ggplot2::geom_segment(ggplot2::aes(x=x_TST,y=y_TST,xend=x_TRN,yend=y_TRN),
+                                      data=dat1,alpha=0.4,size=line.tick,color=line.color)
         }
       }
     }
@@ -209,29 +214,36 @@ plot.net <- function(x, i = NULL, show.names = FALSE,
     if(show.names[1] & !show.names[2]){
       # Primary nodes in modules
       pp <- pp +
-            geom_label(data=dat[dat$set%in%c(1,4),], aes(label=label,fill=set_name),
-                       label.padding=unit(0.15,"lines"), color=point.color,
-                       size=set.size[1], show.legend=FALSE) +
-            geom_point(data=dat[dat$set==2,], aes(shape=group,fill=set_name),
-                       color=point.color,size=set.size[2])
+            ggplot2::geom_label(data=dat[dat$set%in%c(1,4),],
+                                ggplot2::aes(label=label,fill=set_name),
+                                label.padding=unit(0.15,"lines"), color=point.color,
+                                size=set.size[1], show.legend=FALSE) +
+            ggplot2::geom_point(data=dat[dat$set==2,],
+                                ggplot2::aes(shape=group,fill=set_name),
+                                color=point.color,size=set.size[2])
     }else{
       # Secondary nodes in modules
       if(show.names[2]){
-        pp <- pp + geom_label(data=dat[dat$set==2,], aes(label=label,fill=set_name),
-                              label.padding=unit(0.15,"lines"), color=point.color,
-                              size=set.size[2], show.legend=FALSE)
+        pp <- pp + ggplot2::geom_label(data=dat[dat$set==2,],
+                                       ggplot2::aes(label=label,fill=set_name),
+                                       label.padding=ggplot2::unit(0.15,"lines"),
+                                       color=point.color, size=set.size[2], show.legend=FALSE)
       }else{
-        pp <- pp + geom_point(data=dat[dat$set==2,], aes(shape=group,fill=set_name),
-                              color=point.color,size=set.size[2])
+        pp <- pp + ggplot2::geom_point(data=dat[dat$set==2,],
+                                       ggplot2::aes(shape=group,fill=set_name),
+                                       color=point.color,size=set.size[2])
       }
       # Primary nodes in modules
       if(show.names[1]){
-        pp <- pp + geom_label(data=dat[dat$set%in%c(1,4),], aes(label=label,fill=set_name),
-                              label.padding=unit(0.15,"lines"), color=point.color,
-                              size=set.size[1], show.legend=FALSE)
+        pp <- pp +
+              ggplot2::geom_label(data=dat[dat$set%in%c(1,4),],
+                                  ggplot2::aes(label=label,fill=set_name),
+                                  label.padding=ggplot2::unit(0.15,"lines"),
+                                  color=point.color, size=set.size[1], show.legend=FALSE)
       }else{
-        pp <- pp  + geom_point(data=dat[dat$set%in%c(1,4),], aes(shape=group,fill=set_name),
-                               color=point.color,size=set.size[1])
+        pp <- pp  + ggplot2::geom_point(data=dat[dat$set%in%c(1,4),],
+                                        ggplot2::aes(shape=group,fill=set_name),
+                                        color=point.color, size=set.size[1])
       }
     }
 
@@ -239,27 +251,30 @@ plot.net <- function(x, i = NULL, show.names = FALSE,
     if(any(dat$set==4)){
       if(show.names[1] | show.names[2]){
         pp <- pp +
-              geom_label(data=dat[dat$set==4,],label=" ",fill=set.color[sets[2]],
-                         label.padding=unit(0.135,"lines"), label.r=unit(0.35,"lines"),
-                         color=set.color[sets[1]], size=set.size[2], show.legend=FALSE) +
-              geom_text(data=dat[dat$set==4,], aes(label=label),
-                        color=point.color,size=set.size[2])
+              ggplot2::geom_label(data=dat[dat$set==4,],label=" ",fill=set.color[sets[2]],
+                                  label.padding=ggplot2::unit(0.135,"lines"),
+                                  label.r=ggplot2::unit(0.35,"lines"),
+                                  color=set.color[sets[1]], size=set.size[2], show.legend=FALSE) +
+              ggplot2::geom_text(data=dat[dat$set==4,], ggplot2::aes(label=label),
+                                 color=point.color,size=set.size[2])
       }else{
-        pp <- pp + geom_point(data=dat[dat$set==4,], aes(shape=group),fill=set.color[sets[2]],
-                              color=set.color[sets[1]],size=set.size[1]*0.55)
+        pp <- pp +
+              ggplot2::geom_point(data=dat[dat$set==4,], ggplot2::aes(shape=group),
+                                  fill=set.color[sets[2]], color=set.color[sets[1]],
+                                  size=set.size[1]*0.55)
       }
 
     }
 
-    pp <- pp + theme_bw() + theme0
+    pp <- pp + ggplot2::theme_bw() + theme0
 
     if(circle){
       q <- length(radius)
       for(k in 1:q){
         tmp <- circleFun(mid_point[k,], radius[k], n=150)
-        pp <- pp + geom_path(aes(x,y), data=tmp, size=0.2)
+        pp <- pp + ggplot2::geom_path(ggplot2::aes(x,y), data=tmp, size=0.2)
       }
-      pp <- pp + theme(panel.border = element_blank())
+      pp <- pp + ggplot2::theme(panel.border = ggplot2::element_blank())
     }
 
   }else{
@@ -277,25 +292,31 @@ plot.net <- function(x, i = NULL, show.names = FALSE,
         }
       }
 
-      pp <- ggplot(dat2, aes(x=x,y=y)) + facet_wrap(~ind) +
-            geom_point(data=dat2[dat2$set_name==sets[3],],
-                       aes(fill=set_name,shape=group),color=point.color,size=set.size[3]) +
-            geom_point(data=dat2[dat2$set_name==sets[2],],
-                       aes(fill=set_name,shape=group),color=point.color,size=set.size[2]) +
-            geom_point(data=dat2[dat2$set_name==sets[1],],
-                       aes(fill=set_name,shape=group),color=point.color,size=set.size[1]) +
-            theme_bw() + theme0
+      pp <- ggplot2::ggplot(dat2, ggplot2::aes(x=x,y=y)) + ggplot2::facet_wrap(~ind) +
+            ggplot2::geom_point(data=dat2[dat2$set_name==sets[3],],
+                                ggplot2::aes(fill=set_name,shape=group),
+                                color=point.color,size=set.size[3]) +
+            ggplot2::geom_point(data=dat2[dat2$set_name==sets[2],],
+                                ggplot2::aes(fill=set_name,shape=group),
+                                color=point.color,size=set.size[2]) +
+            ggplot2::geom_point(data=dat2[dat2$set_name==sets[1],],
+                                ggplot2::aes(fill=set_name,shape=group),
+                                color=point.color,size=set.size[1]) +
+            ggplot2::theme_bw() + theme0
 
   }
 
-  pp <- pp + labs(title=main, x=xlab, y=ylab) +
-        scale_shape_manual(values=group.shape,
-                           guide=guide_legend(override.aes=list(size=2.7,fill="white"))) +
-        scale_fill_manual(values=set.color, breaks=names(set.color[index_set]),
-                          guide=guide_legend(override.aes=list(shape=22,size=2.7,label="")))
+  pp <- pp +
+        ggplot2::labs(title=main, x=xlab, y=ylab) +
+        ggplot2::scale_shape_manual(values=group.shape,
+                                    guide=ggplot2::guide_legend(override.aes=list(size=2.7,
+                                                                                  fill="white"))) +
+        ggplot2::scale_fill_manual(values=set.color, breaks=names(set.color[index_set]),
+                                   guide=ggplot2::guide_legend(override.aes=list(shape=22,
+                                                                                 size=2.7,label="")))
 
   if(!flagGp){
-     pp <- pp + guides(shape="none")
+     pp <- pp + ggplot2::guides(shape="none")
   }
 
   pp

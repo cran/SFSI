@@ -1,5 +1,5 @@
 
-\name{3. Covariance matrix transformations}
+\name{2. Covariance matrix transformations}
 \alias{cov2dist}
 \alias{cov2cor2}
 \title{Conversion of a covariance matrix to a distance/correlation matrix}
@@ -70,19 +70,17 @@ Variances are obtained from the diagonal values while covariances are obtained f
   
   # Covariance matrix to distance matrix
   D = cov2dist(A)
-  D[1:5,1:5]
   # (it must equal (but faster) to:)
   D0 = as.matrix(dist(X))
   max(D-D0)
   
   # Covariance to a correlation matrix
   R = cov2cor2(A)
-  R[1:5,1:5]
   # (it must equal (but faster) to:)
   R0 = cov2cor(A)
   max(R-R0)
   
-  # Using void=TRUE
+  # Inplace calculation
   A[1:5,1:5]
   cov2dist(A, inplace=TRUE)
   A[1:5,1:5]  # notice that A was modified

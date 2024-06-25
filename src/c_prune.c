@@ -118,32 +118,31 @@ SEXP R_prune(SEXP X_,
            )
 {
     long long i, j;
-    int flag, nrem, keep, step, selected, ndrop, nin, nout;
-    SEXP list;
+    int flag, keep, selected, ndrop;
 
-    int n=nrows(X_);
-    int p=ncols(X_);
-    int useD=Rf_isNull(pos_) ? 0 : 1;
-    double thr=NUMERIC_VALUE(thr_);
-    double dmax=NUMERIC_VALUE(dmax_);
-    int centered=asLogical(centered_);
-    int scaled=asLogical(scaled_);
-    int verbose=asLogical(verbose_);
+    int n = Rf_nrows(X_);
+    int p = Rf_ncols(X_);
+    int useD = Rf_isNull(pos_) ? 0 : 1;
+    double thr = NUMERIC_VALUE(thr_);
+    double dmax = NUMERIC_VALUE(dmax_);
+    int centered = asLogical(centered_);
+    int scaled = asLogical(scaled_);
+    int verbose = asLogical(verbose_);
 
-    PROTECT(X_=AS_NUMERIC(X_));
-    double *X=NUMERIC_POINTER(X_);
+    PROTECT(X_ = AS_NUMERIC(X_));
+    double *X = NUMERIC_POINTER(X_);
 
-    PROTECT(pos_=AS_NUMERIC(pos_));
-    double *pos=NUMERIC_POINTER(pos_);
+    PROTECT(pos_ = AS_NUMERIC(pos_));
+    double *pos = NUMERIC_POINTER(pos_);
 
     //int *A=(int *) R_alloc(p*p, sizeof(int));
-    bool *A=(bool *) R_alloc(p*p, sizeof(bool));
-    int *pruneIn=(int *) R_alloc(p, sizeof(int));
-    int *pruneOut=(int *) R_alloc(p, sizeof(int));
-    int *remain=(int *) R_alloc(p, sizeof(int));
-    int *remain0=(int *) R_alloc(p, sizeof(int));
-    int *connection=(int *) R_alloc(p, sizeof(int));
-    int *drop=(int *) R_alloc(p, sizeof(int));
+    bool *A = (bool *) R_alloc(p*p, sizeof(bool));
+    int *pruneIn = (int *) R_alloc(p, sizeof(int));
+    int *pruneOut = (int *) R_alloc(p, sizeof(int));
+    int *remain = (int *) R_alloc(p, sizeof(int));
+    int *remain0 = (int *) R_alloc(p, sizeof(int));
+    int *connection = (int *) R_alloc(p, sizeof(int));
+    int *drop = (int *) R_alloc(p, sizeof(int));
 
     // Get connection using the R2
     double factor = 1/((double)n -1);
@@ -159,10 +158,10 @@ SEXP R_prune(SEXP X_,
     get_connection(n, p, X, A, thr, useD, pos, dmax, factor, centered, scaled);
 
     // Set some initial values
-    nrem = p;
-    step = 0;
-    nin = 0;
-    nout = 0;
+    int nrem = p;
+    int step = 0;
+    int nin = 0;
+    int nout = 0;
     for(j=0; j<p; j++){
       remain[j] = j;
       connection[j] = 0;
@@ -204,7 +203,7 @@ SEXP R_prune(SEXP X_,
           //pruneIn[nin++] = remain[keep]+1;
 
           // Check the connections with the selected one to drop
-          ndrop=0;
+          ndrop = 0;
           for(j=0; j<nrem; j++){
             if(A[p*(long long)remain[keep] + (long long)remain[j]]){
                drop[ndrop++] = j;
@@ -262,11 +261,11 @@ SEXP R_prune(SEXP X_,
     memcpy(INTEGER_POINTER(pruneIn_), pruneIn, nin*sizeof(int));
     memcpy(INTEGER_POINTER(pruneOut_), pruneOut, nout*sizeof(int));
 
-    PROTECT(list = allocVector(VECSXP, 2));
-    SET_VECTOR_ELT(list, 0, pruneIn_);
-    SET_VECTOR_ELT(list, 1, pruneOut_);
+    SEXP list_ = PROTECT(Rf_allocVector(VECSXP, 2));
+    SET_VECTOR_ELT(list_, 0, pruneIn_);
+    SET_VECTOR_ELT(list_, 1, pruneOut_);
 
     UNPROTECT(5);
 
-    return(list);
+    return(list_);
 }

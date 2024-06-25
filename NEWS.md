@@ -1,3 +1,14 @@
+### Version 1.4 (Jun-19-2024)
+
+  - Changes in function names: SSI -> SGP,  SSI.CV -> SGP.CV. Results from both functions are of the class "SGP" standing for "sparse genomic prediction"
+  - Training and testing sets in function 'SGP' can now be defined using integer vectors as 'SGP(...,trn, tst)'. In the former version this was defined as 'SSI(..., trn_tst)', where 'trn_tst' was be a vector with 0's (for tst) and 1's (for trn)
+  - In cross-validation, training set is defined as 'SGP.CV(...,trn)'. In the former version this was 'SSI.CV(...,trn_tst)'
+  - Method 'fitted' is replaced by method 'predict'
+  - A multi-trait analysis can be performed using the function 'SGP' with argument 'y' being either a matrix or a vector. In the later case, different genotypes and traits are specified by arguments 'ID_geno' and 'ID_trait', respectively
+  - Likewise, for the 'getGenCov', arguments 'ID_geno' and 'ID_trait' can be also used if argument 'y' is a vector
+  - Likewise, for the within-trait analysis of the function 'fitBLUP', arguments 'ID_geno' and 'ID_trait' can be also used if argument 'y' is a vector
+  - Eigenvalues (d) and eigenvectors (U) in functions 'fitBLUP' and 'getGenCov' can be passed as argument 'EVD' being a list as per the function 'eigen'
+
 ### Version 1.3.1 (Nov-17-2023)
 
   - Old dependencies R-packages were removed

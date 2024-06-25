@@ -26,7 +26,7 @@ double soft_threshold(double z, double penalty);
 
 int imax_integer(int n, int *x);
 
-int all_equal(long long n1, int *set1, long long n2, int *set2);
+//int all_equal(long long n1, int *set1, long long n2, int *set2);
 
 void matrix_vector_product(int nrow,
                            int ncol,
@@ -71,7 +71,8 @@ void update_chol(int n, double *A, int nR, double *R,
                  int k, int *index, double *eps,
                  double *work, int *info);
 
-void invert_matrix(int n, double *A, double *Ainv, double *eps, double *work);
+void invert_matrix(int n, double *A, double *Ainv,
+                   double *eps, double *work, int *info);
 
 void matrix_vector_product_subset(int nrow,
                                  int ncol,

@@ -2,19 +2,17 @@
 \alias{path.plot}
 \title{Coefficients path plot}
 \usage{
-path.plot(object, Z = NULL, K = NULL, 
-          i = NULL, prune = FALSE, cor.max = 0.97, 
+path.plot(object, K = NULL, i = NULL,
+          prune = FALSE, cor.max = 0.97,
           lambda.min = .Machine$double.eps^0.5,
-          nbreaks.x=6, ...)
+          nbreaks.x = 6, npaths.max = 5000, ...)
 }
 \arguments{
-\item{object}{An object of the 'LASSO' or 'SSI' class}
+\item{object}{An object of the 'LASSO' or 'SGP' class}
 
-\item{Z}{(numeric matrix) Design matrix for random effects. When \code{Z=NULL} an identity matrix is considered (default) thus \ifelse{html}{\out{<b>G</b> = <b>K</b>}}{\eqn{\textbf{G = K}}{G = K}}; otherwise \ifelse{html}{\out{<b>G</b> = <b>Z K Z'</b>}}{\eqn{\textbf{G} = \textbf{Z K Z'}}{G = Z K Z'}} is used. Only needed for a \code{fm} object of the class 'SSI'}
+\item{K}{(numeric matrix) Kinship relationships. Only needed for an object of the class 'SGP'}
 
-\item{K}{(numeric matrix) Kinship relationships. This can be a name of a binary file where the matrix is stored. Only needed for a \code{fm} object of the class 'SSI'}
-
-\item{i}{(integer vector) Index a response variable (columns of matrix \code{Gamma}) for an object of the class 'LASSO'. Index testing elements (stored in \code{object$tst}) for an object of the class 'SSI'. Default \code{i=NULL} will consider either all columns in matrix \code{Gamma} or all elements in \code{object$tst}, respectively}
+\item{i}{(integer vector) Index a response variable (columns of matrix \code{Gamma}) for an object of the class 'LASSO'. Index testing elements (stored in \code{object$tst}) for an object of the class 'SGP'. Default \code{i = NULL} will consider either all columns in matrix \code{Gamma} or all elements in \code{object$tst}, respectively}
 
 \item{prune}{\code{TRUE} or \code{FALSE} to whether prune within groups of correlated coefficients, keeping only one per group. A group of coefficients that are highly correlated are likely to overlap in the plot}
 
@@ -24,15 +22,16 @@ path.plot(object, Z = NULL, K = NULL,
 
 \item{nbreaks.x}{(integer) Number of breaks in the x-axis}
 
-\item{...}{Other arguments for method \code{plot}: 'xlab', 'ylab', 'main', 'lwd'
+\item{npaths.max}{(integer) Maximum number of paths defined by the number of predictors times the number of columns of matrix \code{Gamma} for an object of the class 'LASSO'. This correspond to the number of training elements (stored in \code{object$trn}) times the number of testing elements (stored in \code{object$tst}) for an object of the class 'SGP'}
 
+\item{...}{Other arguments for method \code{plot}: 'xlab', 'ylab', 'main', 'lwd'
 }
 }
 \value{
 Returns the plot of the coefficients' evolution path along the regularization parameter
 }
 \description{
-Coefficients evolution path plot from an object of the class 'LASSO' or 'SSI'
+Coefficients evolution path plot from an object of the class 'LASSO' or 'SGP'
 }
 \examples{
   require(SFSI)
@@ -50,15 +49,13 @@ Coefficients evolution path plot from an object of the class 'LASSO' or 'SSI'
   \donttest{
   path.plot(fm)
   }
-  
-  # Sparse family index
-  trn_tst = ifelse(seq_along(y)<11,0,1)
-  fm = SSI(y,K=G,trn_tst=trn_tst)
+  # Sparse Genomic Prediction
+  fm = SGP(y, K=G, trn=12:length(y), tst=1:11)
   \donttest{
   path.plot(fm, prune=TRUE)
   path.plot(fm, K=G, prune=TRUE, cor.max=0.9)
   }
-  # Path plot for the first individual in testing set for the SSI
+  # Path plot for the first individual in testing set for the SGP
   path.plot(fm, K=G, i=1)
 }
 

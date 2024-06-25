@@ -52,10 +52,8 @@ void reduce_matrix(int nrow, int ncol, int irow, int icol, double *M)
 {
   long long j;
   long long offset;
-  long long nnew;
-  //long long pnew;
 
-  nnew = nrow;
+  long long nnew = nrow;
   if(irow > -1){
     nnew = nrow-1;
     offset = nrow-irow-1;
@@ -68,9 +66,8 @@ void reduce_matrix(int nrow, int ncol, int irow, int icol, double *M)
               offset*sizeof(double));
     }
   }
-  //pnew = ncol;
+
   if(icol > -1){
-    //pnew = ncol-1;
     offset = ncol-icol-1;
     if(offset>0){
       memmove(M + nnew*(long long)icol,
@@ -87,14 +84,11 @@ void reduce_matrix(int nrow, int ncol, int irow, int icol, double *M)
 //====================================================================
 void reduce_vector_double(int n, double *v, int k, int *index)
 {
-  int j;
-  int pos;
   int chunk;
-  int flag;
 
-  pos = index[0];
-  j = 0;
-  flag=1;
+  int pos = index[0];
+  int j = 0;
+  int flag = 1;
   while(flag){
     while(((j+1)<k) && ((index[j+1]-index[j])==1)){
       j++;
@@ -104,13 +98,13 @@ void reduce_vector_double(int n, double *v, int k, int *index)
         chunk=index[j+1]-index[j]-1;
       }else{
         chunk=n-index[j]-1;
-        flag=0;
+        flag = 0;
       }
       memmove(v + pos, v + index[j]+1, chunk*sizeof(double));
       pos += chunk;
       j++;
     }else{
-      flag=0;
+      flag = 0;
     }
   }
 }
@@ -192,76 +186,67 @@ SEXP R_lars(SEXP XtX_, SEXP Xty_,
           SEXP filename_,
           SEXP doubleprecision_, SEXP verbose_)
 {
-    double *XtX, *Xty;
-    double *lambda, *sd, *w, *rhs, *Sign, *a;
-    double A, gamhat, zmin;
+    double A, gamhat, zmin, Cmax, value;
     int i, j, k;
-    int *df, *activeignores;
-    int *active, *inactive, *im, *itmp;
-    int info, nsteps, inew, nnew, nR;
-    int inc1=1;
-    int varsize, vartype;
-    double Cmax;
-    double *B;
-    double *covar, *R;
-    double *b, *bout, *z, *tmp;
-    double value;
+    int info, inew, nnew, nR, varsize, vartype;
+    int inc1 = 1;
     float valuefloat;
-    int nprotect=6;
-    FILE *f=NULL;
-    SEXP list, B_=NULL, lambda_=NULL, df_=NULL;
+    int nprotect = 7;
+    FILE *f = NULL;
 
-    int p=Rf_length(Xty_);
-    int dfmax=INTEGER_VALUE(dfmax_);
-    int verbose=asLogical(verbose_);
-    int scale=asLogical(scale_);
-    int isLASSO=asLogical(isLASSO_);
-    double eps=NUMERIC_VALUE(eps_);
-    int doubleprecision=asLogical(doubleprecision_);
-    int save=!Rf_isNull(filename_);
+    int p = Rf_length(Xty_);
+    int dfmax = INTEGER_VALUE(dfmax_);
+    int verbose = asLogical(verbose_);
+    int scale = asLogical(scale_);
+    int isLASSO = asLogical(isLASSO_);
+    double eps = NUMERIC_VALUE(eps_);
+    int doubleprecision = asLogical(doubleprecision_);
+    int save = !Rf_isNull(filename_);
 
-    PROTECT(XtX_=AS_NUMERIC(XtX_));
-    XtX=NUMERIC_POINTER(XtX_);
+    PROTECT(XtX_ = AS_NUMERIC(XtX_));
+    double *XtX = NUMERIC_POINTER(XtX_);
 
-    PROTECT(Xty_=AS_NUMERIC(Xty_));
-    Xty=NUMERIC_POINTER(Xty_);
+    PROTECT(Xty_ = AS_NUMERIC(Xty_));
+    double *Xty = NUMERIC_POINTER(Xty_);
 
-    PROTECT(sd_=AS_NUMERIC(sd_));
-    sd=NUMERIC_POINTER(sd_);
+    PROTECT(sd_ = AS_NUMERIC(sd_));
+    double *sd = NUMERIC_POINTER(sd_);
 
-    nsteps = 1.25*dfmax;
+    int nsteps = 1.25*dfmax;
 
-    lambda=(double *) R_Calloc(nsteps, double);
-    df=(int *) R_Calloc(nsteps, int);
+    double *lambda = (double *) R_Calloc(nsteps, double);
+    int *df = (int *) R_Calloc(nsteps, int);
 
     // Allocate memory for B. Allocated memory is set to zero (as in calloc)
+    double *B = (double *) R_Calloc(0, double);
     if(save){
       varsize = doubleprecision ? sizeof(double) : sizeof(float);
       vartype = 3;
-      f=fopen(CHAR(STRING_ELT(filename_,0)),"wb");
+      f = fopen(CHAR(STRING_ELT(filename_,0)),"wb");
       fwrite(&p, sizeof(int), 1, f);
       fwrite(&nsteps, sizeof(int), 1, f);
       fwrite(&vartype, sizeof(int), 1, f);
       fwrite(&varsize, sizeof(int), 1, f);
     }else{
-      B = (double *) R_Calloc(p*nsteps, double);
+      //B = (double *) R_Calloc(p*nsteps, double);
+      B = R_Realloc(B, p*nsteps, double);
     }
 
-    rhs=(double *) R_alloc(p, sizeof(double));
-    im=(int *) R_alloc(p, sizeof(int));
-    covar=(double *) R_alloc(p, sizeof(double));
-    a=(double *) R_alloc(p, sizeof(double));
-    Sign=(double *) R_alloc(p, sizeof(double));
-    inactive=(int *) R_alloc(p, sizeof(int));
-    active=(int *) R_alloc(p, sizeof(int));
-    activeignores=(int *) R_alloc(p, sizeof(int));
-    w =(double *) R_alloc(p, sizeof(double));
-    z=(double *) R_alloc(p, sizeof(double));
-    b=(double *) R_alloc(p, sizeof(double));
-    bout=(double *) R_alloc(p, sizeof(double));  // Output
-    R =(double *) R_alloc(p*p, sizeof(double));
-    itmp=(int *) R_Calloc(0, int);
-    tmp=(double *) R_alloc(p, sizeof(double));
+    double *rhs = (double *) R_alloc(p, sizeof(double));
+    int *im = (int *) R_alloc(p, sizeof(int));
+    double *covar = (double *) R_alloc(p, sizeof(double));
+    double *a = (double *) R_alloc(p, sizeof(double));
+    double *Sign = (double *) R_alloc(p, sizeof(double));
+    int *inactive = (int *) R_alloc(p, sizeof(int));
+    int *active = (int *) R_alloc(p, sizeof(int));
+    int *activeignores = (int *) R_alloc(p, sizeof(int));
+    double *w = (double *) R_alloc(p, sizeof(double));
+    double *z = (double *) R_alloc(p, sizeof(double));
+    double *b = (double *) R_alloc(p, sizeof(double));
+    double *bout = (double *) R_alloc(p, sizeof(double));  // Output
+    double *R = (double *) R_alloc(p*p, sizeof(double));
+    int *itmp = (int *) R_Calloc(0, int);
+    double *tmp = (double *) R_alloc(p, sizeof(double));
 
     memset(b, 0, p*sizeof(double));        // Initialize all coefficients to zero
     memset(df, 0, nsteps*sizeof(int));
@@ -298,9 +283,9 @@ SEXP R_lars(SEXP XtX_, SEXP Xty_,
     while(nactive<dfmax && nactive<(p-nignores))
     {
       subset_vector_double(rhs, covar, ninactive, inactive);
-      ncovar=ninactive;
+      ncovar = ninactive;
 
-      Cmax=fabs(covar[F77_NAME(idamax)(&ninactive, covar, &inc1)-1]);
+      Cmax = fabs(covar[F77_NAME(idamax)(&ninactive, covar, &inc1)-1]);
       if(Cmax < eps*100){
         if(verbose){
           Rprintf(" Max absolute correlation is zero. Exiting...\n");
@@ -314,14 +299,14 @@ SEXP R_lars(SEXP XtX_, SEXP Xty_,
         for(i=0; i<ncovar; i++){
           //if(fabs(covar[i]) >= Cmax-eps){
           if(fabs(fabs(covar[i])-Cmax) <= eps){
-            itmp=append_to_vector_integer(nnew++, itmp, 1, &i);
+            itmp = append_to_vector_integer(nnew++, itmp, 1, &i);
           }
         }
         reduce_vector_double(ncovar, covar, nnew, itmp);
         ncovar-=nnew;
 
         for(i=0; i<nnew; i++){
-          inew=inactive[itmp[i]];
+          inew = inactive[itmp[i]];
           append_to_sorted_vector_integer(nactive+nignores, activeignores, 1, &inew);
           update_chol(p, XtX, nactive, R, inew, active, &eps, tmp, &info);
 
@@ -466,7 +451,7 @@ SEXP R_lars(SEXP XtX_, SEXP Xty_,
       }
     }
 
-    if(dfmax<p){ // Get the next max correlation
+    if(dfmax < p){ // Get the next max correlation
       subset_vector_double(rhs, covar, ninactive, inactive);
       lambda[k] = fabs(covar[F77_NAME(idamax)(&ninactive, covar, &inc1)-1]);
     }else{
@@ -474,12 +459,13 @@ SEXP R_lars(SEXP XtX_, SEXP Xty_,
     }
     k++;
 
-    lambda_=PROTECT(Rf_allocVector(REALSXP, k));
+    SEXP lambda_ = PROTECT(Rf_allocVector(REALSXP, k));
     memcpy(NUMERIC_POINTER(lambda_), lambda, k*sizeof(double));
 
-    df_=PROTECT(Rf_allocVector(INTSXP, k));
+    SEXP df_ = PROTECT(Rf_allocVector(INTSXP, k));
     memcpy(INTEGER_POINTER(df_), df, k*sizeof(int));
 
+    SEXP B_ = NULL;
     if(save){
       fseek(f, 4, SEEK_SET); // Save the final number of solutions
       fwrite(&k, 4, 1, f);
@@ -496,13 +482,20 @@ SEXP R_lars(SEXP XtX_, SEXP Xty_,
     R_Free(df);
     R_Free(itmp);
 
-    // Creating a list with 4 vector elements:
-    PROTECT(list = Rf_allocVector(VECSXP, 3));
-    SET_VECTOR_ELT(list, 0, B_);
-    SET_VECTOR_ELT(list, 1, lambda_);
-    SET_VECTOR_ELT(list, 2, df_);
+    // Creating a list with 3 vector elements:
+    SEXP list_ = PROTECT(Rf_allocVector(VECSXP, 3));
+    SET_VECTOR_ELT(list_, 0, B_);
+    SET_VECTOR_ELT(list_, 1, lambda_);
+    SET_VECTOR_ELT(list_, 2, df_);
+
+    // Set dimnames for outputs
+    SEXP names_ = PROTECT(Rf_allocVector(VECSXP, 3));
+    SET_VECTOR_ELT(names_, 0, mkChar("beta"));
+    SET_VECTOR_ELT(names_, 1, mkChar("lambda"));
+    SET_VECTOR_ELT(names_, 2, mkChar("nsup"));
+    setAttrib(list_, R_NamesSymbol, names_);
 
     UNPROTECT(nprotect);
 
-    return(list);
+    return(list_);
 }

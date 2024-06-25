@@ -1,15 +1,14 @@
 
-\name{4. Solve an Elastic-Net problem}
+\name{3. Solve an Elastic-Net problem}
 \alias{solveEN}
 \title{Coordinate Descent algorithm to solve Elastic-Net-type problems}
 \usage{
-solveEN(Sigma, Gamma, alpha = 1, lambda = NULL,
-        nlambda = 100, lambda.min = .Machine$double.eps^0.5,
-        lambda.max = NULL, common.lambda = TRUE, beta0 = NULL,
-        nsup.max = NULL, scale = TRUE, sdx = NULL, tol = 1E-5,
-        maxiter = 1000, mc.cores = 1L, save.at = NULL,
-        precision.format = c("double","single"),
-        fileID = NULL, verbose = FALSE)
+solveEN(Sigma, Gamma, alpha = 1, lambda = NULL, nlambda = 100, 
+        lambda.min = .Machine$double.eps^0.5, lambda.max = NULL,
+        common.lambda = TRUE, beta0 = NULL, nsup.max = NULL, 
+        scale = TRUE, sdx = NULL, tol = 1E-5, maxiter = 1000, 
+        mc.cores = 1L, save.at = NULL, fileID = NULL,
+        precision.format = c("double","single"), verbose = FALSE)
         
 }
 \arguments{
@@ -17,19 +16,19 @@ solveEN(Sigma, Gamma, alpha = 1, lambda = NULL,
 
 \item{Gamma}{(numeric matrix) Covariance between response variable and predictors. If it contains more than one column, the algorithm is applied to each column separately as different response variables}
 
-\item{lambda}{(numeric vector) Penalization parameter sequence. Default is \code{lambda=NULL}, in this case a decreasing grid of
+\item{lambda}{(numeric vector) Penalization parameter sequence. Default is \code{lambda = NULL}, in this case a decreasing grid of
 \code{'nlambda'} lambdas will be generated starting from a maximum equal to
 
 \ifelse{html}{\out{<p style='text-align:center;font-family:courier'>max(abs(Gamma)/alpha)</p>}}{\deqn{\code{max(abs(Gamma)/alpha)}}{max(abs(Gamma)/alpha)}}
 
-to a minimum equal to zero. If \code{alpha=0} the grid is generated starting from a maximum equal to 5}
+to a minimum equal to zero. If \code{alpha = 0} the grid is generated starting from a maximum equal to 5}
 
-\item{nlambda}{(integer) Number of lambdas generated when \code{lambda=NULL}}
+\item{nlambda}{(integer) Number of lambdas generated when \code{lambda = NULL}}
 
-\item{lambda.min, lambda.max}{(numeric) Minimum and maximum value of lambda that are generated when \code{lambda=NULL}}
+\item{lambda.min, lambda.max}{(numeric) Minimum and maximum value of lambda that are generated when \code{lambda = NULL}}
 
 \item{common.lambda}{\code{TRUE} or \code{FALSE} to whether computing the coefficients for a grid of lambdas common to all columns of \code{Gamma}
- or for a grid of lambdas specific to each column of \code{Gamma}. Default is \code{common.lambda=TRUE}}
+ or for a grid of lambdas specific to each column of \code{Gamma}. Default is \code{common.lambda = TRUE}}
  
 \item{beta0}{(numeric vector) Initial value for the regression coefficients that the algorithm will update for \code{maxiter} iterations. If \code{beta0 = NULL} a vector of zeros will be considered. These values will be used as starting values for the first lambda value}
 
@@ -45,13 +44,13 @@ taken from the diagonal of \code{Sigma}}
 \item{maxiter}{(integer) Maximum number of iterations to run the CD algorithm at each lambda step before convergence is reached}
 
 \item{nsup.max}{(integer) Maximum number of non-zero coefficients in the last solution.
-Default \code{nsup.max=NULL} will calculate solutions for the entire lambda grid}
+Default \code{nsup.max = NULL} will calculate solutions for the entire lambda grid}
 
-\item{mc.cores}{(integer) Number of cores used. When \code{mc.cores} > 1, the analysis is run in parallel for each column of \code{Gamma}. Default is \code{mc.cores=1}}
+\item{mc.cores}{(integer) Number of cores used. When \code{mc.cores} > 1, the analysis is run in parallel for each column of \code{Gamma}. Default is \code{mc.cores = 1}}
 
-\item{save.at}{(character) Path where regression coefficients are to be saved (this may include a prefix added to the files). Default \code{save.at=NULL} will no save the regression coefficients and they are returned in the output object}
+\item{save.at}{(character) Path where regression coefficients are to be saved (this may include a prefix added to the files). Default \code{save.at = NULL} will no save the regression coefficients and they are returned in the output object}
 
-\item{fileID}{(character) Suffix added to the file name where regression coefficients are to be saved. Default \code{fileID=NULL} will automatically add sequential integers from 1 to the number of columns of \code{Gamma}}
+\item{fileID}{(character) Suffix added to the file name where regression coefficients are to be saved. Default \code{fileID = NULL} will automatically add sequential integers from 1 to the number of columns of \code{Gamma}}
 
 \item{precision.format}{(character) Either 'single' or 'double' for numeric precision and memory occupancy (4 or 8 bytes, respectively) of the regression coefficients. This is only used when \code{save.at} is not \code{NULL}}
 
@@ -77,9 +76,9 @@ Finds solutions for the regression coefficients in a linear model
 
 where
 \ifelse{html}{\out{y<sub>i</sub>}}{\eqn{y_i}{y_i}} is the response for the \ifelse{html}{\out{i<sup>th</sup>}}{\eqn{i^{th}}{i^th}} observation,
-\ifelse{html}{\out{<b>x</b><sub>i</sub>=(x<sub>i1</sub>,...,x<sub>ip</sub>)'}}{\eqn{\textbf{x}_i=(x_{i1},...,x_{ip})'}{x_i=(x_i1,...,x_ip)'}}
+\ifelse{html}{\out{<b>x</b><sub>i</sub> = (x<sub>i1</sub>,...,x<sub>ip</sub>)'}}{\eqn{\textbf{x}_i=(x_{i1},...,x_{ip})'}{x_i=(x_i1,...,x_ip)'}}
 is a vector of \eqn{p}{p} predictors assumed to have unit variance,
-\ifelse{html}{\out{<b>&beta;</b>=(&beta;<sub>1</sub>,...,&beta;<sub>p</sub>)'}}{\eqn{\boldsymbol{\beta}=(\beta_1,...,\beta_p)'}{beta=(beta[1],...,beta[p])'}}
+\ifelse{html}{\out{<b>&beta;</b> = (&beta;<sub>1</sub>,...,&beta;<sub>p</sub>)'}}{\eqn{\boldsymbol{\beta}=(\beta_1,...,\beta_p)'}{beta=(beta[1],...,beta[p])'}}
 is a vector of regression coefficients, and
 \ifelse{html}{\out{e<sub>i</sub>}}{\eqn{e_i}{e_i}}
 is a residual.
@@ -147,23 +146,19 @@ by "soft-thresholding" their OLS estimate until convergence as fully described i
   # Run the penalized regression
   fm = solveEN(XtX,Xty,alpha=0.5,nlambda=100) 
   
+  # Regression coefficients
+  dim(coef(fm))
+  dim(coef(fm, ilambda=50)) # Coefficients associated to the 50th lambda
+  dim(coef(fm, nsup=25))    # Coefficients with around nsup=25 are non-zero
+
   # Predicted values
-  yHat1 = fitted(fm, X=X[trn,])  # training data
-  yHat2 = fitted(fm, X=X[tst,])  # testing data
+  yHat1 = predict(fm, X=X[trn,])  # training data
+  yHat2 = predict(fm, X=X[tst,])  # testing data
   
   # Penalization vs correlation
   plot(-log(fm$lambda[-1]),cor(y[trn],yHat1[,-1]), main="training", type="l")
   plot(-log(fm$lambda[-1]),cor(y[tst],yHat2[,-1]), main="testing", type="l")
-
 }
 \references{
 Friedman J, Hastie T, Höfling H, Tibshirani R (2007). Pathwise coordinate optimization. \emph{The Annals of Applied Statistics}, \bold{1}(2), 302–332.
-
-Hoerl AE, Kennard RW (1970). Ridge Regression: Biased estimation for nonorthogonal problems. \emph{Technometrics}, \bold{12}(1), 55–67.
-
-Tibshirani R (1996). Regression shrinkage and selection via the LASSO. \emph{Journal of the Royal Statistical Society B}, \bold{58}(1), 267–288.
-
-Zou H, Hastie T (2005). Regularization and variable selection via the elastic net. \emph{Journal of the Royal Statistical Society B}, \bold{67}(2), 301–320.
 }
-
-\keyword{solveEN}

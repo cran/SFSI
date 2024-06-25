@@ -1,116 +1,159 @@
 #====================================================================
 #====================================================================
-# x.stat="nsup"; y.stat="accuracy"; nbreaks.x = 7; line.color="orange"
-multitrait.plot <- function(object, x.stat = c("nsup","lambda"),
-                            y.stat = c("accuracy","MSE"),
-                            line.color = "orange",
-                            nbreaks.x = 7, ...)
+# x.stat=label="nsup"; y.stat="accuracy"; nbreaks.x = 7; line.color="orange"; point.size = 1.2
+multitrait.plot <- function(object, trait_names = NULL,
+                            x.stat = c("nsup","lambda"),
+                            y.stat = c("accuracy","MSE"), label = x.stat,
+                            line.color = "orange", point.color = line.color,
+                            point.size = 1.2, nbreaks.x = 6, ...)
 {
-    x <- y <- nsupmin <- nsupmax <- nsup_trait <- label <- x1 <- NULL
-    args0 <- list(...)
     x.stat <- match.arg(x.stat)
     y.stat <- match.arg(y.stat)
+    if(!is.null(label)){
+      label <- match.arg(label, choices=c("nsup","lambda"))
+    }
+    x <- nsupmin <- nsupmax <- nsup_trait <- x1 <- NULL
+    args0 <- list(...)
 
-    if(!inherits(object, "SSI")){
-      stop("Input 'object' is not of the class 'SSI'")
+    if(!inherits(object, "SGP")){
+      stop("Input 'object' is not of the class 'SGP'")
     }
     if(length(args0) > 0L){
-      tmp <- unlist(lapply(args0, function(x)inherits(x, "SSI")))
+      tmp <- unlist(lapply(args0, function(x)inherits(x, "SGP")))
       if(sum(tmp)>0){
-        message(" More than one 'SSI' class objects were provided. Only the first one is plotted")
+        message("More than one 'SGP' class objects were provided. Only the first one is plotted")
       }
     }
 
-    xlab <- ifelse(x.stat=="nsup","Support set size",expression(paste("-log(",lambda,")")))
+    xlab <- ifelse(x.stat=="nsup",expression("Support set size ("*n[sup]*")"),
+                   expression("-log("*lambda*")"))
     ylab <- capitalize(y.stat)
     ylab2 <- "Proportion of support set"
+    alpha <- ifelse("alpha" %in% names(args0), args0$alpha, 0.25)
     lwd <- ifelse("lwd" %in% names(args0), args0$lwd, 0.65)
     if("xlab" %in% names(args0)) xlab <- args0$xlab
     if("ylab" %in% names(args0)) ylab <- args0$ylab
     if("ylab2" %in% names(args0)) ylab2 <- args0$ylab2
+    pch <- c(19,19)
+    if("pch" %in% names(args0)) pch <- args0$pch
+    if(length(pch)==1) pch <- c(pch[1],pch[1])
+    pch <- lapply(1:length(pch),function(k){
+      suppressWarnings(ifelse(is.na(as.numeric(pch[k])),pch[k],as.numeric(pch[k])))
+    })
+    if(length(point.size)==1) point.size <- c(point.size[1],point.size[1])
+    if(length(point.color)==1) point.color <- c(point.color[1],point.color[1])
 
-    ntraits <- object$ntraits
-    if(ntraits == 1L){
-      stop("Input 'object' is not from a Multi-trait SSI")
+    isCV <- as.logical("SGP.CV" %in% attr(object,"type"))
+    if("y" %in% names(args0)){
+      y <- as.vector(args0$y)
+    }else{
+      y <- NULL
     }
-    nTRN <- length(object$trn)
-    nTST <- length(object$tst)
-    isCV <- length(object$CV) > 0
-    isTRN_TST <- ifelse(length(object$trn)==length(object$tst),
-                        all(object$trn==object$tst), FALSE)
+    if(!"summary" %in% attr(object,"type")){
+      if(isCV){
+        object <- summary.SGP(object)
+      }else{
+        if(is.null(object$yHat)){
+          object <- summary.SGP(object, y=y)
+        }else{
+          object <- summary.SGP(object)
+        }
+      }
+    }
+
+    if(is.null(trait_names)){
+      if(is.null(object$trait_names)){
+        trait_names <- paste0("Trait ",seq(object$ntraits))
+      }else{
+        trait_names <- object$trait_names
+      }
+    }else{
+      stopifnot(length(trait_names) == object$ntraits)
+    }
+    names(trait_names) <- seq(object$ntraits)
+    if(object$ntraits == 1L){
+      stop("Input 'object' is not from a multi-trait SGP")
+    }
+    nTRN <- as.vector(object$nTRN[1]) #length(object$trn)
+    nTST <- as.vector(object$nTST[1]) #length(object$tst)
 
     if(isCV){
-      main <- bquote("SSI CV ("*n[trn]==.(nTRN[1])*")")
+      main <- bquote("SGP CV ("*n[TRN]==.(nTRN[1])*")")
     }else{
-      if(isTRN_TST[1]){
-        main <- bquote("SSI ("*n[trn]==.(nTST[1])*")")
-      }else{
-        main <- bquote("SSI ("*n[tst]==.(nTST[1])*")")
-      }
+      main <- bquote("SGP ("*n[TST]==.(nTST[1])*")")
     }
     if("main" %in% names(args0)) main <- args0$main
 
-    tmp <- ifelse(isCV,'trn',ifelse(isTRN_TST[1],'trn','tst'))
-    facet_lab <- paste0("' * ' (' * n[",tmp,"] * ' = ' * ")
-    theme0 <- theme(
-      panel.grid.minor = element_blank(),
-      panel.grid.major = element_blank(),
-      plot.title = element_text(hjust=0.5),
-      legend.background = element_rect(fill="gray95"),
-      legend.key.size = unit(0.75, "lines"),
-      legend.text = element_text(size=8),
-      legend.justification = c(0,1), #ifelse(tolower(y.stat)=="mse",1,0)),
-      legend.position="right",#c(0.99,ifelse(tolower(y.stat)=="mse",0.99,0.01)),
-      legend.title = element_blank(),
-      legend.margin = margin(t=-0.2,r=0.2,b=0.2,l=0.2, unit='lines'),
-      legend.box.margin = margin(l=-10),
-      strip.text.x = element_text(size=8.5, margin=margin(t=1.5,b=1.5)),
-      axis.title.y.right = element_text(vjust = 1.6)
-    )
+    if("legend.position" %in% names(args0)){
+      legend.position <- args0[['legend.position']]
+      stopifnot(length(legend.position)==2)
+    }else{
+      legend.position <- c(0.99,ifelse(tolower(y.stat)=="mse",0.99,0.01))
+    }
 
-    eps <- .Machine$double.eps
-    dat <- data.frame(matrix(nrow=0,ncol=8))
+    facet_lab <- paste0(" * ' (' * n[",ifelse(isCV,'TRN','TST'),"] * ' = ' * ")
+    theme0 <- mytheme()
+    theme0$legend.justification <- c(1,ifelse(tolower(y.stat)=="mse",1,0))
+    theme0$legend.position <- legend.position
+    theme0$legend.box.margin <- ggplot2::margin(l=-10)
+
+    eps <- .Machine$double.eps^0.5
     nlambda <- object$nlambda
-    ss <- summary.SSI(object)
 
     # Get count of support set by trait
-    names_nsup <- paste0("nsup_",1:ntraits)
-    dat1 <- ss$nsup_trait
-    dat1$nsup <- apply(dat1[,names_nsup],1,sum)
-    dat1[,names_nsup] <- dat1[,names_nsup]/dat1$nsup
+    names_nsup <- paste0("nsup_",seq(object$ntraits))
+    dat0 <- object$nsup_trait
+    dat0$nsup <- apply(dat0[,names_nsup],1,sum)
+    dat0[,names_nsup] <- dat0[,names_nsup]/dat0$nsup
+    if(isCV){
+      dat0 <- dat0[as.character(dat0$trait) %in% names(object$nTRN[object$nTRN>0]),]
+    }else{
+      dat0 <- dat0[as.character(dat0$trait) %in% names(object$nTST[object$nTST>0]),]
+    }
 
     # Data to plot
-    if(nlambda > 1L & !is.null(ss$accuracy) & !is.null(ss$MSE))
+    dat <- dat_across <- data.frame(matrix(nrow=0,ncol=7))
+    if(nlambda > 1L & !is.null(object$accuracy) & !is.null(object$MSE))
     {
-      tt <- reshape2::melt(ss$lambda)
+      traits0 <- colnames(object$lambda)
+      tt <- reshape2::melt(object$lambda)
       colnames(tt) <- c("SSI","trait","lambda")
       tt$x <- -log(tt$lambda)
-      tmp <- ss[[which(tolower(names(ss)) == tolower(y.stat))]]
+      tmp <- object[[which(tolower(names(object)) == tolower(y.stat))]]
       tt$y <- reshape2::melt(tmp)$value
-      tt$nsup <- reshape2::melt(ss$nsup)$value
-      tt <- tt[as.character(tt$trait) != "Across",]
-
-      if(any(tt$lambda < eps)){
-        tmp <- tt$lambda[tt$lambda >= eps]
-        tt[tt$lambda < eps,'lambda'] <- ifelse(length(tmp)>0,min(tmp)/10,1E-6)
-      }
-
+      tt$nsup <- reshape2::melt(object$nsup)$value
       if(isCV){
-        tt$n0 <- ss$nTRN[as.character(tt$trait)]
+        tt <- tt[as.character(tt$trait) %in% names(object$nTRN[object$nTRN>0]),]
+        tt$n <- object$nTRN[as.character(tt$trait)]
       }else{
-        tt$n0 <- ss$nTST[as.character(tt$trait)]
+        tt <- tt[as.character(tt$trait) %in% names(object$nTST[object$nTST>0]),]
+        tt$n <- object$nTST[as.character(tt$trait)]
       }
+
+      if(length(which(tt$lambda < eps))>0){
+        tmp <- tt$lambda[which(tt$lambda >= eps)]
+        tt[which(tt$lambda < eps),'lambda'] <- ifelse(length(tmp)>0,min(tmp),eps)
+      }
+
+      tt0 <- tt[as.character(tt$trait) == "overall",]
+      tt <- tt[as.character(tt$trait) != "overall",]
+
+      dat_across <- data.frame(tt0,stringsAsFactors=FALSE)
       dat <- data.frame(tt,stringsAsFactors=FALSE)
     }
-    stopifnot(paste(dat1$SSI,dat1$trait) == paste(dat$SSI,dat$trait))
-    dat <- data.frame(dat, dat1[,names_nsup])
+    stopifnot(paste(dat0$SSI,dat0$trait) == paste(dat$SSI,dat$trait))
+    dat <- data.frame(dat, dat0[,names_nsup])
+    dat$trait <- factor(as.character(dat$trait))
 
     if(nrow(dat) == 0){
        stop("The plot can not be generated with the provided data")
     }
-
     dat <- dat[!is.na(dat$y),]   # Remove NA values
-    dat$trait2 <- factor(paste0("'Trait ",as.character(dat$trait), facet_lab, dat$n0,"L * ')'"))
+
+    n0 <- as.vector(unlist(lapply(split(dat,dat$trait),function(x)x$n[1])))
+    levels_trait <- paste0("'",trait_names[levels(dat$trait)],"'", facet_lab, n0,"L * ')'")
+    dat$trait2 <- paste0("'",trait_names[as.character(dat$trait)],"'", facet_lab, dat$n,"L * ')'")
+    dat$trait2 <- factor(as.character(dat$trait2), levels=levels_trait)
 
     if("ylim" %in% names(args0)){
        ylim <- args0$ylim
@@ -118,33 +161,33 @@ multitrait.plot <- function(object, x.stat = c("nsup","lambda"),
        ylim <- c(NA, NA)
     }
 
-    if(x.stat=="nsup")
+    dd <- rep(NA,length(levels_trait))
+    if(x.stat == "nsup")
     {
       xd <- 5
-      levels0 <- levels(dat$trait2)
       breaksx <- labelsx <- index <- x2 <- c()
       maxx <- 0
-      for(k in 1:length(levels0))
+      if("xlim" %in% names(args0)){
+         xlim <- args0$xlim
+      }else{
+         xlim <- c(1,max(dat$nsup, na.rm=TRUE))
+      }
+      for(k in 1:length(levels_trait))
       {
-        index0 <- which(as.character(dat$trait2) == levels0[k])
-        dat0 <- dat[index0,]
-        if("xlim" %in% names(args0)){
-           xlim <- args0$xlim
-        }else{
-           xlim <- c(1,max(dat0$nsup, na.rm=TRUE))
-        }
+        index0 <- which(as.character(dat$trait2) == levels_trait[k])
+        dt <- dat[index0,]
 
-        tmp <- dat0$nsup >= xlim[1] & dat0$nsup <= xlim[2]
+        tmp <- dt$nsup >= xlim[1] & dt$nsup <= xlim[2]
         index0 <- index0[tmp]
-        dat0 <- dat0[tmp,]
+        dt <- dt[tmp,]
 
         # Labels and breaks for the nsup axis
-        breaks0 <- get_breaks(x=dat0$x, y=dat0$nsup, nbreaks.x=nbreaks.x, ymin=xlim[1])
+        breaks0 <- get_breaks(x=dt$x, y=dt$nsup, nbreaks.x=nbreaks.x, ymin=xlim[1])
 
-        dd <- maxx + (k-1)*xd
-        maxx <- maxx + max(dat0$x)
-        x2 <- c(x2, dd + dat0$x)
-        breaksx <- c(breaksx, dd + breaks0$breaks.x)
+        dd[k] <- maxx + (k-1)*xd
+        maxx <- maxx + max(dt$x)
+        x2 <- c(x2, dd[k] + dt$x)
+        breaksx <- c(breaksx, dd[k] + breaks0$breaks.x)
         labelsx <- c(labelsx, breaks0$breaks.y)
         index <- c(index, index0)
       }
@@ -162,72 +205,98 @@ multitrait.plot <- function(object, x.stat = c("nsup","lambda"),
       dat <- dat[dat$x >= xlim[1] & dat$x <= xlim[2],]
     }
 
+    # New data sets by trait
+    dat_split <- split(dat, dat$trait2)
 
-    tmp <- split(dat, dat$trait2)
-    # Data for optimum SSI
-    dat2 <- do.call(rbind,lapply(tmp,function(x){
-      x[ifelse(tolower(y.stat)=="mse",which.min(x$y),which.max(x$y)),]
+    # Data for optimum SSI and smaller lambda (maybe GBLUP)
+    dat1 <- do.call(rbind,lapply(dat_split,function(dt){
+      dt[ifelse(tolower(y.stat)=="mse",which.min(dt$y),which.max(dt$y)),]
+    }))
+    dat2 <- do.call(rbind,lapply(dat_split,function(dt){
+      dt[which.min(dt$lambda),]
     }))
 
     ylim2 <- c(0,1)
     # Data for areas
     names0 <- colnames(dat)[!colnames(dat)%in%names_nsup]
-    dat3 <- do.call(rbind,lapply(tmp,function(x){
-      ylim1 <- range(x$y)
+    dat3 <- do.call(rbind,lapply(dat_split,function(dt){
+      ylim1 <- range(dt$y)
       b <- diff(ylim1)/diff(ylim2)
       a <- ylim1[1] - b*ylim2[1]
-      tt <- b*as.matrix(x[,names_nsup])
-      x2 <- c()
-      for(i in 1:nrow(x)){
+      tt <- b*as.matrix(dt[,names_nsup])
+      dt2 <- c()
+      for(i in 1:nrow(dt)){
         cc0 <- a + c(0,cumsum(tt[i,]))
         cc1 <- cbind(nsupmin=cc0[1:length(names_nsup)],nsupmax=cc0[-1])
-        x2 <- rbind(x2, data.frame(x[rep(i,length(names_nsup)),names0],
-                                   nsup_trait=names_nsup,cc1))
+        dt2 <- rbind(dt2, data.frame(dt[rep(i,length(names_nsup)),names0],
+                                     nsup_trait=names_nsup,cc1))
       }
-      rownames(x2) <- NULL
-      x2
+      rownames(dt2) <- NULL
+      dt2
     }))
-    dat3$nsup_trait <- gsub("nsup_","Trait ",dat3$nsup_trait)
+    dat3$nsup_trait <- as.vector(trait_names[gsub("nsup_","",dat3$nsup_trait)])
 
-    expand.x <- 0.025
-    breaksy2 <- seq(0,1,length=ntraits+1)
-    dat4 <- do.call(rbind,lapply(tmp,function(x){
-      xlim <- range(x$x)
-      ylim1 <- range(x$y)
-      b <- diff(ylim1)/diff(ylim2)
-      a <- ylim1[1] - b*ylim2[1]
-      data.frame(x[1,c("trait","trait2"),drop=T],x=xlim[2],
-                 x1=xlim[2] + 1*expand.x*diff(xlim),
-                 x2=xlim[2] + 1*expand.x*diff(xlim),
-                 y=a + b*breaksy2, label=sprintf('%.2f',breaksy2))
+    expand.x <- c(0.02,0.015)
+    breaksy2 <- seq(0,1,length=object$ntraits+1)
+    # Data for 'prop of support set'
+    dat4 <- do.call(rbind,lapply(dat_split,function(dt){
+        xlim <- range(dt$x)
+        ylim1 <- range(dt$y)
+        b <- diff(ylim1)/diff(ylim2)
+        a <- ylim1[1] - b*ylim2[1]
+        data.frame(dt[1,c("trait","trait2"),drop=T],x=xlim[2],
+                   x1=xlim[2] + 0*expand.x[2]*diff(xlim),
+                   x2=xlim[2] + 1*expand.x[2]*diff(xlim),
+                   y=a + b*breaksy2, label=sprintf('%.2f',breaksy2))
     }))
-    rownames(dat2) <- rownames(dat3) <- rownames(dat4) <- NULL
-
-    pp <- ggplot(dat, aes(x=x,y=y)) +
-          geom_ribbon(data=dat3, aes(ymin=nsupmin,ymax=nsupmax,fill=nsup_trait),
-                     color="white", size=0.2, alpha=0.25) +
-          geom_text(data=dat4, aes(label=label), size=2.5, hjust=1.0) +
-          geom_rect(data=dat4, aes(xmin=x1, xmax=Inf, ymin=y, ymax=y),
-                    fill=NA, color="black") +
+    rownames(dat1)<-rownames(dat2)<-rownames(dat3)<-rownames(dat4) <- NULL
+    scaleFUN <- function(x) sprintf('%.2f', x)
+    thrcol <- "gray50"
+    pp <- ggplot2::ggplot(dat, ggplot2::aes(x=x,y=y)) +
+          ggplot2::geom_ribbon(data=dat3, ggplot2::aes(ymin=nsupmin,ymax=nsupmax,fill=nsup_trait),
+                               color="white", linewidth=0.2, alpha=alpha) +
+          ggplot2::geom_hline(data=dat2, ggplot2::aes(yintercept=y),
+                              linewidth=0.5, linetype="dotted", color=thrcol) +
+          ggplot2::geom_line(linewidth=lwd, color=line.color) +
+          ggplot2::geom_point(data=dat1, ggplot2::aes(x=x), shape=pch[[1]],
+                              color=point.color[1], size=point.size[1]) +
+          ggplot2::geom_vline(data=dat1, ggplot2::aes(xintercept=x),
+                              linewidth=0.5, linetype="dotted", color=thrcol) +
+          ggplot2::geom_point(data=dat2, ggplot2::aes(x=x), shape=pch[[2]],
+                              color=point.color[2], size=point.size[2]) +
+          ggplot2::geom_text(data=dat4, ggplot2::aes(label=label), size=2.6,
+                             hjust=1.2, color="gray20") +
+          ggplot2::geom_rect(data=dat4, ggplot2::aes(xmin=x1, xmax=Inf, ymin=y, ymax=y),
+                             fill=NA, color="gray20") +
           #coord_cartesian(clip = 'off') +
-          geom_line(size=lwd, color=line.color) +
-          labs(title=main, x=xlab, y=ylab) +
-          theme_bw() + theme0 +
-          geom_vline(data=dat2, aes(xintercept=x),
-                      size=0.5,linetype="dotted",color="gray50") +
-          facet_wrap(~trait2, scales="free", labeller=label_parsed) +
-          scale_y_continuous(limits=ylim, expand=expansion(mult=c(0.03)),
-                             sec.axis=sec_axis(~., ylab2, breaks=NULL)) +
-          guides(fill = guide_legend(override.aes = list(alpha=0.5)))
+          ggplot2::labs(title=main, x=xlab, y=ylab) + ggplot2::theme_bw() + theme0 +
+          ggplot2::facet_wrap(~trait2, scales="free", labeller=ggplot2::label_parsed) +
+          ggplot2::scale_y_continuous(labels=scaleFUN, limits=ylim,
+                             expand=ggplot2::expansion(mult=c(0.02)),
+                             sec.axis=ggplot2::sec_axis(~., ylab2, breaks=NULL)) +
+          ggplot2::guides(fill = ggplot2::guide_legend(override.aes = list(alpha=0.5)))
 
-    if(x.stat=="nsup"){
+    if(!is.null(label)){
+      dat1$label <- unlist(lapply(1:nrow(dat1),function(i){
+        if(label == "nsup"){
+          bquote(n[sup]==.(round(dat1$nsup[i])))
+        }else{
+          bquote(lambda==.(sprintf('%.6f',dat1$lambda[i])))
+        }
+      }))
+
+      pp <- pp + ggplot2::geom_text(data=dat1, ggplot2::aes(x=x,y=-Inf,label=label), angle=90, parse=TRUE,
+                           vjust=-0.25, hjust=-0.25, size=2.6, color="gray20")
+    }
+
+    if(x.stat == "nsup"){
        pp <- pp +
-             scale_x_continuous(breaks=breaksx, labels=round(labelsx),
-                                expand=expansion(mult=expand.x))
+             ggplot2::scale_x_continuous(breaks=breaksx, labels=round(labelsx),
+                                         expand=ggplot2::expansion(mult=expand.x))
     }else{
        pp <- pp +
-             scale_x_continuous(breaks=scales::extended_breaks(n=nbreaks.x),
-                                limits=xlim,expand=expansion(mult=expand.x))
+             ggplot2::scale_x_continuous(breaks=scales::extended_breaks(n=nbreaks.x),
+                                         limits=xlim,expand=ggplot2::expansion(mult=expand.x))
     }
 
     return(pp)

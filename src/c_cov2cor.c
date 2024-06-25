@@ -14,13 +14,13 @@ SEXP R_cov2cor(SEXP n_, SEXP a_, SEXP A_)
     long long i, j;
     int nOK = 0;
 
-    int n=INTEGER_VALUE(n_);
-    double a=NUMERIC_VALUE(a_);
+    int n = INTEGER_VALUE(n_);
+    double a = NUMERIC_VALUE(a_);
 
     double *sd = (double *) R_alloc(n, sizeof(double)); // Standard deviation (diagonal values)
 
-    PROTECT(A_=AS_NUMERIC(A_));
-    double *A=NUMERIC_POINTER(A_);
+    PROTECT(A_ = AS_NUMERIC(A_));
+    double *A = NUMERIC_POINTER(A_);
 
     for(j=0; j<n; j++){
       sd[j] = sqrt(A[n*j + j]);
