@@ -9,7 +9,7 @@ plot.net <- function(x, i = NULL, show.names = FALSE,
                      set.color = NULL, set.size = NULL,
                      axis.labels = TRUE, curve = FALSE,
                      bg.color = "white", unified = TRUE, ni = 36,
-                     line.color = "gray70", line.tick = 0.3,
+                     line.color = "gray70", line.width = 0.3,
                      legend.pos = "right", point.color = "gray20",
                      sets = c("Testing","Supporting","Non-active"),
                      circle = FALSE, ...)
@@ -138,18 +138,17 @@ plot.net <- function(x, i = NULL, show.names = FALSE,
     stop("'set.size' and 'set.color' should be vectors with length ",length(sets))
   }
 
-  theme0 <- mytheme()
-  theme0$legend.justification <- c(justx,justy)
-  theme0$legend.position <- legend.pos
-  theme0$legend.key.height <- ggplot2::unit(0.9, "lines")
-  theme0$legend.key.width <- ggplot2::unit(0.9, "lines")
-  theme0$strip.text.x <- ggplot2::element_blank()
-  theme0$panel.spacing <- ggplot2::unit(0.1,"lines")
+  theme0 <- mytheme() + ggplot2::theme(legend.justification = c(justx,justy),
+                                       legend.position = legend.pos,
+                                       legend.key.height = ggplot2::unit(0.9, "lines"),
+                                       legend.key.width = ggplot2::unit(0.9, "lines"),
+                                       strip.text.x = ggplot2::element_blank(),
+                                       panel.spacing = ggplot2::unit(0.1,"lines"))
 
   main <- NULL
   if("main" %in% names(args0)) main <- args0$main
   if(is.null(main)){
-    theme0$plot.title <- ggplot2::element_blank()
+    theme0 <- theme0 + ggplot2::theme(plot.title = ggplot2::element_blank())
   }
 
   xlab <- axis_labels[1]
@@ -158,15 +157,15 @@ plot.net <- function(x, i = NULL, show.names = FALSE,
   if("ylab" %in% names(args0)) ylab <- args0$ylab
 
   if(is.null(xlab)){
-    theme0$axis.title.x <- ggplot2::element_blank()
+    theme0 <- theme0 + ggplot2::theme(axis.title.x = ggplot2::element_blank())
   }
   if(is.null(ylab)){
-    theme0$axis.title.y <- ggplot2::element_blank()
+    theme0 <- theme0 + ggplot2::theme(axis.title.y = ggplot2::element_blank())
   }
 
   if(!isEigen | !axis.labels){
-    theme0$axis.text <- ggplot2::element_blank()
-    theme0$axis.ticks <- ggplot2::element_blank()
+    theme0 <- theme0 + ggplot2::theme(axis.text = ggplot2::element_blank(),
+                                      axis.ticks = ggplot2::element_blank())
   }
 
   names(group.shape) <- levelsGp
@@ -181,7 +180,6 @@ plot.net <- function(x, i = NULL, show.names = FALSE,
                                      label.padding=ggplot2::unit(0.15,"lines"),
                                      color=point.color, size=set.size[3],
                                      show.legend=FALSE)
-
     }else{
       pp <- pp + ggplot2::geom_point(data=dat[dat$set==3,],
                                      ggplot2::aes(shape=group,fill=set_name),
@@ -201,12 +199,12 @@ plot.net <- function(x, i = NULL, show.names = FALSE,
         if(curve){
           pp <- pp +
                 ggplot2::geom_curve(ggplot2::aes(x=x_TST,y=y_TST,xend=x_TRN,yend=y_TRN),
-                                    data=dat1,alpha=0.4,size=line.tick,
+                                    data=dat1,alpha=0.4,linewidth=line.width,
                                     color=line.color,curvature=0.4)
         }else{
           pp <- pp +
                 ggplot2::geom_segment(ggplot2::aes(x=x_TST,y=y_TST,xend=x_TRN,yend=y_TRN),
-                                      data=dat1,alpha=0.4,size=line.tick,color=line.color)
+                                      data=dat1,alpha=0.4,linewidth=line.width,color=line.color)
         }
       }
     }
@@ -265,7 +263,6 @@ plot.net <- function(x, i = NULL, show.names = FALSE,
       }
 
     }
-
     pp <- pp + ggplot2::theme_bw() + theme0
 
     if(circle){
@@ -313,7 +310,8 @@ plot.net <- function(x, i = NULL, show.names = FALSE,
                                                                                   fill="white"))) +
         ggplot2::scale_fill_manual(values=set.color, breaks=names(set.color[index_set]),
                                    guide=ggplot2::guide_legend(override.aes=list(shape=22,
-                                                                                 size=2.7,label="")))
+                                                                                 size=2.7,
+                                                                                 label="")))
 
   if(!flagGp){
      pp <- pp + ggplot2::guides(shape="none")

@@ -120,14 +120,14 @@ void update_deleted_cols(int p, int k, double *R, int nz, double *z)
   long long i, j;
   long long pos1, pos2;
 
-  double eps = DBL_EPSILON;
+  double zero = DBL_EPSILON;
 
   for(i=k; i<p-1; i++)
   {
     pos1 = p*i + i;
     a = R[pos1];
     b = R[pos1 + 1];
-    if(fabs(b) > eps) //if(b!=0.0f)
+    if(fabs(b) > zero) //if(b!=0.0f)
     {
       // Compute the rotation
        if(fabs(b)>fabs(a)){
@@ -172,23 +172,21 @@ void update_deleted_cols(int p, int k, double *R, int nz, double *z)
 void downdate_chol(int p, int k, double *R, int nz, double *z)
 {
   reduce_matrix(p, p, -1, k, R);
-
   update_deleted_cols(p, k, R, nz, z);
-
   reduce_matrix(p, p-1, p-1, -1, R);
 }
 
 //====================================================================
 
 SEXP R_lars(SEXP XtX_, SEXP Xty_,
-          SEXP eps_, SEXP dfmax_, SEXP scale_,
-          SEXP sd_, SEXP isLASSO_,
-          SEXP filename_,
-          SEXP doubleprecision_, SEXP verbose_)
+            SEXP eps_, SEXP dfmax_, SEXP maxsteps_,
+            SEXP scale_, SEXP sd_, SEXP isLASSO_,
+            SEXP filename_,
+            SEXP doubleprecision_, SEXP verbose_)
 {
-    double A, gamhat, zmin, Cmax, value;
+    double A, gamma, gamma0, zmin, Cmax, value;
     int i, j, k;
-    int info, inew, nnew, nR, varsize, vartype;
+    int info, inew, nnew, varsize, vartype;
     int inc1 = 1;
     float valuefloat;
     int nprotect = 7;
@@ -196,7 +194,8 @@ SEXP R_lars(SEXP XtX_, SEXP Xty_,
 
     int p = Rf_length(Xty_);
     int dfmax = INTEGER_VALUE(dfmax_);
-    int verbose = asLogical(verbose_);
+    int maxsteps = Rf_isNull(maxsteps_) ? INT_MAX : INTEGER_VALUE(maxsteps_);
+    int verbose = INTEGER_VALUE(verbose_);
     int scale = asLogical(scale_);
     int isLASSO = asLogical(isLASSO_);
     double eps = NUMERIC_VALUE(eps_);
@@ -217,7 +216,8 @@ SEXP R_lars(SEXP XtX_, SEXP Xty_,
     double *lambda = (double *) R_Calloc(nsteps, double);
     int *df = (int *) R_Calloc(nsteps, int);
 
-    // Allocate memory for B. Allocated memory is set to zero (as in calloc)
+    //Rprintf("Allocating memory for B ...\n");
+    // Allocated memory is set to zero (as in calloc)
     double *B = (double *) R_Calloc(0, double);
     if(save){
       varsize = doubleprecision ? sizeof(double) : sizeof(float);
@@ -228,30 +228,29 @@ SEXP R_lars(SEXP XtX_, SEXP Xty_,
       fwrite(&vartype, sizeof(int), 1, f);
       fwrite(&varsize, sizeof(int), 1, f);
     }else{
-      //B = (double *) R_Calloc(p*nsteps, double);
       B = R_Realloc(B, p*nsteps, double);
     }
 
-    double *rhs = (double *) R_alloc(p, sizeof(double));
     int *im = (int *) R_alloc(p, sizeof(int));
-    double *covar = (double *) R_alloc(p, sizeof(double));
-    double *a = (double *) R_alloc(p, sizeof(double));
     double *Sign = (double *) R_alloc(p, sizeof(double));
     int *inactive = (int *) R_alloc(p, sizeof(int));
     int *active = (int *) R_alloc(p, sizeof(int));
     int *activeignores = (int *) R_alloc(p, sizeof(int));
-    double *w = (double *) R_alloc(p, sizeof(double));
     double *z = (double *) R_alloc(p, sizeof(double));
     double *b = (double *) R_alloc(p, sizeof(double));
     double *bout = (double *) R_alloc(p, sizeof(double));  // Output
-    double *R = (double *) R_alloc(p*p, sizeof(double));
+    double *R = (double *) R_alloc((long long)p*p, sizeof(double));
     int *itmp = (int *) R_Calloc(0, int);
     double *tmp = (double *) R_alloc(p, sizeof(double));
+    double *covar = (double *) R_alloc(p, sizeof(double));
+    double *a = (double *) R_alloc(p, sizeof(double));
+    double *rhs = (double *) R_alloc(p, sizeof(double));
+    double *w = (double *) R_alloc(p, sizeof(double));
 
     memset(b, 0, p*sizeof(double));        // Initialize all coefficients to zero
     memset(df, 0, nsteps*sizeof(int));
 
-    // Initialize first column of B to zero
+    //Rprintf("Initializing first column of B to zero ...\n");
     if(save){
       if(doubleprecision){
         fwrite(b, varsize, p, f);
@@ -274,16 +273,16 @@ SEXP R_lars(SEXP XtX_, SEXP Xty_,
     F77_NAME(dcopy)(&p, Xty, &inc1, rhs, &inc1); //  rhs <- Xty
     int nactive = 0;
     int ninactive = p;
-    int ncovar = p;
     int nignores = 0;
     int ndrops = 0;
     int extrasteps = (0.01*p)<1 ? 1 : 0.01*p;  // Enlarge by 0.01xp the output's memory
+    double zero = DBL_EPSILON;
 
+    //Rprintf("Starting LARS ...\n");
     k = 0;
-    while(nactive<dfmax && nactive<(p-nignores))
+    while((k<maxsteps) && (nactive<dfmax) && nactive<(p-nignores))
     {
       subset_vector_double(rhs, covar, ninactive, inactive);
-      ncovar = ninactive;
 
       Cmax = fabs(covar[F77_NAME(idamax)(&ninactive, covar, &inc1)-1]);
       if(Cmax < eps*100){
@@ -296,107 +295,120 @@ SEXP R_lars(SEXP XtX_, SEXP Xty_,
 
       if(ndrops == 0){
         nnew = 0;
-        for(i=0; i<ncovar; i++){
+        for(i=0; i<ninactive; i++){
           //if(fabs(covar[i]) >= Cmax-eps){
           if(fabs(fabs(covar[i])-Cmax) <= eps){
             itmp = append_to_vector_integer(nnew++, itmp, 1, &i);
           }
         }
-        reduce_vector_double(ncovar, covar, nnew, itmp);
-        ncovar-=nnew;
+        reduce_vector_double(ninactive, covar, nnew, itmp);
 
+        if(verbose){
+          Rprintf("--------------------------------------------------------------------\n");
+        }
         for(i=0; i<nnew; i++){
           inew = inactive[itmp[i]];
           append_to_sorted_vector_integer(nactive+nignores, activeignores, 1, &inew);
           update_chol(p, XtX, nactive, R, inew, active, &eps, tmp, &info);
 
-          if(info==0){
+          if(info == 0){
             active[nactive] = inew;
             Sign[nactive] = sign(rhs[inew]);
             nactive++;
             if(verbose){
-              Rprintf("--------------------------------------------------------------\n");
-              Rprintf(" Step=%5d Lambda=%1.8f nActive=%5d  IN=%5d\n",k,Cmax,nactive,inew+1);
+              Rprintf(" Step=%5d. lambda=%1.8f. Feature %5d IN\n",k,Cmax,inew+1);
             }
           }else{
-            reduce_matrix(nactive+1, nactive+1, nactive, nactive, R);
+            reduce_matrix(nactive+1, nactive+1, nactive, nactive, R); // R <- R[1:nactive,1:nactive]
             nignores++;
             if(verbose){
-              Rprintf("  Feature %5d is collinear, dropped for good\n",inew+1);
+              Rprintf(" Step=%5d. lambda=%1.8f. Feature %5d DROPPED by collinearity\n",k,Cmax,inew+1);
             }
           }
         }
       }
       memcpy(w, Sign, nactive*sizeof(double));
       backsolvet(nactive, R, w);
-      backsolve(nactive, R, w);
+      backsolve(nactive, R, w);  // Gi1 <- backsolve(R, backsolvet(R, Sign))
 
-      A = 1/sqrt(F77_NAME(ddot)(&nactive, w, &inc1, Sign, &inc1));
-      F77_NAME(dscal)(&nactive, &A, w, &inc1);
+      A = 1/sqrt(F77_NAME(ddot)(&nactive, w, &inc1, Sign, &inc1)); // A <- 1/sqrt(sum(Gi1*Sign))
+      F77_NAME(dscal)(&nactive, &A, w, &inc1);    // w <- A*Gi1
 
       // Get inactive subjects
       memcpy(inactive, im, p*sizeof(int));
       reduce_vector_integer(p, inactive, nactive+nignores, activeignores);
       ninactive = p-nactive-nignores;
 
-      if(nactive >= (p-nignores)){
-        gamhat = Cmax/A;
+      // a <- XtX[,active] %*% w = X'X[,active]w
+      matrix_vector_product_subset(p,p,XtX,w,a,0,NULL,nactive,active,0,tmp);
+
+      if(nactive >= (p-nignores)){  // No more inactive predictors
+        gamma = Cmax/A;
       }else{
         // a <- XtX[-c(active,ignores),active] %*% w
-        matrix_vector_product_subset(p,p,XtX,w,a,ninactive,inactive,
-                                     nactive,active,0,tmp);
-        gamhat = Cmax/A;
-
-        for(i=0; i<ncovar; i++){
-          value=(Cmax-covar[i])/(A-a[i]);
-          if(value>eps && value<gamhat){
-            gamhat = value;
+        //matrix_vector_product_subset(p,p,XtX,w,a,ninactive,inactive,
+        //                             nactive,active,0,tmp);
+        gamma0 = INFINITY;
+        for(i=0; i<ninactive; i++){
+          //value = (Cmax-covar[i])/(A-a[i]);
+          value = (Cmax-covar[i])/(A-a[inactive[i]]);
+          if(value>eps && value<gamma0){   // this is new
+            gamma0 = value;
           }
 
-          value=(Cmax+covar[i])/(A+a[i]);
-          if(value>eps && value<gamhat){
-            gamhat = value;
+          //value = (Cmax+covar[i])/(A+a[i]);
+          value = (Cmax+covar[i])/(A+a[inactive[i]]);
+          if(value>eps && value<gamma0){
+            gamma0 = value;
           }
+        }
+        gamma = gamma0 < Cmax/A ? gamma0 : Cmax/A;
+      }
+      if(ndrops == 0){
+        if(verbose>1){
+          Rprintf(" nInactive=%5d. nDropped=%5d. nActive=%5d. A=%1.8f. gamma=%1.8f. C/A=%1.8f\n",
+                  ninactive,nignores,nactive,A,gamma,Cmax/A);
         }
       }
 
       ndrops = 0;
       if(isLASSO){
-        zmin = gamhat;
+        zmin = gamma;
         for(i=0; i<nactive; i++){ // z <- -B[,j]/w
           tmp[i] = -1*b[active[i]]/w[i];
           if(tmp[i]>eps && tmp[i]<zmin){
             zmin = tmp[i];
           }
         }
-        if(zmin < gamhat){
-          gamhat = zmin;
+        if(zmin < gamma){
+          gamma = zmin;
           for(i=0; i<nactive; i++){
-            if(fabs(tmp[i]-zmin) < eps){
-              itmp=append_to_vector_integer(ndrops++, itmp, 1, &i);
+            if(fabs(tmp[i]-zmin) < zero){ // tmp[i]==zmin
+              itmp = append_to_vector_integer(ndrops++, itmp, 1, &i);
             }
           }
         }
       }
 
       for(i=0; i<nactive; i++){
-        b[active[i]] += gamhat*w[i];
+        b[active[i]] += gamma*w[i];
       }
 
-      // Update covariances: rhs <- rhs - gamhat*XtX[,active]%*%w
-      matrix_vector_product_subset(p,p,XtX,w,a,0,NULL,nactive,active,0,tmp);
-      value = -1*gamhat;
+      // Update covariances: rhs <- rhs - gamma*XtX[,active]%*%w
+      // matrix_vector_product_subset(p,p,XtX,w,a,0,NULL,nactive,active,0,tmp);
+      value = -1*gamma;
       F77_NAME(daxpy)(&p, &value, a, &inc1, rhs, &inc1);
 
       if(isLASSO && ndrops>0){
-        nR = nactive;
+        if(verbose){
+          Rprintf("--------------------------------------------------------------------\n");
+        }
         for(i=0; i<ndrops; i++){
           if(verbose){
-            Rprintf("--------------------------------------------------------------\n");
-            Rprintf(" Step=%5d Lambda=%1.8f nActive=%5d OUT=%5d\n",
-                    k+1,Cmax,nactive-i-1,active[itmp[ndrops-i-1]]+1);
+            Rprintf(" Step=%5d. lambda=%1.8f. Feature %5d OUT\n",k+1,Cmax,active[itmp[ndrops-(i+1)]]+1);
           }
-          downdate_chol(nR, itmp[ndrops-i-1], R, 1, z);
+          // For nR = nactive, nactive-1,...,nactive-(ndrops-1)
+          downdate_chol(nactive-i, itmp[ndrops-(i+1)], R, 1, z);
 
           b[active[itmp[i]]] = 0;
           for(j=0; j<nactive+nignores; j++){
@@ -407,25 +419,26 @@ SEXP R_lars(SEXP XtX_, SEXP Xty_,
           }
 
           // Return dropped active to inactive
-          append_to_sorted_vector_integer(ninactive++, inactive, 1, active+itmp[i]);
-          nR--;
+          append_to_sorted_vector_integer(ninactive, inactive, 1, active+itmp[i]);
+          ninactive++;
         }
         reduce_vector_integer(nactive, active, ndrops, itmp);
         reduce_vector_double(nactive, Sign, ndrops, itmp);
         nactive-=ndrops;
+
+        if(verbose>1){
+          Rprintf(" nInactive=%5d. nDropped=%5d. nActive=%5d. A=%1.8f. gamma=%1.8f. C/A=%1.8f\n",
+                  ninactive,nignores,nactive,A,gamma,Cmax/A);
+        }
       }
 
       F77_NAME(dcopy)(&p, b, &inc1, bout, &inc1);
+      df[k] = nactive;
 
       if(scale){
         for(j=0; j<p; j++){
           bout[j] = bout[j]/sd[j];
         }
-      }
-
-      df[k]=0;
-      for(j=0; j<p; j++){
-        if(fabs(bout[j])>0) df[k]++;
       }
 
       if(save){
@@ -451,7 +464,8 @@ SEXP R_lars(SEXP XtX_, SEXP Xty_,
       }
     }
 
-    if(dfmax < p){ // Get the next max correlation
+    // Get the next max correlation
+    if(nactive <= (p-nignores)){
       subset_vector_double(rhs, covar, ninactive, inactive);
       lambda[k] = fabs(covar[F77_NAME(idamax)(&ninactive, covar, &inc1)-1]);
     }else{

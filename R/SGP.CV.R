@@ -13,6 +13,7 @@ SGP.CV <- function(y, X = NULL, b = NULL, Z = NULL, K,
 
   # K=G0; mc.cores=1; method="REML"
   if(length(dim(y)) == 2){
+    y <- as.matrix(y)
     if(is.null(ID_geno) & is.null(ID_trait)){
       ID_geno <- as.vector(row(y))
       ID_trait <- as.vector(col(y))

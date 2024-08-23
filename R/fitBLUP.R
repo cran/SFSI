@@ -12,6 +12,7 @@ fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, trn = NULL,
   # y=yNA[,]; X=X0; EVD=NULL; method="REML"; BLUP=TRUE; interval=c(1E-9,1E9)
 
   if(length(dim(y)) == 2){
+    y <- as.matrix(y)
     if(is.null(ID_geno) & is.null(ID_trait)){
       ID_geno <- as.vector(row(y))
       ID_trait <- as.vector(col(y))
@@ -40,8 +41,8 @@ fitBLUP <- function(y, X = NULL, Z = NULL, K = NULL, trn = NULL,
   trait_names <- tmp$trait_names
   ntraits <- length(table(ID_trait))
 
-  if(is.null(G) & (ntraits>1L)){
-    stop("'Z' and 'K' cannot be  NULL when passing multiple traits")
+  if(is.null(G) & (ntraits>1L) &!flagEigen){
+    stop("'Z' and 'K' cannot be both NULL when passing multiple traits")
   }
 
   ni <- unlist(lapply(seq(ntraits),function(j)sum(ID_trait==j)))

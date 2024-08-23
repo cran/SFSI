@@ -1,9 +1,10 @@
 
 LARS <- function(Sigma, Gamma, method = c("LAR","LASSO"),
-                 nsup.max = NULL, eps = .Machine$double.eps*100,
-                 scale = TRUE, sdx = NULL, mc.cores = 1L, save.at = NULL,
+                 nsup.max = NULL, steps.max = NULL,
+                 eps = .Machine$double.eps*100, scale = TRUE,
+                 sdx = NULL, mc.cores = 1L, save.at = NULL,
                  precision.format = c("double","single"),
-                 fileID = NULL, verbose = FALSE)
+                 fileID = NULL, verbose = 1)
 {
   precision.format <- match.arg(precision.format)
   method <- match.arg(method)
@@ -38,7 +39,7 @@ LARS <- function(Sigma, Gamma, method = c("LAR","LASSO"),
   nsup.max <- ifelse(is.null(nsup.max), p, nsup.max)
   flagsave <- as.logical(!is.null(save.at))
   isLASSO <- as.logical(method=="LASSO")
-  verbose2 <- as.logical((q==1L) & verbose)
+  verbose2 <- ifelse(q==1L, verbose, 0)
   mc.cores <- ifelse((q==1L) & (mc.cores>1L), 1L, mc.cores)
   doubleprecision <- as.logical(precision.format=="double")
 
@@ -52,11 +53,10 @@ LARS <- function(Sigma, Gamma, method = c("LAR","LASSO"),
       filename <- NULL
     }
 
-    #dyn.load("c_lasso.so")
-    res <- .Call("R_lars", Sigma, rhs, eps, nsup.max,
-                 scaleb, sdx, isLASSO, filename,
-                 doubleprecision, verbose2)
-    #dyn.unload("c_lasso.so")
+    #dyn.load("c_lars.so")
+    res <- .Call("R_lars", Sigma, rhs, eps, nsup.max, steps.max,
+                 scaleb, sdx, isLASSO, filename, doubleprecision, verbose2)
+    #dyn.unload("c_lars.so")
 
     if((q>1L) & verbose){
       cat(1,file=con,append=TRUE)

@@ -44,7 +44,7 @@ Returns a list object that contains the elements:
 When \code{pairwise = TRUE}, \code{varU} and \code{varE} are matrices containing all variances (diagonal) and pairwise covariances (off diagonal)
 }
 \description{
-Pairwise genetic covariances for variables with the same experimental design
+Calculation of genetic and environmental (unstructured) covariances matrices from pairwise models of variables with the same experimental design
 }
 \details{
 Assumes that both \ifelse{html}{\out{<b>y</b><sub>1</sub>}}{\eqn{\textbf{y}_1}{y_1}} and

@@ -542,11 +542,19 @@ plot.SGP <- function(..., x.stat = c("nsup","lambda"),
     }
     if("main" %in% names(args0)) main <- args0$main
 
-    theme0 <- mytheme()
-    theme0$legend.justification <- c(1,ifelse(tolower(y.stat)=="mse",1,0))
-    theme0$legend.position <- c(0.99,ifelse(tolower(y.stat)=="mse",0.99,0.01))
+    legend.justification <- c(1,ifelse(tolower(y.stat)=="mse",1,0))
+    legend.position <- c(0.99,ifelse(tolower(y.stat)=="mse",0.99,0.01))
+    if("legend.justification" %in% names(args0)){
+      legend.justification <- args0[['legend.justification']]
+    }
+    if("legend.position" %in% names(args0)){
+      legend.position <- args0[['legend.position']]
+    }
+
+    theme0 <- mytheme() + ggplot2::theme(legend.justification = legend.justification,
+                                         legend.position = legend.position)
     if(np == 1L){
-      theme0$legend.position <- "none"
+      theme0 <- theme0 + ggplot2::theme(legend.position = "none")
     }
 
     eps <- .Machine$double.eps^0.5

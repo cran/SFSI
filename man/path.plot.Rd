@@ -18,7 +18,7 @@ path.plot(object, K = NULL, i = NULL,
 
 \item{cor.max}{(numeric) Correlation threshold to prune within groups of correlated coefficients}
 
-\item{lambda.min}{(numeric) Minimum value of lambda to show in the plot as \code{-log(lambda)}. This prevents \code{-log(lambda)} going to infinite for near-zero lambda values}
+\item{lambda.min}{(numeric) Minimum value of lambda to show in the plot as \code{-log(lambda)}}
 
 \item{nbreaks.x}{(integer) Number of breaks in the x-axis}
 

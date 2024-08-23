@@ -6,6 +6,7 @@ getGenCov <- function(y, X = NULL, Z = NULL, K = NULL, trn = NULL,
 {
   # K=G0; X = NULL; Z = NULL; EVD = NULL; scale = TRUE
   if(length(dim(y)) == 2){
+    y <- as.matrix(y)
     if(missing(ID_geno) & missing(ID_trait)){
       ID_geno <- as.vector(row(y))
       ID_trait <- as.vector(col(y))

@@ -15,6 +15,7 @@ SGP <- function(y = NULL, X = NULL, b = NULL, Z = NULL, K = NULL,
   # varU=varU0; varE=varE0; subset=c(2,5); save.at=prefix
   if(!is.null(y)){
     if(length(dim(y)) == 2){
+      y <- as.matrix(y)
       if(is.null(ID_geno) & is.null(ID_trait)){
         ID_geno <- as.vector(row(y))
         ID_trait <- as.vector(col(y))
@@ -51,7 +52,7 @@ SGP <- function(y = NULL, X = NULL, b = NULL, Z = NULL, K = NULL,
   ntraits <- length(table(ID_trait))
 
   if(is.null(K) & (ntraits>1L)){
-    stop("'Z' and 'K' cannot be  NULL in a multi-trait model")
+    stop("'Z' and 'K' cannot be  both NULL in a multi-trait model")
   }
 
   # Design matrix for fixed effects

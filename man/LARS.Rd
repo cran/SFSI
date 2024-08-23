@@ -4,10 +4,11 @@
 \title{Least Angle Regression to solve LASSO-type problems}
 \usage{
 LARS(Sigma, Gamma, method = c("LAR","LASSO"),
-     nsup.max = NULL, eps = .Machine$double.eps*100,
-     scale = TRUE, sdx = NULL, mc.cores = 1L, save.at = NULL,
+     nsup.max = NULL, steps.max = NULL, 
+     eps = .Machine$double.eps*100, scale = TRUE, 
+     sdx = NULL, mc.cores = 1L, save.at = NULL,
      precision.format = c("double","single"),
-     fileID = NULL, verbose = FALSE)
+     fileID = NULL, verbose = 1)
 
 }
 \arguments{
@@ -25,7 +26,9 @@ Default is \code{method = 'LAR'}}
 \item{nsup.max}{(integer) Maximum number of non-zero coefficients in the last LARS solution.
 Default \code{nsup.max = NULL} will calculate solutions for the entire lambda sequence}
 
-\item{eps}{(numeric) An effective zero. Default is the machine precision}
+\item{steps.max}{(integer) Maximum number of steps (i.e., solutions) to be computed. Default \code{steps.max = NULL} will calculate solutions for the entire lambda sequence}
+
+\item{eps}{(numeric) A numerical zero. Default is the machine precision}
 
 \item{scale}{\code{TRUE} or \code{FALSE} to scale matrix \code{Sigma} for variables with unit variance and scale \code{Gamma} by the standard deviation (\code{sdx}) of the corresponding predictor
 taken from the diagonal of \code{Sigma}}
@@ -40,7 +43,7 @@ taken from the diagonal of \code{Sigma}}
 
 \item{precision.format}{(character) Either 'single' or 'double' for numeric precision and memory occupancy (4 or 8 bytes, respectively) of the regression coefficients. This is only used when \code{save.at} is not \code{NULL}}
 
-\item{verbose}{\code{TRUE} or \code{FALSE} to whether printing each LARS step}
+\item{verbose}{If numeric greater than zero details on each LARS step will be printed}
 }
 \value{
 Returns a list object with the following elements:

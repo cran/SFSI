@@ -60,8 +60,7 @@ nsup.plot <- function(object, lambda.min = .Machine$double.eps^0.5, ...)
   dat$i <- factor(as.character(dat$i))
   alpha0 <- 1 - 1/(1+0.5*exp(200/nlevels(dat$i)))
 
-  theme0 <- mytheme()
-  theme0$legend.position <- "none"
+  theme0 <- mytheme() + ggplot2::theme(legend.position = "none")
 
   pp <- ggplot2::ggplot(dat, ggplot2::aes(-log(lambda),nsup,color=i,group=i)) +
         ggplot2::geom_line(linewidth=lwd, alpha=alpha0) +

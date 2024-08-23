@@ -911,7 +911,7 @@ mytheme <- function(){
   }
 
   packageStartupMessage("
-  Main changes from last version:
+  Main changes from v1.3.1 version:
     - Function SSI() is replaced by SGP(), and SSI.CV() by SGP.CV()
     - Training and testing sets are defined using integer vectors as
       'SGP(..., trn, tst)'. In the former version they were defined using

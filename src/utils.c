@@ -1,6 +1,47 @@
 #include "SFSI.h"
 
 //====================================================================
+// Performs the following vector update:
+//       dy[iy[j]] <- a * dx[ix[j]] + dy[iy[j]],    j = 1,2,...,n
+//
+//   [in]     a: (double) A factor to multiply by
+//   [in]     n: (int) Number of elements in input vector(s) ix and iy
+//   [in]     dx: double precision array of dimension <= max(ix)+1
+//   [in]     ix: integer array (zero-based) of dimension n
+//   [in,out] dy: double precision array of dimension <= max(iy)+1
+//   [in]     ix: integer array (zero-based) of dimension n
+//   [out]    dz: double precision array of dimension at least n
+//====================================================================
+void daxpy_set(int n, double *a, double *dx, int *ix, double *dy, int *iy)
+{
+    int m, i;
+
+    if(n == 0){
+      return;
+    }
+    if(fabs(a[0]) < DBL_EPSILON){
+      return;
+    }
+    /* Clean-up loop so remaining vector length is a multiple of 4.  */
+    m = n % 4;
+    if(m != 0){
+       for(i=0; i<m; i++){
+          dy[iy[i]] = dy[iy[i]] + a[0]*dx[ix[i]];
+       }
+       if(n < 4){
+          return;
+       }
+    }
+    for(i=m; i<n; i+=4)
+    {
+       dy[iy[i]]   = dy[iy[i]]   + a[0]*dx[ix[i]];
+       dy[iy[i+1]] = dy[iy[i+1]] + a[0]*dx[ix[i+1]];
+       dy[iy[i+2]] = dy[iy[i+2]] + a[0]*dx[ix[i+2]];
+       dy[iy[i+3]] = dy[iy[i+3]] + a[0]*dx[ix[i+3]];
+    }
+}
+
+//====================================================================
 // sum of (signed) values in vector dx:
 //  dx[1] + dx[2] + ... + dx[n]
 //====================================================================

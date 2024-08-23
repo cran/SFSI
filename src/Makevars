@@ -8,6 +8,7 @@ R_SOURCES = \
 			c_cov2dist.o \
 			c_lars.o \
 			c_solveEN.o \
+			c_solveEN_sparse.o \
 			c_blup.o \
 			c_prune.o \
 			init.o \

@@ -35,7 +35,7 @@ SGP.CV(y, X = NULL, b = NULL, Z = NULL, K,
 
 \item{Z}{(numeric matrix) Design matrix for random effects. When \code{Z = NULL} an identity matrix is considered (default) thus \ifelse{html}{\out{<b>G</b> = <b>K</b>}}{\eqn{\textbf{G = K}}{G = K}}; otherwise \ifelse{html}{\out{<b>G</b> = <b>Z K Z'</b>}}{\eqn{\textbf{G} = \textbf{Z K Z'}}{G = Z K Z'}} is used}
 
-\item{varU, varE}{(numeric) Genetic and residual variances. When either \code{varU = NULL} or \code{varE = NULL} (default), they are calculated from training data using the function 'fitBLUP' (see \code{help(fitBLUP)}) for single-trait analysis or using the function 'getGenCov' for multi-trait analysis}
+\item{varU, varE}{(numeric) Genetic and residual variances. When either \code{varU = NULL} or \code{varE = NULL} (default), they are calculated from training data using the function 'fitBLUP' (see \code{help(fitBLUP)}) for single-trait analysis. For multi-trait analysis, unstructured matrices are calculated using the function 'getGenCov' in a pairwise fashion}
 
 \item{ID_geno}{(character/integer) For multi-trait analysis only, vector with either names or indices mapping entries of the vector \code{y} to rows/columns of matrix \code{G}}
 

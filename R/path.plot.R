@@ -1,4 +1,4 @@
-# Z = K = i = NULL; prune = FALSE; cor.max = 0.97; lambda.min = 1E-8; nbreaks.x = 6
+# K = i = NULL; prune = FALSE; cor.max = 0.97; lambda.min = 1E-8; nbreaks.x = 6
 path.plot <- function(object, K = NULL, i = NULL,
                       prune = FALSE, cor.max = 0.97,
                       lambda.min = .Machine$double.eps^0.5,
@@ -25,9 +25,8 @@ path.plot <- function(object, K = NULL, i = NULL,
   if("xlab" %in% names(args0)) xlab <- args0$xlab
   if("ylab" %in% names(args0)) ylab <- args0$ylab
 
-  theme0 <- mytheme()
-  theme0$legend.key.height <- unit(3,"line")
-  theme0$legend.key.width <- unit(0.8, "lines")
+  theme0 <- mytheme() + ggplot2::theme(legend.key.height = ggplot2::unit(3,"line"),
+                                       legend.key.width = ggplot2::unit(0.8, "lines"))
 
   MAP <- NULL
   isSGP <- FALSE
@@ -35,7 +34,7 @@ path.plot <- function(object, K = NULL, i = NULL,
   {
     if(!is.null(K)){
       flagKinship <- TRUE
-      if(length(dim(K)) != 2L | (length(K) != object$n^2)){
+      if((length(dim(K)) != 2L) | (length(K) != object$n^2)){
         stop("Input 'K' must be a ",object$n," x ",object$n," matrix")
       }
       MAP <- map_set(i=object$ID_geno, j=object$ID_trait, n=object$n, x=object$trn, y=object$tst)
@@ -86,18 +85,25 @@ path.plot <- function(object, K = NULL, i = NULL,
   object$lambda <- object$lambda[indexTST]
   object$nsup <- object$nsup[indexTST]
 
+  for(k in 1:length(object$lambda)){
+    index <- which(object$lambda[[k]] >= lambda.min)
+    object$lambda[[k]] <- object$lambda[[k]][index]
+    object$nsup[[k]] <- object$nsup[[k]][index]
+    beta[[k]] <- beta[[k]][,index]
+  }
+
   nLambda <- unlist(lapply(object$lambda,length))
   if(all(nLambda < 5L)){
     stop("Coefficients path plot can be generated for at least 5 lambda values")
   }
 
-  if(any(unlist(lapply(object$lambda,min)) < lambda.min)){
-    min0 <- min(unlist(lapply(object$lambda, function(x)min(x[x>lambda.min+eps]))))
-    for(k in 1:length(object$lambda)){
-      tmp <- object$lambda[[k]]
-      object$lambda[[k]] <- ifelse(tmp < lambda.min, min0, tmp)
-    }
-  }
+  #if(any(unlist(lapply(object$lambda,min)) < lambda.min)){
+  #  min0 <- min(unlist(lapply(object$lambda, function(x)min(x[x>lambda.min+eps]))))
+  #  for(k in 1:length(object$lambda)){
+  #    tmp <- object$lambda[[k]]
+  #    object$lambda[[k]] <- ifelse(tmp < lambda.min, min0, tmp)
+  #  }
+  #}
 
   if(length(unique(nLambda)) > 1L){
     INDEX1 <- matrix(seq_along(indexTST),ncol=1)

@@ -40,14 +40,15 @@
 // This will replace the contribution of the current value b[j] by the
 // contribution of the updated value bNew[j] in XtyHatNoj
 //====================================================================
-SEXP R_updatebeta(SEXP XtX_, SEXP Xty_,
-                  SEXP lambda_, SEXP alpha_, SEXP b0_,
-                  SEXP tol_, SEXP maxiter_, SEXP dfmax_,
-                  SEXP scale_, SEXP sd_, SEXP filename_,
-                  SEXP doubleprecision_, SEXP verbose_)
+SEXP R_updatebeta_sparse(SEXP XtX_, SEXP Xty_,
+                         SEXP lambda_, SEXP alpha_, SEXP b0_,
+                         SEXP tol_, SEXP maxiter_, SEXP dfmax_,
+                         SEXP scale_, SEXP sd_,
+                         SEXP eps_, SEXP filename_,
+                         SEXP doubleprecision_, SEXP verbose_)
 {
     double L1, L2, maxerror, delta, bOLS, bNew;
-    long long j;
+    long long i, j;
     int k, iter;
     int varsize, vartype;
     int inc1 = 1;
@@ -64,6 +65,7 @@ SEXP R_updatebeta(SEXP XtX_, SEXP Xty_,
     int scale = asLogical(scale_);
     double alpha = NUMERIC_VALUE(alpha_);
     double tol = NUMERIC_VALUE(tol_);
+    double eps = NUMERIC_VALUE(eps_);
     int doubleprecision = asLogical(doubleprecision_);
     int save = !Rf_isNull(filename_);
 
@@ -80,10 +82,10 @@ SEXP R_updatebeta(SEXP XtX_, SEXP Xty_,
     double *Xty = NUMERIC_POINTER(Xty_);
 
     int *df = (int *) R_alloc(nlambda, sizeof(int));
-    int *niter = (int *) R_alloc(nlambda, sizeof(int));     // Niter at each lambda
+    int *niter = (int *) R_alloc(nlambda, sizeof(int));    // Niter at each lambda
     double *error = (double *) R_alloc(nlambda, sizeof(double)); // Max error b0-bnew at each lambda
-    double *b = (double *) R_alloc(p, sizeof(double));      // Current b[j] values
-    double *bout = (double *) R_alloc(p, sizeof(double));   // Output
+    double *b = (double *) R_alloc(p, sizeof(double));     // Current b[j] values
+    double *bout = (double *) R_alloc(p, sizeof(double));  // Output
     double *XtyHatNoj = (double *) R_alloc(p, sizeof(double)); // XtyHatNoj[j] = {XtX[,j]'b - XtX[j,j]b[j]}
 
     for(k=0; k<nlambda; k++){
@@ -91,8 +93,8 @@ SEXP R_updatebeta(SEXP XtX_, SEXP Xty_,
     }
 
     if(Rf_isNull(b0_)){
-      memset(b, 0, sizeof(double)*p);           // Initialize all b[j] to zero
-      memset(XtyHatNoj, 0, sizeof(double)*p);   // Since all b[j] are initially 0, all XtyHatNoj[j] are so
+      memset(b, 0, sizeof(double)*p);          // Initialize all b[j] to zero
+      memset(XtyHatNoj, 0, sizeof(double)*p);  // All XtyHatNoj[j] are also zero
     }else{
       PROTECT(b0_ = AS_NUMERIC(b0_));
       memcpy(b, NUMERIC_POINTER(b0_), sizeof(double)*p);
@@ -119,76 +121,99 @@ SEXP R_updatebeta(SEXP XtX_, SEXP Xty_,
       B = (double *) R_Calloc(p*nlambda, double);
     }
 
+    // Get indices of nonzero
+    long long nnonzero = (long long)p*p/2;
+    int *inonzero = (int *) R_Calloc(nnonzero, int);
+    int *nnonzeroj = (int *) R_alloc(p, sizeof(int));
+    long long cont = 0;
+
+    for(j=0; j<p; j++){
+      nnonzeroj[j] = 0;
+      for(i=0; i<p; i++){
+        if(fabs(XtX[p*j + i])>eps){
+          inonzero[cont++] = i;
+          nnonzeroj[j]++;
+        }
+      }
+      if((nnonzero < (cont+p)) && j<(p-1)){  // Enlarge memory if needed
+        nnonzero += p;
+        inonzero = R_Realloc(inonzero, nnonzero, int);
+      }
+    }
+
     //Rprintf(" Starting beta updating ...\n");
     for(k=0; k<nlambda; k++)
     {
-      L1 = alpha*lambda[k];
-      L2 = (1-alpha)*lambda[k];
-      iter = 0;              // Set iter < maxiter to enter the WHILE
-      maxerror = tol + 1.0;  // Set a error > tol to enter the WHILE
-      while(iter<maxiter && maxerror>tol)
-      {
-        iter++;
-        maxerror = 0;
-        for(j=0; j<p; j++)
+        L1 = alpha*lambda[k];
+        L2 = (1-alpha)*lambda[k];
+        iter = 0;              // Set iter < maxiter to enter the WHILE
+        maxerror = tol + 1.0;  // Set a error > tol to enter the WHILE
+        while(iter<maxiter && maxerror>tol)
         {
-          // varj = XtX[p*j + j];  // Variance of predictor j
-          // bOLS = (Xty[j] - XtyHat[j])/varj;
-          bOLS = Xty[j] - XtyHatNoj[j];
-          bNew = soft_threshold(bOLS, L1)/(1+L2);
+           iter++;
+           maxerror = 0;
+           cont = 0; // for the number of nonzero
+           for(j=0; j<p; j++)
+           {
+              // varj = XtX[p*j + j];  // Variance of predictor j
+              // bOLS = (Xty[j] - XtyHatNoj[j])/varj;
+              bOLS = Xty[j] - XtyHatNoj[j];
+              bNew = soft_threshold(bOLS, L1)/(1+L2);
 
-          delta = bNew-b[j];
-          //Rprintf(" j=%d. XtyHatNoj=%1.8f bOLS=%1.8f  bNew=%1.8f  delta=%f\n",j+1,XtyHatNoj[j], bOLS, bNew, delta);
-          if(fabs(delta)>0){ // Update only if there is a change
-            // Update: XtyHatNoj[k] <- XtyHatNoj[k] + XtX[k,j]*(bNew[j]-b[j])
-            F77_NAME(daxpy)(&p, &delta, XtX + p*j, &inc1, XtyHatNoj, &inc1);
+              delta = bNew-b[j];
+              //Rprintf(" j=%d. XtyHatNoj=%1.8f bOLS=%1.8f  bNew=%1.8f  delta=%f\n",j+1,XtyHatNoj[j], bOLS, bNew, delta);
+              if(fabs(delta)>0){ // Update only if there is a change
+                // Update: XtyHatNoj[k] <- XtyHatNoj[k] + XtX[k,j]*(bNew[j]-b[j])
+                //F77_NAME(daxpy)(&p, &delta, XtX + p*j, &inc1, XtyHatNoj, &inc1);
+                daxpy_set(nnonzeroj[j], &delta, XtX + p*j, inonzero + cont, XtyHatNoj, inonzero +  cont);
 
-            XtyHatNoj[j] -= delta; // except for k=j. delta*varj
-            if(fabs(delta)>maxerror){
-              maxerror = fabs(delta);
-            }
-            b[j] = bNew;
-          }
+                XtyHatNoj[j] -= delta; // except for k=j. delta*varj
+                if(fabs(delta)>maxerror){
+                  maxerror = fabs(delta);
+                }
+                b[j] = bNew;
+              }
+              cont += nnonzeroj[j]; // cumulate the counter
+           }
         }
-      }
-      niter[k] = iter;
-      error[k] = maxerror;
-      F77_NAME(dcopy)(&p, b, &inc1, bout, &inc1);
+        niter[k] = iter;
+        error[k] = maxerror;
+        F77_NAME(dcopy)(&p, b, &inc1, bout, &inc1);
 
-      if(scale){
-        for(j=0; j<p; j++){
-          bout[j] = bout[j]/sd[j];
-        }
-      }
-
-      df[k] = 0;
-      for(j=0; j<p; j++){
-        if(fabs(bout[j])>0) df[k]++;
-      }
-
-      if(verbose){
-          Rprintf(" lambda[%d]=%1.8f  nsup=%5d  niter=%5d  Error=%G\n",k+1,lambda[k],df[k],iter,maxerror);
-          if(maxerror>tol){
-            Rprintf(" Warning: The process did not converge after %d iterations for lambda[%d]=%f\n",maxiter,k+1,lambda[k]);
-          }
-      }
-
-      if(save){
-        if(doubleprecision){
-          fwrite(bout, varsize, p, f);
-        }else{  // Cast to float one by one
+        if(scale){
           for(j=0; j<p; j++){
-            valuefloat = bout[j];
-            fwrite(&valuefloat, varsize, 1, f);
+            bout[j] = bout[j]/sd[j];
           }
         }
-      }else{
-        F77_NAME(dcopy)(&p, bout, &inc1, B + p*k, &inc1);
-      }
 
-      if(dfmax<p && df[k]>=dfmax){
-        break;
-      }
+        df[k] = 0;
+        for(j=0; j<p; j++){
+          if(fabs(bout[j])>0) df[k]++;
+        }
+
+        if(verbose){
+            Rprintf(" lambda[%d]=%1.8f. nsup=%5d. niter=%5d. Error=%G\n",k+1,lambda[k],df[k],iter,maxerror);
+            if(maxerror>tol){
+              Rprintf(" Warning: The process did not converge after %d iterations for lambda[%d]=%f\n",maxiter,k+1,lambda[k]);
+            }
+        }
+
+        if(save){
+          if(doubleprecision){
+            fwrite(bout, varsize, p, f);
+          }else{  // Cast to float one by one
+            for(j=0; j<p; j++){
+              valuefloat = bout[j];
+              fwrite(&valuefloat, varsize, 1, f);
+            }
+          }
+        }else{
+          F77_NAME(dcopy)(&p, bout, &inc1, B + p*k, &inc1);
+        }
+
+        if(dfmax<p && df[k]>=dfmax){
+          break;
+        }
     }
 
     //Rprintf(" Writting results: lambda, nsup, B ...\n");

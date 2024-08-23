@@ -3,12 +3,13 @@
 \alias{solveEN}
 \title{Coordinate Descent algorithm to solve Elastic-Net-type problems}
 \usage{
-solveEN(Sigma, Gamma, alpha = 1, lambda = NULL, nlambda = 100, 
+solveEN(Sigma, Gamma, alpha = 1, lambda = NULL, nlambda = 100,
         lambda.min = .Machine$double.eps^0.5, lambda.max = NULL,
-        common.lambda = TRUE, beta0 = NULL, nsup.max = NULL, 
-        scale = TRUE, sdx = NULL, tol = 1E-5, maxiter = 1000, 
+        common.lambda = TRUE, beta0 = NULL, nsup.max = NULL,
+        scale = TRUE, sdx = NULL, tol = 1E-5, maxiter = 1000,
         mc.cores = 1L, save.at = NULL, fileID = NULL,
-        precision.format = c("double","single"), verbose = FALSE)
+        precision.format = c("double","single"), sparse = FALSE,
+        eps = .Machine$double.eps*100, verbose = FALSE)
         
 }
 \arguments{
@@ -30,7 +31,7 @@ to a minimum equal to zero. If \code{alpha = 0} the grid is generated starting f
 \item{common.lambda}{\code{TRUE} or \code{FALSE} to whether computing the coefficients for a grid of lambdas common to all columns of \code{Gamma}
  or for a grid of lambdas specific to each column of \code{Gamma}. Default is \code{common.lambda = TRUE}}
  
-\item{beta0}{(numeric vector) Initial value for the regression coefficients that the algorithm will update for \code{maxiter} iterations. If \code{beta0 = NULL} a vector of zeros will be considered. These values will be used as starting values for the first lambda value}
+\item{beta0}{(numeric vector) Initial value for the regression coefficients that will be updated. If \code{beta0 = NULL} a vector of zeros will be considered. These values will be used as starting values for the first lambda value}
 
 \item{alpha}{(numeric) Value between 0 and 1 for the weights given to the L1 and L2-penalties}
 
@@ -53,6 +54,10 @@ Default \code{nsup.max = NULL} will calculate solutions for the entire lambda gr
 \item{fileID}{(character) Suffix added to the file name where regression coefficients are to be saved. Default \code{fileID = NULL} will automatically add sequential integers from 1 to the number of columns of \code{Gamma}}
 
 \item{precision.format}{(character) Either 'single' or 'double' for numeric precision and memory occupancy (4 or 8 bytes, respectively) of the regression coefficients. This is only used when \code{save.at} is not \code{NULL}}
+
+\item{sparse}{\code{TRUE} or \code{FALSE} to whether matrix \code{Sigma} is sparse with entries being zero or near-zero}
+
+\item{eps}{(numeric) A numerical zero to determine if entries are near-zero. Default is the machine precision}
 
 \item{verbose}{\code{TRUE} or \code{FALSE} to whether printing progress}
 }

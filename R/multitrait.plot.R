@@ -84,19 +84,20 @@ multitrait.plot <- function(object, trait_names = NULL,
     }
     if("main" %in% names(args0)) main <- args0$main
 
+    legend.justification <- c(1,ifelse(tolower(y.stat)=="mse",1,0))
+    legend.position <- c(0.99,ifelse(tolower(y.stat)=="mse",0.99,0.01))
+    if("legend.justification" %in% names(args0)){
+      legend.justification <- args0[['legend.justification']]
+    }
     if("legend.position" %in% names(args0)){
       legend.position <- args0[['legend.position']]
-      stopifnot(length(legend.position)==2)
-    }else{
-      legend.position <- c(0.99,ifelse(tolower(y.stat)=="mse",0.99,0.01))
     }
 
-    facet_lab <- paste0(" * ' (' * n[",ifelse(isCV,'TRN','TST'),"] * ' = ' * ")
-    theme0 <- mytheme()
-    theme0$legend.justification <- c(1,ifelse(tolower(y.stat)=="mse",1,0))
-    theme0$legend.position <- legend.position
-    theme0$legend.box.margin <- ggplot2::margin(l=-10)
+    theme0 <- mytheme() + ggplot2::theme(legend.justification = legend.justification,
+                                         legend.position = legend.position,
+                                         legend.box.margin = ggplot2::margin(l=-10))
 
+    facet_lab <- paste0(" * ' (' * n[",ifelse(isCV,'TRN','TST'),"] * ' = ' * ")
     eps <- .Machine$double.eps^0.5
     nlambda <- object$nlambda
 

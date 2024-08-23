@@ -7,7 +7,7 @@
         set.color = NULL, set.size = NULL,
         axis.labels = TRUE, curve = FALSE,
         bg.color = "white", unified = TRUE, ni = 36,
-        line.color = "gray70", line.tick = 0.3,
+        line.color = "gray70", line.width = 0.3,
         legend.pos = "right", point.color = "gray20",
         sets = c("Testing","Supporting","Non-active"),
         circle = FALSE, ...)
@@ -27,7 +27,7 @@
 
 \item{line.color}{(character) Color of lines connecting nodes in rows with those in columns}
 
-\item{line.tick}{(numeric) Tick of lines connecting nodes in rows with those in columns}
+\item{line.width}{(numeric) Width of lines connecting nodes in rows with those in columns}
 
 \item{curve}{\code{TRUE} or \code{FALSE} to whether draw curve lines connecting nodes in rows with those in columns}
 

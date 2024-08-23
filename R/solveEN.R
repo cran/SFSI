@@ -4,7 +4,8 @@ solveEN <- function(Sigma, Gamma, alpha = 1, lambda = NULL, nlambda = 100,
                     common.lambda = TRUE, beta0 = NULL, nsup.max = NULL,
                     scale = TRUE, sdx = NULL, tol = 1E-5, maxiter = 1000,
                     mc.cores = 1L, save.at = NULL, fileID = NULL,
-                    precision.format = c("double","single"), verbose = FALSE)
+                    precision.format = c("double","single"), sparse = FALSE,
+                    eps = .Machine$double.eps*100, verbose = FALSE)
 {
     precision.format <- match.arg(precision.format)
     alpha <- as.numeric(alpha)
@@ -48,8 +49,8 @@ solveEN <- function(Sigma, Gamma, alpha = 1, lambda = NULL, nlambda = 100,
 
     # Get lambda grid. Diagonal values in Sigma are assumed to be zero
     lambda <- set_lambda(Gamma, alpha=alpha, lambda=lambda, nlambda=nlambda,
-                           lambda.min=lambda.min, lambda.max=lambda.max,
-                           common.lambda=common.lambda, verbose=FALSE)
+                         lambda.min=lambda.min, lambda.max=lambda.max,
+                         common.lambda=common.lambda, verbose=FALSE)
     nlambda <- nrow(lambda)
 
     if(ifelse(is.null(beta0),FALSE,length(beta0)!=p)){
@@ -75,12 +76,19 @@ solveEN <- function(Sigma, Gamma, alpha = 1, lambda = NULL, nlambda = 100,
         filename <- NULL
       }
 
-      #dyn.load("c_solveEN.so")
-      res <- .Call('R_updatebeta', Sigma, Gamma[,task],
-                  lambda0, alpha, beta0, tol, maxiter, nsup.max,
-                  scaleb, sdx, filename,
-                  doubleprecision, verbose2)
-      #dyn.unload("c_solveEN.so")
+      if(sparse){
+        #dyn.load("c_solveEN_sparse.so")
+        res <- .Call('R_updatebeta_sparse', Sigma, Gamma[,task],
+                    lambda0, alpha, beta0, tol, maxiter, nsup.max,
+                    scaleb, sdx, eps, filename, doubleprecision, verbose2)
+        #dyn.unload("c_solveEN_sparse.so")
+      }else{
+        #dyn.load("c_solveEN.so")
+        res <- .Call('R_updatebeta', Sigma, Gamma[,task],
+                    lambda0, alpha, beta0, tol, maxiter, nsup.max,
+                    scaleb, sdx, filename, doubleprecision, verbose2)
+        #dyn.unload("c_solveEN.so")
+      }
 
       if((q>1L) & verbose){
         cat(1,file=con,append=TRUE)

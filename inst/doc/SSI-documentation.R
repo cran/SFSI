@@ -1,7 +1,7 @@
 ## ----initialsetup, include=FALSE----------------------------------------------
 knitr::opts_chunk$set(cache=FALSE)
 
-## ----Box1, eval=FALSE---------------------------------------------------------
+## ---- Box1, eval=FALSE--------------------------------------------------------
 #  rm(list = ls())
 #  setwd("~/Dropbox/projects/R_packages/test/pipeline")
 #  
@@ -27,7 +27,7 @@ knitr::opts_chunk$set(cache=FALSE)
 #  # Save file
 #  save(y, trials, K, X, file="prepared_data.RData")
 
-## ----Box2, eval=FALSE---------------------------------------------------------
+## ---- Box2, eval=FALSE--------------------------------------------------------
 #  library(SFSI)
 #  
 #  # Load data
@@ -41,7 +41,7 @@ knitr::opts_chunk$set(cache=FALSE)
 #  
 #  save(fm0, EVD, file="varComps.RData")
 
-## ----Box3, eval=FALSE---------------------------------------------------------
+## ---- Box3, eval=FALSE--------------------------------------------------------
 #  load("prepared_data.RData") # load data
 #  
 #  #---------- parameters ------------#
@@ -62,7 +62,7 @@ knitr::opts_chunk$set(cache=FALSE)
 #  }
 #  save(partitions, pTST, nPart, timepoints, file="parameters.RData")
 
-## ----Box4, eval=FALSE---------------------------------------------------------
+## ---- Box4, eval=FALSE--------------------------------------------------------
 #  load("prepared_data.RData"); load("parameters.RData")
 #  
 #  for(tp in timepoints){
@@ -87,7 +87,7 @@ knitr::opts_chunk$set(cache=FALSE)
 #    cat("Time-point=",tp,". Done \n")
 #  }
 
-## ----Box5a, eval=FALSE--------------------------------------------------------
+## ---- Box5a, eval=FALSE-------------------------------------------------------
 #  load("prepared_data.RData"); load("parameters.RData")
 #  
 #  for(tp in timepoints){
@@ -125,7 +125,7 @@ knitr::opts_chunk$set(cache=FALSE)
 #    cat("Time-point=",tp,". Done \n")
 #  }
 
-## ----Box5b, eval=FALSE--------------------------------------------------------
+## ---- Box5b, eval=FALSE-------------------------------------------------------
 #  load("prepared_data.RData"); load("parameters.RData")
 #  
 #  for(tp in timepoints){
@@ -165,7 +165,7 @@ knitr::opts_chunk$set(cache=FALSE)
 #    cat("Time-point=",tp,". Done \n")
 #  }
 
-## ----Box6, eval=FALSE---------------------------------------------------------
+## ---- Box6, eval=FALSE--------------------------------------------------------
 #  tp <- 9      # Time-point
 #  load(paste0("accuracy_tp_",tp,".RData"))
 #  
@@ -189,7 +189,7 @@ knitr::opts_chunk$set(cache=FALSE)
 #   plot1; plot2
 #  }
 
-## ----Box7, eval=FALSE---------------------------------------------------------
+## ---- Box7, eval=FALSE--------------------------------------------------------
 #  tp <- 9      # Time-point
 #  load(paste0("accuracy_tp_",tp,".RData"))
 #  
@@ -209,7 +209,7 @@ knitr::opts_chunk$set(cache=FALSE)
 #     ggplot2::geom_text(ggplot2::aes(label=sprintf("%.2f",accuracy),y=accuracy*0.5))
 #  }
 
-## ----Box8, eval=FALSE---------------------------------------------------------
+## ---- Box8, eval=FALSE--------------------------------------------------------
 #  load("parameters.RData")
 #  AccSI <- c()
 #  for(tp in timepoints)
@@ -232,7 +232,7 @@ knitr::opts_chunk$set(cache=FALSE)
 #      ggplot2::theme_bw() + ggplot2::geom_line() + ggplot2::geom_point() #+ geom_errorbar(aes(ymin=accuracy-se,ymax=accuracy+se),width=0.2)
 #  }
 
-## ----Box9a, eval=FALSE--------------------------------------------------------
+## ---- Box9a, eval=FALSE-------------------------------------------------------
 #  load("prepared_data.RData"); load("parameters.RData")
 #  
 #  Gencov <- c()   # To stack all covariances from all time-points
@@ -265,7 +265,7 @@ knitr::opts_chunk$set(cache=FALSE)
 #  }
 #  save(bPCSI, bL1PSI, nPart, file="multi_timepoint_coefficients.RData")
 
-## ----Box9b, eval=FALSE--------------------------------------------------------
+## ---- Box9b, eval=FALSE-------------------------------------------------------
 #  load("parameters.RData")
 #  load("multi_timepoint_coefficients.RData")
 #  
@@ -300,7 +300,7 @@ knitr::opts_chunk$set(cache=FALSE)
 #  }
 #  save(AccSI, file="multi_timepoint_accuracy.RData")
 
-## ----Box10, eval=FALSE--------------------------------------------------------
+## ---- Box10, eval=FALSE-------------------------------------------------------
 #  tp <- 9      # Time-point
 #  load(paste0("accuracy_tp_",tp,".RData"))
 #  load("multi_timepoint_accuracy.RData")
@@ -322,7 +322,7 @@ knitr::opts_chunk$set(cache=FALSE)
 #    ggplot2::geom_text(ggplot2::aes(label=sprintf("%.2f",accuracy),y=accuracy*0.5))
 #  }
 
-## ----Box11, eval=FALSE--------------------------------------------------------
+## ---- Box11, eval=FALSE-------------------------------------------------------
 #  load("varComps.RData")    # Load the SVD of ZZ' to speed computation
 #  load("multi_timepoint_accuracy.RData")
 #  
